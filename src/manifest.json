@@ -1,0 +1,24 @@
+{
+  "name": "TMS司机端",
+  "appid": "__UNI__TMSDRIVER",
+  "description": "TMS driver mobile app",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "h5": {
+    "title": "TMS司机端",
+    "router": {
+      "mode": "hash"
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "postcss": true,
+      "minified": true
+    },
+    "usingComponents": true
+  }
+}

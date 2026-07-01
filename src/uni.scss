@@ -1,0 +1,55 @@
+:root,
+page {
+  --tms-primary: #3763f4;
+  --tms-primary-pressed: #2450de;
+  --tms-blue-soft: #edf2ff;
+  --tms-green: #25bf75;
+  --tms-orange: #ff8b3d;
+  --tms-red: #f05252;
+  --tms-text: #282d36;
+  --tms-muted: #748094;
+  --tms-light: #a9b0bd;
+  --tms-card: #ffffff;
+  --tms-bg: #f4f6fb;
+  --tms-line: #edf0f7;
+  --tms-panel: #f6f8fd;
+}
+
+.page {
+  min-height: 100vh;
+  background: var(--tms-bg);
+}
+
+.safe-bottom {
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+}
+
+.card {
+  background: var(--tms-card);
+  border-radius: 16rpx;
+}
+
+.primary-button {
+  height: 88rpx;
+  border-radius: 16rpx;
+  background: var(--tms-primary);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outline-button {
+  height: 80rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--tms-primary);
+  color: var(--tms-primary);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 600;
+}
