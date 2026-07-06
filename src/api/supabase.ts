@@ -111,6 +111,22 @@ export async function authPasswordLogin(email: string, password: string) {
   return session
 }
 
+export async function driverPasswordLogin(account: string, password: string) {
+  return request<Session>('/functions/v1/driver-auth', {
+    method: 'POST',
+    body: { type: 'password', account, password },
+    headers: { Authorization: `Bearer ${SUPABASE_KEY}` }
+  })
+}
+
+export async function driverWechatPhoneLogin(phoneCode: string) {
+  return request<Session>('/functions/v1/driver-auth', {
+    method: 'POST',
+    body: { type: 'wechat-phone', phoneCode },
+    headers: { Authorization: `Bearer ${SUPABASE_KEY}` }
+  })
+}
+
 export async function refreshToken(refreshToken: string) {
   return request<Session>('/auth/v1/token?grant_type=refresh_token', {
     method: 'POST',
@@ -124,6 +140,17 @@ export async function signOut(token: string) {
     method: 'POST',
     token
   })
+}
+
+export async function syncDriverWaybills(token: string) {
+  return request<{ ok: boolean; synced: number; waybillNos: string[] }>(
+    '/functions/v1/sync-driver-waybills',
+    {
+      method: 'POST',
+      token,
+      body: {}
+    }
+  )
 }
 
 export function restPath(table: string, query = '') {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import TmsIcon from './TmsIcon.vue'
+
 withDefaults(
   defineProps<{
     title: string
@@ -24,12 +26,12 @@ function back() {
 <template>
   <view class="top-bar">
     <button v-if="showBack" class="top-bar__icon" hover-class="none" @tap="back">
-      <wd-icon name="arrow-left" size="44rpx" />
+      <TmsIcon name="back" size="38rpx" />
     </button>
     <view v-else class="top-bar__spacer" />
     <text class="top-bar__title">{{ title }}</text>
     <button v-if="showMenu" class="top-bar__icon" hover-class="none">
-      <wd-icon name="menu" size="42rpx" />
+      <TmsIcon name="menu" size="38rpx" />
     </button>
     <view v-else class="top-bar__spacer" />
   </view>

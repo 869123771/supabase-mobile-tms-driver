@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { authPasswordLogin, refreshToken, request, restPath, signOut } from '@/api/supabase'
+import { driverPasswordLogin, driverWechatPhoneLogin, refreshToken, signOut } from '@/api/supabase'
 import type { Session } from '@/api/types'
 
 const STORAGE_KEY = 'tms-driver-session'
@@ -7,6 +7,14 @@ const STORAGE_KEY = 'tms-driver-session'
 interface AuthState {
   session: Session | null
   booted: boolean
+}
+
+function normalizeSession(session: Session | null) {
+  if (!session) return null
+  if (!session.expires_at && session.expires_in) {
+    session.expires_at = Math.floor(Date.now() / 1000) + session.expires_in
+  }
+  return session
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -19,9 +27,10 @@ export const useAuthStore = defineStore('auth', {
     user: (state) => state.session?.user || null,
     isLoggedIn: (state) => Boolean(state.session?.access_token),
     isTokenExpired: (state) => {
+      if (!state.session?.access_token) return false
       const expiresAt = state.session?.expires_at
-      if (!expiresAt) return false
-      return expiresAt * 1000 - Date.now() < 90_000
+      if (!expiresAt) return true
+      return expiresAt * 1000 - Date.now() < 180_000
     }
   },
   actions: {
@@ -30,7 +39,7 @@ export const useAuthStore = defineStore('auth', {
       const cached = uni.getStorageSync(STORAGE_KEY)
       if (cached) {
         try {
-          this.session = typeof cached === 'string' ? JSON.parse(cached) : cached
+          this.session = normalizeSession(typeof cached === 'string' ? JSON.parse(cached) : cached)
         } catch {
           this.session = null
         }
@@ -45,28 +54,22 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async login(account: string, password: string) {
-      const email = await this.resolveEmail(account)
-      this.session = await authPasswordLogin(email, password)
+      this.session = normalizeSession(await driverPasswordLogin(account.trim(), password))
       this.persist()
       return this.session
     },
-    async resolveEmail(account: string) {
-      const normalized = account.trim()
-      if (normalized.includes('@')) return normalized
-
-      try {
-        const query = `?user_phone=eq.${encodeURIComponent(normalized)}&select=user_email&limit=1`
-        const rows = await request<Array<{ user_email: string }>>(restPath('sys_user', query), {
-          headers: { Prefer: 'return=representation' }
-        })
-        return rows[0]?.user_email || normalized
-      } catch {
-        return normalized
-      }
+    async loginWithWechatPhone(phoneCode: string) {
+      this.session = normalizeSession(await driverWechatPhoneLogin(phoneCode))
+      this.persist()
+      return this.session
     },
     async refreshSession() {
-      if (!this.session?.refresh_token) return
-      this.session = await refreshToken(this.session.refresh_token)
+      if (!this.session?.refresh_token) {
+        this.session = null
+        this.persist()
+        throw new Error('登录已过期，请重新登录')
+      }
+      this.session = normalizeSession(await refreshToken(this.session.refresh_token))
       this.persist()
     },
     async logout() {

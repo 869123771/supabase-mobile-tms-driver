@@ -13,57 +13,70 @@ function singleQuery(table: string, query: string) {
   return restPath(table, query)
 }
 
-export async function getCurrentSysUser(token: string, authUser?: SessionUser | null) {
-  const filters: string[] = []
-  if (authUser?.id) filters.push(`auth_user_id.eq.${authUser.id}`)
-  if (authUser?.email) filters.push(`user_email.eq.${encodeURIComponent(authUser.email)}`)
-  if (authUser?.phone) filters.push(`user_phone.eq.${encodeURIComponent(authUser.phone)}`)
+function getStringMeta(source: Record<string, unknown> | undefined, keys: string[]) {
+  if (!source) return ''
+  for (const key of keys) {
+    const value = source[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return ''
+}
 
-  if (filters.length === 0) return null
-
-  const rows = await request<unknown[]>(
-    singleQuery('sys_user', `?select=${USER_SELECT}&or=(${filters.join(',')})&limit=1`),
-    { token }
+function getAuthPhone(authUser?: SessionUser | null) {
+  return (
+    authUser?.phone ||
+    getStringMeta(authUser?.user_metadata, ['phone', 'user_phone', 'mobile', 'tel']) ||
+    getStringMeta(authUser?.app_metadata, ['phone', 'user_phone', 'mobile', 'tel'])
   )
-  return keysToCamel<SysUser[]>(rows)[0] || null
+}
+
+async function findDriverByFilter(token: string, filter: string) {
+  try {
+    const rows = await request<unknown[]>(
+      singleQuery('tms_driver', `?select=${DRIVER_SELECT}&${filter}&enabled=eq.true&limit=1`),
+      { token }
+    )
+    return keysToCamel<Driver[]>(rows)[0] || null
+  } catch {
+    return null
+  }
+}
+
+export async function getCurrentSysUser(token: string, authUser?: SessionUser | null) {
+  const authPhone = getAuthPhone(authUser)
+  const filters = [
+    authUser?.id ? `auth_user_id=eq.${encodeURIComponent(authUser.id)}` : '',
+    authUser?.email ? `user_email=eq.${encodeURIComponent(authUser.email)}` : '',
+    authPhone ? `user_phone=eq.${encodeURIComponent(authPhone)}` : ''
+  ].filter(Boolean)
+
+  for (const filter of filters) {
+    const rows = await request<unknown[]>(
+      singleQuery('sys_user', `?select=${USER_SELECT}&${filter}&limit=1`),
+      { token }
+    )
+    const user = keysToCamel<SysUser[]>(rows)[0]
+    if (user) return user
+  }
+
+  return null
 }
 
 export async function getDriverByProfile(token: string, user?: SysUser | null, authUser?: SessionUser | null) {
-  const phone = user?.userPhone || authUser?.phone
+  const phone = user?.userPhone || getAuthPhone(authUser)
+
   if (phone) {
-    const rows = await request<unknown[]>(
-      singleQuery(
-        'tms_driver',
-        `?select=${DRIVER_SELECT}&phone=eq.${encodeURIComponent(phone)}&enabled=eq.true&limit=1`
-      ),
-      { token }
-    )
-    const driver = keysToCamel<Driver[]>(rows)[0]
+    const driver = await findDriverByFilter(token, `phone=eq.${encodeURIComponent(phone)}`)
     if (driver) return driver
   }
 
-  const recentWaybills = await request<Array<{ driver_id?: string }>>(
-    singleQuery(
-      'tms_waybill',
-      '?select=driver_id&driver_id=not.is.null&order=create_time.desc&limit=1'
-    ),
-    { token }
-  )
-  const driverId = recentWaybills[0]?.driver_id
-  if (driverId) {
-    const rows = await request<unknown[]>(
-      singleQuery('tms_driver', `?select=${DRIVER_SELECT}&id=eq.${driverId}&limit=1`),
-      { token }
-    )
-    const driver = keysToCamel<Driver[]>(rows)[0]
+  const name = user?.nickName || user?.userName
+  if (name) {
+    const driver = await findDriverByFilter(token, `driver_name=eq.${encodeURIComponent(name)}`)
     if (driver) return driver
   }
 
-  const rows = await request<unknown[]>(
-    singleQuery('tms_driver', `?select=${DRIVER_SELECT}&enabled=eq.true&order=create_time.desc&limit=1`),
-    { token }
-  )
-  return keysToCamel<Driver[]>(rows)[0] || null
+  return null
 }
 
 export async function getCarrier(token: string, carrierId?: string) {

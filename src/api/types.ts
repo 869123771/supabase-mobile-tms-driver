@@ -12,6 +12,7 @@ export interface SessionUser {
   email?: string
   phone?: string
   user_metadata?: Record<string, unknown>
+  app_metadata?: Record<string, unknown>
 }
 
 export interface Session {
@@ -28,6 +29,9 @@ export interface Driver {
   tenantId?: string
   driverName: string
   phone?: string
+  email?: string
+  userId?: string
+  authUserId?: string
   carrierId?: string
   gender?: string
   idCardNo?: string
@@ -73,6 +77,15 @@ export interface Waybill {
   driverId?: string
   vehicleId?: string
   cargoId?: string
+  cargoNo?: string
+  goodsNo?: string
+  orderNo?: string
+  senderName?: string
+  senderPhone?: string
+  senderAddress?: string
+  fromStationName?: string
+  toStationName?: string
+  transferStationName?: string
   originCity: string
   destinationCity: string
   shipperName?: string
@@ -131,7 +144,7 @@ export interface WaybillProof {
   id: string
   tenantId?: string
   waybillId: string
-  proofType: 'pickup' | 'delivery' | 'receipt' | string
+  proofType: 'pickup_photo' | 'delivery_photo' | 'receipt' | 'other' | string
   fileUrl: string
   fileName?: string
   mimeType?: string

@@ -21,6 +21,7 @@
     "@dcloudio/uni-push": "3.0.0-alpha-1000920260626810",
     "@dcloudio/uni-shared": "3.0.0-alpha-1000920260626810",
     "@dcloudio/uni-stat": "3.0.0-alpha-1000920260626810",
+    "@dcloudio/uni-ui": "1.5.12",
     "pinia": "3.0.4",
     "vue": "3.4.21",
     "wot-design-uni": "1.14.0"

@@ -41,7 +41,7 @@ export function formatDuration(minutes?: number) {
   const rest = minutes % 60
   if (hours <= 0) return `${rest}分钟`
   if (rest <= 0) return `${hours}小时`
-  return `${hours}小时${rest}分`
+  return `${hours}小时${rest}分钟`
 }
 
 export function formatKm(value?: number) {

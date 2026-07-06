@@ -10,6 +10,7 @@ const account = ref('')
 const password = ref('')
 const remember = ref(true)
 const loading = ref(false)
+const phoneLoading = ref(false)
 
 onLoad(() => {
   auth.hydrate()
@@ -50,9 +51,30 @@ async function submit() {
   }
 }
 
-function phoneLogin() {
-  uni.showToast({ title: '请先接入微信手机号授权', icon: 'none' })
+async function phoneLogin(event?: unknown) {
+  const detail = (event as { detail?: { code?: string; errMsg?: string } } | undefined)?.detail
+  const phoneCode = detail?.code
+
+  if (!phoneCode) {
+    uni.showToast({ title: '请在微信小程序中授权手机号登录', icon: 'none' })
+    return
+  }
+
+  phoneLoading.value = true
+  try {
+    await auth.loginWithWechatPhone(phoneCode)
+    await profile.load(true)
+    uni.reLaunch({ url: '/pages/home/index' })
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : '手机号登录失败',
+      icon: 'none'
+    })
+  } finally {
+    phoneLoading.value = false
+  }
 }
+
 </script>
 
 <template>
@@ -95,12 +117,29 @@ function phoneLogin() {
       </button>
     </view>
 
+    <!-- #ifdef MP-WEIXIN -->
+    <button
+      class="login-page__phone"
+      hover-class="none"
+      open-type="getPhoneNumber"
+      :loading="phoneLoading"
+      :disabled="phoneLoading"
+      @getphonenumber="phoneLogin"
+    >
+      <view class="login-page__phone-icon">
+        <wd-icon name="mobile" size="54rpx" />
+      </view>
+      <text>手机一键登录</text>
+    </button>
+    <!-- #endif -->
+    <!-- #ifndef MP-WEIXIN -->
     <view class="login-page__phone" @tap="phoneLogin">
       <view class="login-page__phone-icon">
         <wd-icon name="mobile" size="54rpx" />
       </view>
       <text>手机一键登录</text>
     </view>
+    <!-- #endif -->
 
     <view class="login-page__agreement">
       登录即视为同意
@@ -272,12 +311,20 @@ function phoneLogin() {
 
 .login-page__phone {
   margin-top: auto;
+  padding: 0;
+  border: 0;
+  line-height: 1.2;
   color: var(--tms-light);
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 18rpx;
   font-size: 26rpx;
+}
+
+.login-page__phone::after {
+  border: 0;
 }
 
 .login-page__phone-icon {

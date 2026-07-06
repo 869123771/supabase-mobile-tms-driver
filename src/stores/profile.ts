@@ -28,7 +28,14 @@ export const useProfileStore = defineStore('profile', {
 
       this.loading = true
       try {
-        if (auth.isTokenExpired) await auth.refreshSession()
+        if (auth.isTokenExpired) {
+          try {
+            await auth.refreshSession()
+          } catch (error) {
+            uni.reLaunch({ url: '/pages/login/index' })
+            throw error
+          }
+        }
         this.summary = await getProfileSummary(auth.token, auth.user)
         return this.summary
       } finally {

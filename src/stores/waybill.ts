@@ -10,6 +10,7 @@ import {
   type WaybillStatusGroup
 } from '@/api/waybill'
 import type { ProofFile, Waybill, WaybillEvent, WaybillProof, WaybillStatus } from '@/api/types'
+import { syncDriverWaybills } from '@/api/supabase'
 import { useAuthStore } from './auth'
 import { useProfileStore } from './profile'
 
@@ -25,6 +26,10 @@ interface WaybillState {
 }
 
 const activeStatuses: WaybillStatus[] = ['accepted', 'loading', 'transporting', 'unloading']
+
+function isJwtExpiredError(error: unknown) {
+  return error instanceof Error && /jwt expired/i.test(error.message)
+}
 
 export const useWaybillStore = defineStore('waybill', {
   state: (): WaybillState => ({
@@ -43,6 +48,13 @@ export const useWaybillStore = defineStore('waybill', {
     completedCount: (state) => state.list.filter((item) => item.status === 'completed').length
   },
   actions: {
+    async syncAssignedWaybills(token: string) {
+      try {
+        await syncDriverWaybills(token)
+      } catch (error) {
+        console.warn('sync driver waybills failed', error)
+      }
+    },
     async ensureSession() {
       const auth = useAuthStore()
       auth.hydrate()
@@ -50,20 +62,34 @@ export const useWaybillStore = defineStore('waybill', {
         uni.reLaunch({ url: '/pages/login/index' })
         throw new Error('请先登录')
       }
-      if (auth.isTokenExpired) await auth.refreshSession()
+      if (auth.isTokenExpired) {
+        try {
+          await auth.refreshSession()
+        } catch (error) {
+          uni.reLaunch({ url: '/pages/login/index' })
+          throw error
+        }
+      }
       return auth
     },
     async loadList(group?: WaybillStatusGroup) {
       const auth = await this.ensureSession()
       const profile = useProfileStore()
-      const summary = await profile.load()
+      const summary = await profile.load(true)
       const targetGroup = group || this.activeGroup
+      const driver = summary?.driver
+      const user = summary?.user
+      const vehicle = summary?.vehicle
       this.activeGroup = targetGroup
       this.loading = true
       try {
+        await this.syncAssignedWaybills(auth.token)
         this.list = await listWaybills(auth.token, {
           group: targetGroup,
-          driverId: summary?.driver?.id
+          driverId: driver?.id,
+          driverPhone: driver?.phone || user?.userPhone || auth.user?.phone,
+          driverName: driver?.driverName || user?.nickName || user?.userName,
+          vehicleId: vehicle?.id
         })
         return this.list
       } finally {
@@ -73,11 +99,21 @@ export const useWaybillStore = defineStore('waybill', {
     async loadHomeTask() {
       const auth = await this.ensureSession()
       const profile = useProfileStore()
-      const summary = await profile.load()
-      const driverId = summary?.driver?.id
+      const summary = await profile.load(true)
+      const driver = summary?.driver
+      const user = summary?.user
+      const vehicle = summary?.vehicle
+      const driverId = driver?.id
+      const driverPhone = driver?.phone || user?.userPhone || auth.user?.phone
+      const driverName = driver?.driverName || user?.nickName || user?.userName
+      const vehicleId = vehicle?.id
+      await this.syncAssignedWaybills(auth.token)
       const active = await listWaybills(auth.token, {
         group: 'active',
         driverId,
+        driverPhone,
+        driverName,
+        vehicleId,
         limit: 1
       })
       const pending = active.length
@@ -85,16 +121,35 @@ export const useWaybillStore = defineStore('waybill', {
         : await listWaybills(auth.token, {
             group: 'pending',
             driverId,
+            driverPhone,
+            driverName,
+            vehicleId,
             limit: 1
           })
-      this.currentTask = active[0] || pending[0] || null
+      const latest = active.length || pending.length
+        ? []
+        : await listWaybills(auth.token, {
+            group: 'all',
+            driverId,
+            driverPhone,
+            driverName,
+            vehicleId,
+            limit: 1
+          })
+      this.currentTask = active[0] || pending[0] || latest[0] || null
       return this.currentTask
     },
     async loadDetail(id: string) {
       const auth = await this.ensureSession()
       this.loading = true
       try {
-        this.current = await getWaybill(auth.token, id)
+        try {
+          this.current = await getWaybill(auth.token, id)
+        } catch (error) {
+          if (!isJwtExpiredError(error)) throw error
+          await auth.refreshSession()
+          this.current = await getWaybill(auth.token, id)
+        }
         if (this.current) {
           this.events = await listWaybillEvents(auth.token, id)
           this.proofs = await listWaybillProofs(auth.token, id)

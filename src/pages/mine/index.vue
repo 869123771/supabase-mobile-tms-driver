@@ -68,7 +68,7 @@ function logout() {
         <view class="mine-page__profile">
           <text class="mine-page__name">{{ displayName }}</text>
           <text class="mine-page__company">
-            {{ carrier?.companyName || '物流运输有限公司' }} · 10年驾龄
+            {{ carrier?.companyName || '原型铺子物流运输有限公司' }} · 10年驾龄
           </text>
         </view>
         <button class="mine-page__setting" hover-class="none">
@@ -132,26 +132,28 @@ function logout() {
 
 <style scoped lang="scss">
 .mine-page {
-  padding-bottom: 150rpx;
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+  background: var(--tms-bg);
 }
 
 .mine-page__hero {
-  height: 270rpx;
-  padding: calc(64rpx + env(safe-area-inset-top)) 32rpx 34rpx;
+  height: 330rpx;
+  padding: calc(60rpx + env(safe-area-inset-top)) 30rpx 96rpx;
   color: #fff;
   background: var(--tms-primary);
 }
 
 .mine-page__user {
   display: grid;
-  grid-template-columns: 92rpx minmax(0, 1fr) 58rpx;
+  grid-template-columns: 86rpx minmax(0, 1fr) 58rpx;
   align-items: center;
   gap: 22rpx;
 }
 
 .mine-page__avatar {
-  width: 92rpx;
-  height: 92rpx;
+  width: 86rpx;
+  height: 86rpx;
   border-radius: 50%;
   background: #fff;
 }
@@ -169,20 +171,22 @@ function logout() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 14rpx;
+  gap: 12rpx;
 }
 
 .mine-page__name {
   font-size: 32rpx;
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .mine-page__company {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 24rpx;
+  font-size: 23rpx;
   font-weight: 700;
+  opacity: 0.9;
 }
 
 .mine-page__setting {
@@ -198,7 +202,7 @@ function logout() {
 }
 
 .mine-page__content {
-  margin-top: -28rpx;
+  margin-top: -40rpx;
   padding: 0 30rpx 34rpx;
   display: flex;
   flex-direction: column;
@@ -206,16 +210,17 @@ function logout() {
 }
 
 .mine-card {
-  padding: 30rpx;
+  padding: 28rpx 30rpx;
+  border-radius: 14rpx;
 }
 
 .mine-card__metrics {
-  margin-top: 28rpx;
+  margin-top: 26rpx;
 }
 
 .section-title {
   color: var(--tms-text);
-  font-size: 32rpx;
+  font-size: 31rpx;
   font-weight: 800;
 }
 
@@ -232,6 +237,10 @@ function logout() {
   justify-content: space-between;
   gap: 28rpx;
   font-size: 28rpx;
+}
+
+.account-list__row:last-child {
+  border-bottom: 0;
 }
 
 .account-list__row text:first-child {
@@ -265,7 +274,7 @@ function logout() {
 .feature-grid__icon {
   width: 88rpx;
   height: 88rpx;
-  border-radius: 12rpx;
+  border-radius: 10rpx;
   color: var(--tms-primary);
   background: var(--tms-panel);
   display: flex;
@@ -274,8 +283,10 @@ function logout() {
 }
 
 .mine-page__logout {
-  margin-top: 8rpx;
-  height: 84rpx;
+  width: 100%;
+  height: 88rpx;
+  margin-top: 6rpx;
+  padding: 0;
   border-radius: 8rpx;
   color: #fff;
   background: #f45258;

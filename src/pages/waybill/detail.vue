@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
 import TmsTopBar from '@/components/business/TmsTopBar.vue'
 import { useWaybillStore } from '@/stores/waybill'
 import { chooseImages } from '@/utils/file'
-import { formatDateTime, formatMoney } from '@/utils/format'
+import { formatDateTime, formatMoney, maskPhone } from '@/utils/format'
+import { openWaybillNavigation } from '@/utils/navigation'
 
 const waybill = useWaybillStore()
 const id = ref('')
@@ -27,16 +29,37 @@ const statusHint = computed(() => {
   const item = current.value
   if (!item) return ''
   if (item.status === 'accepted' || item.status === 'loading') {
-    return '提货后请拍照上传装货单据和货车照片'
+    return '提货后请上传装货单据和车辆照片'
   }
   if (item.status === 'transporting') return '到达目的地后请确认到达'
   if (item.status === 'unloading') return '卸货完成后上传回单照片'
-  if (item.status === 'completed') return `已于${formatDateTime(item.completedAt)}送达!`
+  if (item.status === 'completed') return `已于 ${formatDateTime(item.completedAt)} 完成`
   if (item.status === 'cancelled') return '该运单已取消'
-  return '请确认运单信息后接受任务'
+  return '请核对订单信息后接受任务'
 })
 
 const proofUrls = computed(() => waybill.proofs.map((item) => item.fileUrl).filter(Boolean))
+const cargoNo = computed(
+  () => current.value?.cargoNo || current.value?.goodsNo || current.value?.orderNo || '--'
+)
+const stationRows = computed(() => {
+  const item = current.value
+  if (!item) return []
+  return [
+    {
+      label: '发货站',
+      station: item.fromStationName || item.originCity || '--',
+      name: item.senderName || item.shipperName || '--',
+      phone: item.senderPhone || item.shipperPhone || ''
+    },
+    {
+      label: '到货站',
+      station: item.toStationName || item.destinationCity || '--',
+      name: item.receiverName || '--',
+      phone: item.receiverPhone || ''
+    }
+  ]
+})
 
 onLoad((query) => {
   id.value = String(query?.id || '')
@@ -56,11 +79,19 @@ async function load() {
 }
 
 function navigate() {
-  uni.showToast({ title: '已为你打开导航意图', icon: 'none' })
+  openWaybillNavigation(current.value)
 }
 
 function back() {
   uni.navigateBack()
+}
+
+function callPhone(phone?: string) {
+  if (!phone) {
+    uni.showToast({ title: '暂无联系电话', icon: 'none' })
+    return
+  }
+  uni.makePhoneCall({ phoneNumber: phone })
 }
 
 async function accept() {
@@ -147,21 +178,24 @@ function viewReceipt() {
   <view class="detail-page page" :class="{ 'detail-page--pending': isPending }">
     <view v-if="isPending" class="map-hero">
       <button class="map-hero__back" hover-class="none" @tap="back">
-        <wd-icon name="arrow-left" size="44rpx" />
+        <TmsIcon name="back" size="40rpx" />
       </button>
-      <view class="map-hero__route">
-        <text class="map-hero__label map-hero__label--start">{{ current?.originCity }} · 程记石材</text>
-        <view class="map-hero__path">
-          <text class="map-hero__pin map-hero__pin--start">起</text>
-          <text class="map-hero__pin map-hero__pin--end">终</text>
+      <view class="map-hero__route-line">
+        <view class="map-hero__path" />
+        <view class="map-hero__pin map-hero__pin--start">
+          <TmsIcon name="location" size="28rpx" color="#fff" />
         </view>
+        <view class="map-hero__pin map-hero__pin--end">
+          <TmsIcon name="flag" size="28rpx" color="#fff" />
+        </view>
+        <text class="map-hero__label map-hero__label--start">{{ current?.originCity }} · 程记石材</text>
         <text class="map-hero__label map-hero__label--end">{{ current?.destinationCity }} · 杨柳湾小区</text>
       </view>
     </view>
     <view v-else class="detail-page__blue">
       <TmsTopBar title="任务详情" show-back />
       <view class="detail-page__status">
-        <wd-icon name="file-text" size="44rpx" />
+        <TmsIcon name="document" size="42rpx" />
         <text>{{ statusTitle }}</text>
       </view>
       <text class="detail-page__hint">{{ statusHint }}</text>
@@ -222,24 +256,49 @@ function viewReceipt() {
           </view>
         </TmsRouteCard>
 
-        <view class="cargo-card card">
-          <text class="section-title">货物信息</text>
-          <view class="cargo-card__rows">
-            <view class="cargo-card__row">
-              <text>货物类型</text>
-              <text>{{ current.cargoType || current.cargoName || '电子产品' }}</text>
+        <view class="info-card card">
+          <text class="section-title">订单信息</text>
+          <view class="info-card__grid">
+            <view>
+              <text>货号</text>
+              <text>{{ cargoNo }}</text>
             </view>
-            <view class="cargo-card__row">
+            <view>
+              <text>货物类型</text>
+              <text>{{ current.cargoType || current.cargoName || '--' }}</text>
+            </view>
+            <view>
               <text>货物重量</text>
               <text>{{ current.cargoWeightTon || '--' }}吨</text>
             </view>
-            <view class="cargo-card__row">
+            <view>
               <text>货物体积</text>
               <text>{{ current.cargoVolumeM3 || '--' }}m³</text>
             </view>
-            <view class="cargo-card__row">
+            <view>
               <text>数量</text>
               <text>{{ current.cargoQuantity || '--' }}</text>
+            </view>
+            <view>
+              <text>运费</text>
+              <text>{{ formatMoney(current.freightAmount) }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="info-card card">
+          <text class="section-title">站点信息</text>
+          <view class="station-card__rows">
+            <view v-for="row in stationRows" :key="row.label" class="station-card__row">
+              <text class="station-card__label">{{ row.label }}</text>
+              <view class="station-card__main">
+                <text class="station-card__station">{{ row.station }}</text>
+                <text class="station-card__name">{{ row.name }}</text>
+                <text class="station-card__phone">{{ maskPhone(row.phone) }}</text>
+              </view>
+              <button class="station-card__call" hover-class="none" @tap="callPhone(row.phone)">
+                <TmsIcon name="phone" size="30rpx" color="#fff" />
+              </button>
             </view>
           </view>
         </view>
@@ -262,7 +321,7 @@ function viewReceipt() {
 
     <view v-if="current && isPending" class="pending-footer">
       <view>
-        <text class="pending-footer__label">运费：</text>
+        <text class="pending-footer__label">运费</text>
         <text class="pending-footer__money">{{ formatMoney(current.freightAmount) }}</text>
       </view>
       <button
@@ -271,7 +330,7 @@ function viewReceipt() {
         :loading="waybill.actionLoading"
         @tap="accept"
       >
-        <wd-icon name="check-circle" size="36rpx" />
+        <TmsIcon name="check" size="34rpx" />
         <text>接受任务</text>
       </button>
     </view>
@@ -287,7 +346,7 @@ function viewReceipt() {
 .detail-page__blue {
   color: #fff;
   background: var(--tms-primary);
-  padding-bottom: 36rpx;
+  padding-bottom: 34rpx;
 }
 
 .detail-page__status {
@@ -309,103 +368,110 @@ function viewReceipt() {
 .map-hero {
   position: relative;
   height: 560rpx;
+  padding: calc(64rpx + env(safe-area-inset-top)) 34rpx 42rpx;
   overflow: hidden;
+  color: #283142;
   background:
-    linear-gradient(120deg, transparent 28%, rgba(48, 178, 143, 0.22) 28% 31%, transparent 31%),
-    linear-gradient(34deg, transparent 43%, rgba(48, 178, 143, 0.24) 43% 47%, transparent 47%),
-    #eef3ec;
+    radial-gradient(circle at 24% 30%, rgba(42, 190, 130, 0.16) 0 11%, transparent 12%),
+    radial-gradient(circle at 70% 48%, rgba(42, 190, 130, 0.12) 0 15%, transparent 16%),
+    linear-gradient(120deg, transparent 28%, rgba(255, 152, 72, 0.28) 28% 30%, transparent 30%),
+    linear-gradient(34deg, transparent 45%, rgba(255, 152, 72, 0.24) 45% 48%, transparent 48%),
+    #eef4ef;
 }
 
-.map-hero::before,
-.map-hero::after {
+.map-hero::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(90deg, rgba(255, 145, 66, 0.32) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(91, 110, 132, 0.12) 1px, transparent 1px);
-  background-size: 118rpx 118rpx, 96rpx 96rpx;
+    linear-gradient(90deg, rgba(91, 110, 132, 0.09) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(91, 110, 132, 0.09) 1px, transparent 1px);
+  background-size: 112rpx 112rpx;
 }
 
 .map-hero__back {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  left: 36rpx;
-  top: calc(52rpx + env(safe-area-inset-top));
   width: 68rpx;
   height: 68rpx;
   padding: 0;
   border-radius: 50%;
-  color: #252b35;
-  background: rgba(255, 255, 255, 0.9);
+  color: #3b4658;
+  background: rgba(255, 255, 255, 0.92);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 8rpx 22rpx rgba(50, 63, 82, 0.08);
 }
 
-.map-hero__route {
+.map-hero__route-line {
   position: absolute;
   z-index: 1;
-  inset: 118rpx 72rpx 60rpx;
+  left: 56rpx;
+  right: 56rpx;
+  top: calc(118rpx + env(safe-area-inset-top));
+  bottom: 42rpx;
 }
 
 .map-hero__path {
   position: absolute;
-  left: 48%;
-  top: 32rpx;
-  width: 96rpx;
-  height: 342rpx;
-  border-radius: 80rpx;
-  border-left: 18rpx solid #20bca4;
-  border-bottom: 18rpx solid #20bca4;
+  left: 46%;
+  top: 38rpx;
+  width: 132rpx;
+  height: 326rpx;
+  border-left: 20rpx solid #25bfa4;
+  border-bottom: 20rpx solid #25bfa4;
+  border-radius: 90rpx;
   transform: rotate(18deg);
 }
 
 .map-hero__pin {
   position: absolute;
-  width: 52rpx;
-  height: 52rpx;
+  z-index: 2;
+  width: 54rpx;
+  height: 54rpx;
   border-radius: 50%;
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 25rpx;
-  font-weight: 800;
 }
 
 .map-hero__pin--start {
-  right: -26rpx;
-  top: -28rpx;
-  background: #35bf8d;
+  right: 148rpx;
+  top: 18rpx;
+  background: var(--tms-green);
 }
 
 .map-hero__pin--end {
-  left: -48rpx;
-  bottom: -32rpx;
+  left: 152rpx;
+  bottom: 70rpx;
   background: var(--tms-orange);
 }
 
 .map-hero__label {
   position: absolute;
   z-index: 2;
-  padding: 18rpx 28rpx;
+  max-width: 330rpx;
+  padding: 14rpx 24rpx;
   border-radius: 999rpx;
-  color: #303541;
+  color: #303846;
   background: #fff;
-  box-shadow: 0 8rpx 20rpx rgba(50, 63, 82, 0.08);
   font-size: 24rpx;
   font-weight: 800;
+  box-shadow: 0 8rpx 22rpx rgba(50, 63, 82, 0.08);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .map-hero__label--start {
-  right: 10rpx;
+  right: 2rpx;
   top: 0;
 }
 
 .map-hero__label--end {
   left: 0;
-  bottom: 46rpx;
+  bottom: 122rpx;
 }
 
 .detail-page__scroll {
@@ -414,7 +480,7 @@ function viewReceipt() {
 
 .detail-page--pending .detail-page__scroll {
   height: calc(100vh - 560rpx);
-  margin-top: -32rpx;
+  margin-top: -28rpx;
 }
 
 .detail-page__content {
@@ -435,23 +501,23 @@ function viewReceipt() {
 }
 
 .detail-actions {
-  margin-top: 34rpx;
+  margin-top: 32rpx;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 22rpx;
+  gap: 18rpx;
 }
 
 .detail-actions__primary,
 .detail-actions__outline {
   height: 76rpx;
-  min-width: 198rpx;
-  padding: 0 30rpx;
+  min-width: 190rpx;
+  padding: 0 28rpx;
   border-radius: 999rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28rpx;
+  font-size: 27rpx;
   font-weight: 800;
 }
 
@@ -474,29 +540,111 @@ function viewReceipt() {
   margin-left: auto;
 }
 
-.cargo-card,
+.info-card,
 .proof-card {
   padding: 30rpx;
+  border-radius: 12rpx;
 }
 
-.cargo-card__rows {
-  margin-top: 28rpx;
+.info-card__grid {
+  margin-top: 24rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18rpx;
+}
+
+.info-card__grid > view,
+.info-card__rows > view {
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 8rpx;
 }
 
-.cargo-card__row {
-  min-height: 76rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24rpx;
+.info-card__rows {
+  margin-top: 24rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20rpx 24rpx;
+}
+
+.info-card__grid text:first-child,
+.info-card__rows text:first-child {
+  color: var(--tms-muted);
+  font-size: 24rpx;
+}
+
+.info-card__grid text:last-child,
+.info-card__rows text:last-child {
+  overflow: hidden;
   color: var(--tms-text);
   font-size: 28rpx;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.cargo-card__row text:first-child {
+.station-card__rows {
+  margin-top: 26rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.station-card__row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 92rpx minmax(0, 1fr) 46rpx;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.station-card__label {
   color: var(--tms-muted);
+  font-size: 26rpx;
+}
+
+.station-card__main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  color: var(--tms-text);
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.station-card__station,
+.station-card__name,
+.station-card__phone {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.station-card__station {
+  max-width: 150rpx;
+}
+
+.station-card__name {
+  max-width: 92rpx;
+}
+
+.station-card__phone {
+  max-width: 142rpx;
+}
+
+.station-card__call {
+  width: 44rpx;
+  height: 44rpx;
+  padding: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--tms-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .proof-card__grid {
@@ -530,11 +678,14 @@ function viewReceipt() {
 }
 
 .pending-footer__label {
-  color: var(--tms-text);
-  font-size: 28rpx;
+  display: block;
+  color: var(--tms-muted);
+  font-size: 24rpx;
 }
 
 .pending-footer__money {
+  display: block;
+  margin-top: 6rpx;
   color: var(--tms-primary);
   font-size: 40rpx;
   font-weight: 900;

@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
+import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
 import { useProfileStore } from '@/stores/profile'
@@ -9,6 +10,8 @@ import { useWaybillStore } from '@/stores/waybill'
 import { FALLBACK_TRUCK_IMAGE } from '@/utils/assets'
 import { chooseImages } from '@/utils/file'
 import { formatKm } from '@/utils/format'
+import { openWaybillNavigation } from '@/utils/navigation'
+import type { Waybill } from '@/api/types'
 
 const profile = useProfileStore()
 const waybill = useWaybillStore()
@@ -18,6 +21,9 @@ const driver = computed(() => profile.driver)
 const vehicle = computed(() => profile.vehicle)
 const carrier = computed(() => profile.carrier)
 const task = computed(() => waybill.currentTask)
+const todoList = computed(() =>
+  waybill.list.filter((item) => item.id !== task.value?.id).slice(0, 3)
+)
 
 const vehicleMetrics = computed(() => [
   { label: '今日里程', value: task.value?.remainingDistanceKm || 86.5, unit: 'km' },
@@ -59,8 +65,12 @@ function openDetail(id?: string) {
   uni.navigateTo({ url: `/pages/waybill/detail?id=${id}` })
 }
 
-function navigate() {
-  uni.showToast({ title: '已为你打开导航意图', icon: 'none' })
+function openWaybillList() {
+  uni.reLaunch({ url: '/pages/waybill/index' })
+}
+
+function navigate(item?: Waybill) {
+  openWaybillNavigation(item || task.value)
 }
 
 async function handleTaskAction() {
@@ -101,8 +111,8 @@ async function handleTaskAction() {
           <text class="home-page__welcome">欢迎您，{{ driver?.driverName || '司机师傅' }}</text>
           <text class="home-page__company">{{ carrier?.companyName || '物流运输有限公司' }}</text>
         </view>
-        <button class="home-page__settings" hover-class="none">
-          <wd-icon name="setting" size="42rpx" />
+        <button class="home-page__settings" hover-class="none" :disabled="refreshing">
+          <TmsIcon name="settings" size="42rpx" />
         </button>
       </view>
     </view>
@@ -148,7 +158,7 @@ async function handleTaskAction() {
             :loading="waybill.actionLoading"
             @tap.stop="handleTaskAction"
           >
-            <wd-icon name="check-circle" size="38rpx" />
+            <TmsIcon name="check" size="36rpx" />
             <text>{{ taskButtonText }}</text>
           </button>
         </TmsRouteCard>
@@ -158,6 +168,26 @@ async function handleTaskAction() {
         <text class="section-title">当前任务</text>
         <text class="empty-card__text">暂无待执行运单</text>
       </view>
+
+      <view v-if="todoList.length" class="todo-card card">
+        <view class="todo-card__title-row">
+          <text class="section-title">待办运单</text>
+          <text class="todo-card__all" @tap="openWaybillList">全部</text>
+        </view>
+        <view class="todo-card__stack">
+          <TmsRouteCard
+            v-for="item in todoList"
+            :key="item.id"
+            :waybill="item"
+            @open="openDetail(item.id)"
+            @navigate="navigate"
+          />
+        </view>
+      </view>
+      <view v-if="refreshing" class="home-page__loading">
+        <view class="home-page__spinner" />
+        <text>正在刷新</text>
+      </view>
     </view>
 
     <TmsBottomNav active="home" />
@@ -166,7 +196,7 @@ async function handleTaskAction() {
 
 <style scoped lang="scss">
 .home-page {
-  padding-bottom: 150rpx;
+  padding-bottom: 178rpx;
 }
 
 .home-page__hero {
@@ -203,8 +233,10 @@ async function handleTaskAction() {
 }
 
 .home-page__settings {
+  flex: 0 0 62rpx;
   width: 62rpx;
   height: 62rpx;
+  margin: 0 0 0 auto;
   padding: 0;
   border-radius: 50%;
   color: #fff;
@@ -215,8 +247,43 @@ async function handleTaskAction() {
 }
 
 .home-page__content {
+  position: relative;
   margin-top: -142rpx;
   padding: 0 32rpx;
+}
+
+.home-page__loading {
+  position: absolute;
+  left: 32rpx;
+  right: 32rpx;
+  top: 0;
+  height: 96rpx;
+  border-radius: 12rpx;
+  color: var(--tms-primary);
+  background: rgba(255, 255, 255, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  pointer-events: none;
+  box-shadow: 0 8rpx 24rpx rgba(40, 45, 54, 0.06);
+}
+
+.home-page__spinner {
+  width: 30rpx;
+  height: 30rpx;
+  border: 4rpx solid #dbe4ff;
+  border-top-color: var(--tms-primary);
+  border-radius: 50%;
+  animation: home-spin 0.8s linear infinite;
+}
+
+@keyframes home-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .vehicle-card,
@@ -324,5 +391,29 @@ async function handleTaskAction() {
   margin-top: 32rpx;
   color: var(--tms-muted);
   font-size: 28rpx;
+}
+
+.todo-card {
+  margin: 24rpx 0 34rpx;
+  padding: 26rpx;
+}
+
+.todo-card__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.todo-card__all {
+  color: var(--tms-muted);
+  font-size: 25rpx;
+}
+
+.todo-card__stack {
+  margin-top: 18rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
 }
 </style>

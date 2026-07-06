@@ -8,8 +8,8 @@ const props = defineProps<{
 </script>
 
 <template>
-  <view class="status-tag" :class="`status-tag--${STATUS_TONE[props.status]}`">
-    {{ STATUS_LABEL[props.status] }}
+  <view class="status-tag" :class="`status-tag--${STATUS_TONE[props.status] || 'gray'}`">
+    {{ STATUS_LABEL[props.status] || props.status }}
   </view>
 </template>
 
