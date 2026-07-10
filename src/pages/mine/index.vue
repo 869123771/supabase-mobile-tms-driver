@@ -15,9 +15,9 @@ const user = computed(() => profile.user)
 const carrier = computed(() => profile.carrier)
 
 const metrics = computed(() => [
-  { label: '运输次数', value: Math.max(profile.summary?.completedCount || 0, 86) },
-  { label: '运输里程(km)', value: Math.max(profile.summary?.totalMileageKm || 0, 12560) },
-  { label: '服务评分', value: profile.summary?.rating || 4.9 }
+  { label: '运输次数', value: profile.summary?.completedCount ?? 0 },
+  { label: '运输里程(km)', value: profile.summary?.totalMileageKm ?? 0 },
+  { label: '服务评分', value: profile.summary?.rating || '--' }
 ])
 
 const displayName = computed(
@@ -68,7 +68,7 @@ function logout() {
         <view class="mine-page__profile">
           <text class="mine-page__name">{{ displayName }}</text>
           <text class="mine-page__company">
-            {{ carrier?.companyName || '原型铺子物流运输有限公司' }} · 10年驾龄
+            {{ carrier?.companyName || '暂未绑定承运商' }}
           </text>
         </view>
         <button class="mine-page__setting" hover-class="none">

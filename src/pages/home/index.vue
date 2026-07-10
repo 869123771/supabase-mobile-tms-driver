@@ -7,28 +7,40 @@ import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
 import { useProfileStore } from '@/stores/profile'
 import { useWaybillStore } from '@/stores/waybill'
+import { useDictionaryStore } from '@/stores/dictionary'
 import { FALLBACK_TRUCK_IMAGE } from '@/utils/assets'
 import { chooseImages } from '@/utils/file'
-import { formatKm } from '@/utils/format'
+import { getRouteDistanceKm } from '@/utils/route'
 import { openWaybillNavigation } from '@/utils/navigation'
 import type { Waybill } from '@/api/types'
 
 const profile = useProfileStore()
 const waybill = useWaybillStore()
+const dictionary = useDictionaryStore()
 const refreshing = ref(false)
 
 const driver = computed(() => profile.driver)
 const vehicle = computed(() => profile.vehicle)
 const carrier = computed(() => profile.carrier)
 const task = computed(() => waybill.currentTask)
-const todoList = computed(() =>
-  waybill.list.filter((item) => item.id !== task.value?.id).slice(0, 3)
-)
+const todoList = computed(() => {
+  const candidates = waybill.list.filter((item) => item.id !== task.value?.id)
+  const pending = candidates.filter((item) => item.status === 'pending')
+  const supplements = candidates.filter((item) => item.status !== 'pending')
+  return [...pending, ...supplements].slice(0, 3)
+})
+const routeDistanceKm = computed(() => getRouteDistanceKm(task.value))
+const vehicleTypeLabel = computed(() => dictionary.label('vehicleType', vehicle.value?.vehicleType))
+const fuelTypeLabel = computed(() => dictionary.label('vehicleFuelType', vehicle.value?.fuelType))
 
 const vehicleMetrics = computed(() => [
-  { label: '今日里程', value: task.value?.remainingDistanceKm || 86.5, unit: 'km' },
-  { label: '运输次数', value: Math.max(profile.summary?.completedCount || 0, 8), unit: '次' },
-  { label: '燃油', value: 65, unit: '%' }
+  {
+    label: '当前里程',
+    value: routeDistanceKm.value === undefined ? '--' : Number(routeDistanceKm.value).toFixed(1),
+    unit: routeDistanceKm.value === undefined ? '' : 'km'
+  },
+  { label: '运输次数', value: profile.summary?.completedCount ?? 0, unit: '次' },
+  { label: '燃料', value: fuelTypeLabel.value, unit: '' }
 ])
 
 const taskButtonText = computed(() => {
@@ -104,7 +116,7 @@ async function handleTaskAction() {
 </script>
 
 <template>
-  <view class="home-page page safe-bottom">
+  <view class="home-page page">
     <view class="home-page__hero">
       <view class="home-page__top">
         <view>
@@ -117,78 +129,79 @@ async function handleTaskAction() {
       </view>
     </view>
 
-    <view class="home-page__content">
-      <view class="vehicle-card card">
-        <view class="vehicle-card__title-row">
-          <text class="section-title">车辆状态</text>
-          <text class="vehicle-card__normal">正常</text>
+    <scroll-view scroll-y class="home-page__scroll">
+      <view class="home-page__content">
+        <view class="vehicle-card card">
+          <view class="vehicle-card__title-row">
+            <text class="section-title">车辆状态</text>
+            <text class="vehicle-card__normal">正常</text>
+          </view>
+          <view class="vehicle-card__body">
+            <image
+              class="vehicle-card__image"
+              :src="vehicle?.vehiclePhotoUrl || FALLBACK_TRUCK_IMAGE"
+              mode="aspectFill"
+            />
+            <view class="vehicle-card__info">
+              <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
+              <text class="vehicle-card__model">
+                {{ vehicleTypeLabel }} · 载重{{ vehicle?.approvedLoadMass || '--' }}吨
+              </text>
+            </view>
+          </view>
+          <TmsMetricGrid :items="vehicleMetrics" />
         </view>
-        <view class="vehicle-card__body">
-          <image
-            class="vehicle-card__image"
-            :src="vehicle?.vehiclePhotoUrl || FALLBACK_TRUCK_IMAGE"
-            mode="aspectFill"
-          />
-          <view class="vehicle-card__info">
-            <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
-            <text class="vehicle-card__model">
-              {{ vehicle?.vehicleType || '重型货车' }} · 载重{{
-                vehicle?.approvedLoadMass || 15
-              }}吨
-            </text>
+
+        <view v-if="task" class="task-card">
+          <TmsRouteCard
+            :waybill="task"
+            variant="task"
+            show-progress
+            @open="openDetail(task.id)"
+            @navigate="navigate"
+          >
+            <button
+              class="task-card__button"
+              hover-class="none"
+              :loading="waybill.actionLoading"
+              @tap.stop="handleTaskAction"
+            >
+              <TmsIcon name="check" size="36rpx" />
+              <text>{{ taskButtonText }}</text>
+            </button>
+          </TmsRouteCard>
+        </view>
+
+        <view v-else class="empty-card card">
+          <text class="section-title">当前任务</text>
+          <text class="empty-card__text">暂无待执行运单</text>
+        </view>
+
+        <view v-if="todoList.length" class="todo-card card">
+          <view class="todo-card__title-row">
+            <text class="section-title">待处理运单</text>
+            <view class="todo-card__all" @tap="openWaybillList">
+              <text>全部</text>
+              <TmsIcon name="arrow-right" size="26rpx" />
+            </view>
+          </view>
+          <view class="todo-card__stack">
+            <TmsRouteCard
+              v-for="item in todoList"
+              :key="item.id"
+              :waybill="item"
+              variant="compact"
+              @open="openDetail(item.id)"
+              @navigate="navigate"
+            />
           </view>
         </view>
-        <TmsMetricGrid :items="vehicleMetrics" />
-      </view>
-
-      <view v-if="task" class="task-card">
-        <view class="task-card__title-row">
-          <text class="section-title">当前任务</text>
-          <text class="task-card__distance">剩余距离：{{ formatKm(task.remainingDistanceKm) }}</text>
-        </view>
-        <TmsRouteCard
-          :waybill="task"
-          show-progress
-          @open="openDetail(task.id)"
-          @navigate="navigate"
-        >
-          <button
-            class="task-card__button"
-            hover-class="none"
-            :loading="waybill.actionLoading"
-            @tap.stop="handleTaskAction"
-          >
-            <TmsIcon name="check" size="36rpx" />
-            <text>{{ taskButtonText }}</text>
-          </button>
-        </TmsRouteCard>
-      </view>
-
-      <view v-else class="empty-card card">
-        <text class="section-title">当前任务</text>
-        <text class="empty-card__text">暂无待执行运单</text>
-      </view>
-
-      <view v-if="todoList.length" class="todo-card card">
-        <view class="todo-card__title-row">
-          <text class="section-title">待办运单</text>
-          <text class="todo-card__all" @tap="openWaybillList">全部</text>
-        </view>
-        <view class="todo-card__stack">
-          <TmsRouteCard
-            v-for="item in todoList"
-            :key="item.id"
-            :waybill="item"
-            @open="openDetail(item.id)"
-            @navigate="navigate"
-          />
+        <view v-if="refreshing" class="home-page__loading">
+          <view class="home-page__spinner" />
+          <text>正在刷新</text>
         </view>
       </view>
-      <view v-if="refreshing" class="home-page__loading">
-        <view class="home-page__spinner" />
-        <text>正在刷新</text>
-      </view>
-    </view>
+    </scroll-view>
 
     <TmsBottomNav active="home" />
   </view>
@@ -196,16 +209,24 @@ async function handleTaskAction() {
 
 <style scoped lang="scss">
 .home-page {
-  padding-bottom: 178rpx;
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--tms-bg);
 }
 
 .home-page__hero {
-  height: 414rpx;
-  padding: calc(48rpx + env(safe-area-inset-top)) 56rpx 126rpx;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 0;
+  height: 482rpx;
+  padding: calc(60rpx + env(safe-area-inset-top)) 56rpx 126rpx;
   color: #fff;
   background: var(--tms-primary);
-  border-bottom-left-radius: 58% 72rpx;
-  border-bottom-right-radius: 58% 72rpx;
+  border-bottom-left-radius: 58% 92rpx;
+  border-bottom-right-radius: 58% 92rpx;
 }
 
 .home-page__top {
@@ -217,8 +238,8 @@ async function handleTaskAction() {
 
 .home-page__welcome {
   display: block;
-  font-size: 36rpx;
-  font-weight: 800;
+  font-size: 34rpx;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -228,8 +249,8 @@ async function handleTaskAction() {
   padding: 8rpx 16rpx;
   border-radius: 8rpx;
   background: rgba(255, 255, 255, 0.18);
-  font-size: 23rpx;
-  font-weight: 700;
+  font-size: 22rpx;
+  font-weight: 600;
 }
 
 .home-page__settings {
@@ -238,25 +259,34 @@ async function handleTaskAction() {
   height: 62rpx;
   margin: 0 0 0 auto;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 0;
   color: #fff;
-  background: rgba(255, 255, 255, 0.16);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.home-page__scroll {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: 270rpx;
+  bottom: calc(132rpx + env(safe-area-inset-bottom));
+}
+
 .home-page__content {
   position: relative;
-  margin-top: -142rpx;
-  padding: 0 32rpx;
+  padding: 0 26rpx 148rpx;
 }
 
 .home-page__loading {
-  position: absolute;
-  left: 32rpx;
-  right: 32rpx;
-  top: 0;
+  position: fixed;
+  left: 26rpx;
+  right: 26rpx;
+  top: calc(286rpx + env(safe-area-inset-top));
+  z-index: 4;
   height: 96rpx;
   border-radius: 12rpx;
   color: var(--tms-primary);
@@ -288,11 +318,11 @@ async function handleTaskAction() {
 
 .vehicle-card,
 .empty-card {
-  padding: 30rpx;
+  padding: 28rpx;
+  border-radius: 16rpx;
 }
 
-.vehicle-card__title-row,
-.task-card__title-row {
+.vehicle-card__title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -301,8 +331,9 @@ async function handleTaskAction() {
 
 .section-title {
   color: var(--tms-text);
-  font-size: 32rpx;
-  font-weight: 800;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .vehicle-card__normal {
@@ -310,20 +341,20 @@ async function handleTaskAction() {
   border-radius: 999rpx;
   color: var(--tms-green);
   background: #e9f9f1;
-  font-size: 25rpx;
-  font-weight: 700;
+  font-size: 24rpx;
+  font-weight: 600;
 }
 
 .vehicle-card__body {
-  margin: 28rpx 0 26rpx;
+  margin: 26rpx 0 24rpx;
   display: flex;
   align-items: center;
-  gap: 26rpx;
+  gap: 24rpx;
 }
 
 .vehicle-card__image {
-  width: 100rpx;
-  height: 86rpx;
+  width: 96rpx;
+  height: 82rpx;
   border-radius: 8rpx;
   background: var(--tms-panel);
 }
@@ -337,37 +368,21 @@ async function handleTaskAction() {
 
 .vehicle-card__plate {
   color: var(--tms-text);
-  font-size: 32rpx;
-  font-weight: 800;
+  font-size: 30rpx;
+  font-weight: 700;
 }
 
 .vehicle-card__model {
   color: var(--tms-light);
-  font-size: 25rpx;
+  font-size: 23rpx;
 }
 
 .task-card {
   margin-top: 22rpx;
 }
 
-.task-card__title-row {
-  padding: 30rpx 30rpx 18rpx;
-  margin-top: 22rpx;
-  border-radius: 16rpx 16rpx 0 0;
-  background: #fff;
-}
-
-.task-card :deep(.route-card) {
-  border-radius: 0 0 16rpx 16rpx;
-}
-
-.task-card__distance {
-  color: var(--tms-muted);
-  font-size: 24rpx;
-}
-
 .task-card__button {
-  margin-top: 32rpx;
+  margin-top: 30rpx;
   width: 100%;
   height: 88rpx;
   padding: 0;
@@ -379,7 +394,7 @@ async function handleTaskAction() {
   justify-content: center;
   gap: 10rpx;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .empty-card {
@@ -395,7 +410,8 @@ async function handleTaskAction() {
 
 .todo-card {
   margin: 24rpx 0 34rpx;
-  padding: 26rpx;
+  padding: 28rpx;
+  border-radius: 16rpx;
 }
 
 .todo-card__title-row {
@@ -407,13 +423,16 @@ async function handleTaskAction() {
 
 .todo-card__all {
   color: var(--tms-muted);
-  font-size: 25rpx;
+  display: inline-flex;
+  align-items: center;
+  gap: 2rpx;
+  font-size: 24rpx;
 }
 
 .todo-card__stack {
   margin-top: 18rpx;
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  gap: 20rpx;
 }
 </style>

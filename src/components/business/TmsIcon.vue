@@ -8,6 +8,7 @@ type IconName =
   | 'vehicle'
   | 'user'
   | 'arrow-right'
+  | 'route-arrow'
   | 'nav'
   | 'location'
   | 'time'
@@ -43,6 +44,7 @@ const iconType = computed(() => {
     vehicle: '',
     user: `person${filled}`,
     'arrow-right': 'arrow-right',
+    'route-arrow': '',
     nav: props.active ? 'paperplane-filled' : 'paperplane',
     location: 'location',
     time: 'calendar',
@@ -61,6 +63,7 @@ const iconType = computed(() => {
 
 const svgSrc = computed(() => {
   // Icons missing from uni-icons should be added under /static/icons and routed here.
+  if (props.name === 'route-arrow') return '/static/icons/route-arrow.svg'
   if (props.name !== 'vehicle') return ''
   return props.active ? '/static/icons/vehicle-active.svg' : '/static/icons/vehicle.svg'
 })

@@ -5,6 +5,7 @@ import {
   listWaybillEvents,
   listWaybillProofs,
   listWaybills,
+  normalizeAssignedWaybillStatuses,
   updateWaybill,
   uploadWaybillProofFiles,
   type WaybillStatusGroup
@@ -12,6 +13,7 @@ import {
 import type { ProofFile, Waybill, WaybillEvent, WaybillProof, WaybillStatus } from '@/api/types'
 import { syncDriverWaybills } from '@/api/supabase'
 import { useAuthStore } from './auth'
+import { useDictionaryStore } from './dictionary'
 import { useProfileStore } from './profile'
 
 interface WaybillState {
@@ -48,11 +50,24 @@ export const useWaybillStore = defineStore('waybill', {
     completedCount: (state) => state.list.filter((item) => item.status === 'completed').length
   },
   actions: {
-    async syncAssignedWaybills(token: string) {
+    async syncAssignedWaybills(
+      token: string,
+      identities: {
+        driverId?: string
+        driverPhone?: string
+        driverName?: string
+        vehicleId?: string
+      } = {}
+    ) {
       try {
         await syncDriverWaybills(token)
       } catch (error) {
         console.warn('sync driver waybills failed', error)
+      }
+      try {
+        await normalizeAssignedWaybillStatuses(token, identities)
+      } catch (error) {
+        console.warn('normalize driver waybill statuses failed', error)
       }
     },
     async ensureSession() {
@@ -83,7 +98,12 @@ export const useWaybillStore = defineStore('waybill', {
       this.activeGroup = targetGroup
       this.loading = true
       try {
-        await this.syncAssignedWaybills(auth.token)
+        await this.syncAssignedWaybills(auth.token, {
+          driverId: driver?.id,
+          driverPhone: driver?.phone || user?.userPhone || auth.user?.phone,
+          driverName: driver?.driverName || user?.nickName || user?.userName,
+          vehicleId: vehicle?.id
+        })
         this.list = await listWaybills(auth.token, {
           group: targetGroup,
           driverId: driver?.id,
@@ -107,7 +127,12 @@ export const useWaybillStore = defineStore('waybill', {
       const driverPhone = driver?.phone || user?.userPhone || auth.user?.phone
       const driverName = driver?.driverName || user?.nickName || user?.userName
       const vehicleId = vehicle?.id
-      await this.syncAssignedWaybills(auth.token)
+      await this.syncAssignedWaybills(auth.token, {
+        driverId,
+        driverPhone,
+        driverName,
+        vehicleId
+      })
       const active = await listWaybills(auth.token, {
         group: 'active',
         driverId,
@@ -143,6 +168,7 @@ export const useWaybillStore = defineStore('waybill', {
       const auth = await this.ensureSession()
       this.loading = true
       try {
+        await useDictionaryStore().load(auth.token)
         try {
           this.current = await getWaybill(auth.token, id)
         } catch (error) {

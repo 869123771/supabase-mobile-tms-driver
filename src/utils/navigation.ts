@@ -1,18 +1,8 @@
 import type { Waybill } from '@/api/types'
-
-function toValidPoint(point?: { longitude: number; latitude: number }) {
-  if (!point) return null
-  const longitude = Number(point.longitude)
-  const latitude = Number(point.latitude)
-  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return null
-  if (longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) return null
-  return { longitude, latitude }
-}
+import { getWaybillRoutePoints } from './route'
 
 export function openWaybillNavigation(waybill?: Waybill | null) {
-  const points = waybill?.routePoints?.map(toValidPoint).filter(Boolean) as
-    | Array<{ longitude: number; latitude: number }>
-    | undefined
+  const points = getWaybillRoutePoints(waybill)
   const destination = points?.[points.length - 1]
   const address = waybill?.receiverAddress || waybill?.destinationCity || waybill?.toStationName || ''
   const name = waybill?.destinationCity || waybill?.toStationName || '目的地'

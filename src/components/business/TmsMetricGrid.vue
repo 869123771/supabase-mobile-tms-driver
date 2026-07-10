@@ -26,11 +26,11 @@ defineProps<{
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24rpx;
+  gap: 22rpx;
 }
 
 .metric-grid__item {
-  min-height: 122rpx;
+  min-height: 144rpx;
   border-radius: 8rpx;
   background: var(--tms-panel);
   display: flex;
@@ -42,13 +42,14 @@ defineProps<{
 
 .metric-grid__label {
   color: var(--tms-muted);
-  font-size: 26rpx;
+  font-size: 24rpx;
+  line-height: 1.2;
 }
 
 .metric-grid__value {
   color: var(--tms-text);
-  font-size: 38rpx;
-  font-weight: 700;
+  font-size: 34rpx;
+  font-weight: 600;
   display: flex;
   align-items: flex-end;
   line-height: 1;

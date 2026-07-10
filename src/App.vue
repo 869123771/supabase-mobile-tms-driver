@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { onLaunch, onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
+import { useDictionaryStore } from '@/stores/dictionary'
 
 onLaunch(() => {
-  useAuthStore().hydrate()
+  const auth = useAuthStore()
+  auth.hydrate()
+  if (auth.isLoggedIn) {
+    void useDictionaryStore().load(auth.token)
+  }
 })
 
 onShow(() => {
   const auth = useAuthStore()
   if (auth.isTokenExpired) {
     void auth.refreshSession()
+  } else if (auth.isLoggedIn) {
+    void useDictionaryStore().load(auth.token)
   }
 })
 </script>
@@ -20,7 +27,9 @@ page {
   background: var(--tms-bg);
   color: var(--tms-text);
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    'PingFang SC', 'HarmonyOS Sans SC', MiSans, 'Noto Sans SC', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Microsoft YaHei', sans-serif;
+  font-weight: 400;
 }
 
 view,

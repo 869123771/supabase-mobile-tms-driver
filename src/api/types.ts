@@ -91,9 +91,13 @@ export interface Waybill {
   shipperName?: string
   shipperPhone?: string
   shipperAddress: string
+  shipperLongitude?: number | string | null
+  shipperLatitude?: number | string | null
   receiverName?: string
   receiverPhone?: string
   receiverAddress: string
+  receiverLongitude?: number | string | null
+  receiverLatitude?: number | string | null
   plannedLoadTime?: string
   plannedUnloadTime?: string
   acceptedAt?: string
@@ -105,13 +109,22 @@ export interface Waybill {
   cancelledAt?: string
   cargoName: string
   cargoType?: string
+  cargoUnit?: string
   cargoWeightTon?: number
   cargoVolumeM3?: number
   cargoQuantity?: string
   freightAmount: number
   estimatedDurationMin?: number
   remainingDistanceKm?: number
-  routePoints?: Array<{ longitude: number; latitude: number }>
+  routePoints?: Array<{
+    longitude?: number | string | null
+    latitude?: number | string | null
+    lng?: number | string | null
+    lat?: number | string | null
+    type?: string
+    name?: string
+    address?: string
+  }>
   pickupPhotos?: ProofFile[]
   deliveryPhotos?: ProofFile[]
   receiptAttachments?: ProofFile[]

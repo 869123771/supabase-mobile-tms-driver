@@ -15,14 +15,14 @@ const props = defineProps<{
 
 <style scoped lang="scss">
 .status-tag {
-  min-width: 112rpx;
-  height: 52rpx;
-  padding: 0 22rpx;
+  min-width: 96rpx;
+  height: 48rpx;
+  padding: 0 18rpx;
   border-radius: 999rpx;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;

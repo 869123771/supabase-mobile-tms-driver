@@ -1,5 +1,6 @@
 import { keysToCamel, request, restPath } from './supabase'
-import type { Carrier, Driver, ProfileSummary, SessionUser, SysUser, Vehicle } from './types'
+import { getRoutePointsDistanceKm } from '@/utils/route'
+import type { Carrier, Driver, ProfileSummary, SessionUser, SysUser, Vehicle, Waybill } from './types'
 
 const USER_SELECT =
   'id,auth_user_id,tenant_id,user_name,nick_name,user_phone,user_email,user_type,status,avatar'
@@ -138,15 +139,25 @@ export async function getProfileSummary(token: string, authUser?: SessionUser | 
   let completedCount = 0
   let totalMileageKm = 0
   if (driver?.id) {
-    const completedRows = await request<Array<{ remaining_distance_km?: number }>>(
+    const completedRows = await request<unknown[]>(
       singleQuery(
         'tms_waybill',
-        `?select=remaining_distance_km&driver_id=eq.${driver.id}&status=eq.completed`
+        `?select=remaining_distance_km,route_points&driver_id=eq.${driver.id}&status=eq.completed`
       ),
       { token }
     )
-    completedCount = completedRows.length
-    totalMileageKm = completedCount * 180 + Math.round(completedRows.length * 12.5)
+    const waybills = keysToCamel<Array<Pick<Waybill, 'remainingDistanceKm' | 'routePoints'>>>(
+      completedRows
+    )
+    completedCount = waybills.length
+    totalMileageKm = Number(
+      waybills
+        .reduce((total, item) => {
+          const routeDistance = getRoutePointsDistanceKm(item.routePoints)
+          return total + (routeDistance ?? item.remainingDistanceKm ?? 0)
+        }, 0)
+        .toFixed(1)
+    )
   }
 
   return {
@@ -156,6 +167,6 @@ export async function getProfileSummary(token: string, authUser?: SessionUser | 
     vehicle,
     completedCount,
     totalMileageKm,
-    rating: completedCount > 0 ? 4.9 : 5
+    rating: 0
   } satisfies ProfileSummary
 }

@@ -4,27 +4,36 @@ import { onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
 import TmsTopBar from '@/components/business/TmsTopBar.vue'
+import { useDictionaryStore } from '@/stores/dictionary'
 import { useProfileStore } from '@/stores/profile'
 import { FALLBACK_TRUCK_IMAGE } from '@/utils/assets'
 import { formatMeters } from '@/utils/format'
 
 const profile = useProfileStore()
+const dictionary = useDictionaryStore()
 
 const vehicle = computed(() => profile.vehicle)
 
 const metrics = computed(() => [
-  { label: '载重', value: vehicle.value?.approvedLoadMass || 15, unit: '吨' },
-  { label: '车长', value: formatMeters(vehicle.value?.overallLength || 9600) },
+  {
+    label: '载重',
+    value: vehicle.value?.approvedLoadMass ?? '--',
+    unit: vehicle.value?.approvedLoadMass === undefined ? '' : '吨'
+  },
+  {
+    label: '车长',
+    value: vehicle.value?.overallLength ? formatMeters(vehicle.value.overallLength) : '--'
+  },
   { label: '车况', value: vehicleStatusLabel.value }
 ])
-
-const vehicleStatusLabel = computed(() => {
-  const status = vehicle.value?.operationStatus
-  if (status === 'operating') return '良好'
-  if (status === 'maintenance') return '维修'
-  if (status === 'stopped') return '停运'
-  return '良好'
-})
+const vehicleTypeLabel = computed(() => dictionary.label('vehicleType', vehicle.value?.vehicleType))
+const fuelTypeLabel = computed(() => dictionary.label('vehicleFuelType', vehicle.value?.fuelType))
+const vehicleStatusLabel = computed(() =>
+  dictionary.label('vehicleOperationStatus', vehicle.value?.operationStatus)
+)
+const auditStatusLabel = computed(() =>
+  dictionary.label('vehicleAuditStatus', vehicle.value?.auditStatus)
+)
 
 onShow(() => {
   void load()
@@ -65,33 +74,27 @@ function preview(url?: string) {
           <view class="vehicle-card__info">
             <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
             <text class="vehicle-card__model">
-              {{ vehicle?.vehicleType || '重型货车' }} · {{ vehicle?.brandModel || '东风天龙' }}
+              {{ vehicleTypeLabel }} · {{ vehicle?.brandModel || '--' }}
             </text>
           </view>
-          <text class="vehicle-card__tag">正常</text>
+          <text class="vehicle-card__tag">{{ vehicleStatusLabel }}</text>
         </view>
         <TmsMetricGrid :items="metrics" />
       </view>
 
       <view class="status-card card">
         <text class="section-title">车辆状态</text>
-        <view class="status-card__item">
-          <view class="status-card__label">
-            <text>燃油状态</text>
-            <text>65%</text>
-          </view>
-          <view class="status-card__track">
-            <view class="status-card__bar status-card__bar--blue" />
-          </view>
+        <view class="status-card__row">
+          <text>燃料类型</text>
+          <text>{{ fuelTypeLabel }}</text>
         </view>
-        <view class="status-card__item">
-          <view class="status-card__label">
-            <text>车辆健康</text>
-            <text>87%</text>
-          </view>
-          <view class="status-card__track">
-            <view class="status-card__bar status-card__bar--green" />
-          </view>
+        <view class="status-card__row">
+          <text>运营状态</text>
+          <text>{{ vehicleStatusLabel }}</text>
+        </view>
+        <view class="status-card__row">
+          <text>审核状态</text>
+          <text>{{ auditStatusLabel }}</text>
         </view>
       </view>
 
@@ -180,12 +183,9 @@ function preview(url?: string) {
   font-weight: 800;
 }
 
-.status-card__item {
-  margin-top: 30rpx;
-  padding: 0 26rpx;
-}
-
-.status-card__label {
+.status-card__row {
+  min-height: 78rpx;
+  border-bottom: 1rpx solid var(--tms-line);
   color: var(--tms-muted);
   display: flex;
   align-items: center;
@@ -193,27 +193,17 @@ function preview(url?: string) {
   font-size: 28rpx;
 }
 
-.status-card__track {
+.status-card__row:first-of-type {
   margin-top: 18rpx;
-  height: 12rpx;
-  border-radius: 999rpx;
-  background: #e2e6ef;
-  overflow: hidden;
 }
 
-.status-card__bar {
-  height: 100%;
-  border-radius: inherit;
+.status-card__row:last-child {
+  border-bottom: 0;
 }
 
-.status-card__bar--blue {
-  width: 65%;
-  background: var(--tms-primary);
-}
-
-.status-card__bar--green {
-  width: 87%;
-  background: var(--tms-green);
+.status-card__row text:last-child {
+  color: var(--tms-text);
+  font-weight: 700;
 }
 
 .doc-card__grid {

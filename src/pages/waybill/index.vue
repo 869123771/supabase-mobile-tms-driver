@@ -114,6 +114,7 @@ function navigate(item: Waybill) {
           v-for="item in waybill.list"
           :key="item.id"
           :waybill="item"
+          variant="list"
           @open="openDetail(item.id)"
           @navigate="navigate"
         />
@@ -233,7 +234,7 @@ function navigate(item: Waybill) {
 
 .waybill-page__list {
   position: relative;
-  height: calc(100vh - 252rpx);
+  height: calc(100vh - 252rpx - env(safe-area-inset-bottom));
 }
 
 .waybill-page__list-loading {
@@ -271,10 +272,10 @@ function navigate(item: Waybill) {
 }
 
 .waybill-page__stack {
-  padding: 24rpx 30rpx 28rpx;
+  padding: 24rpx 30rpx 172rpx;
   display: flex;
   flex-direction: column;
-  gap: 22rpx;
+  gap: 18rpx;
 }
 
 .waybill-page__empty {

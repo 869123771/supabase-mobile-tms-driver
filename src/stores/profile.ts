@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { getProfileSummary } from '@/api/profile'
 import type { ProfileSummary } from '@/api/types'
 import { useAuthStore } from './auth'
+import { useDictionaryStore } from './dictionary'
 
 interface ProfileState {
   summary: ProfileSummary | null
@@ -36,6 +37,7 @@ export const useProfileStore = defineStore('profile', {
             throw error
           }
         }
+        await useDictionaryStore().load(auth.token)
         this.summary = await getProfileSummary(auth.token, auth.user)
         return this.summary
       } finally {

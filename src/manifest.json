@@ -11,6 +11,22 @@
       "mode": "hash"
     }
   },
+  "app-plus": {
+    "modules": {
+      "Maps": {}
+    },
+    "distribute": {
+      "sdkConfigs": {
+        "maps": {
+          "amap": {
+            "name": "amap",
+            "appkey_ios": "900cfc9cc7c2fde63c42efb83f78b813",
+            "appkey_android": "900cfc9cc7c2fde63c42efb83f78b813"
+          }
+        }
+      }
+    }
+  },
   "mp-weixin": {
     "appid": "",
     "setting": {
