@@ -77,19 +77,20 @@ function navigate(item: Waybill) {
   <view class="waybill-page page safe-bottom">
     <view class="waybill-page__header">
       <view class="waybill-page__title-row">
-        <view>
+        <view class="waybill-page__title-main">
           <text class="waybill-page__title">运输任务</text>
           <text class="waybill-page__subtitle">与后台订单列表同步</text>
         </view>
-        <button
+        <wd-button
           class="waybill-page__refresh"
-          hover-class="none"
-          :loading="refreshing || waybill.loading"
+          type="icon"
+          custom-style="width: 62rpx; min-width: 62rpx; height: 62rpx; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.16); color: #fff;"
           :disabled="isBusy"
-          @tap="refreshList"
+          @click="refreshList"
         >
-          <TmsIcon v-if="!refreshing && !waybill.loading" name="refresh" size="38rpx" />
-        </button>
+          <wd-loading v-if="refreshing || waybill.loading" type="ring" color="#ffffff" size="34rpx" />
+          <wd-icon v-else name="refresh" size="38rpx" />
+        </wd-button>
       </view>
       <view class="waybill-page__tabs">
         <view
@@ -127,7 +128,7 @@ function navigate(item: Waybill) {
         </text>
       </view>
       <view v-if="showListLoading" class="waybill-page__list-loading">
-        <view class="waybill-page__spinner" />
+        <wd-loading type="ring" color="#3763f4" size="32rpx" />
         <text>正在加载</text>
       </view>
     </scroll-view>
@@ -151,18 +152,27 @@ function navigate(item: Waybill) {
 
 .waybill-page__title-row {
   height: 184rpx;
-  padding: calc(56rpx + env(safe-area-inset-top)) 30rpx 24rpx;
+  padding: calc(48rpx + env(safe-area-inset-top)) 30rpx 30rpx;
   color: #fff;
   background: var(--tms-primary);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
+  gap: 24rpx;
+}
+
+.waybill-page__title-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .waybill-page__title {
   display: block;
   font-size: 36rpx;
   font-weight: 800;
+  line-height: 1.12;
 }
 
 .waybill-page__subtitle {
@@ -170,6 +180,7 @@ function navigate(item: Waybill) {
   margin-top: 10rpx;
   font-size: 23rpx;
   font-weight: 600;
+  line-height: 1.2;
   opacity: 0.82;
 }
 
@@ -179,12 +190,19 @@ function navigate(item: Waybill) {
   height: 62rpx;
   margin: 0 0 0 auto;
   padding: 0;
+  min-width: 0;
   border-radius: 50%;
   color: #fff;
   background: rgba(255, 255, 255, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.waybill-page__refresh.is-disabled {
+  opacity: 0.78;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .waybill-page__tabs {
@@ -217,8 +235,7 @@ function navigate(item: Waybill) {
   pointer-events: none;
 }
 
-.waybill-page__tab-spinner,
-.waybill-page__spinner {
+.waybill-page__tab-spinner {
   border-style: solid;
   border-radius: 50%;
   animation: waybill-spin 0.8s linear infinite;
@@ -239,30 +256,22 @@ function navigate(item: Waybill) {
 
 .waybill-page__list-loading {
   position: absolute;
-  left: 30rpx;
-  right: 30rpx;
-  top: 24rpx;
+  left: 54rpx;
+  right: 54rpx;
+  top: 28rpx;
   z-index: 2;
-  height: 92rpx;
+  height: 68rpx;
   border-radius: 12rpx;
   color: var(--tms-primary);
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.86);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14rpx;
+  gap: 12rpx;
   font-size: 26rpx;
   font-weight: 700;
-  box-shadow: 0 8rpx 24rpx rgba(40, 45, 54, 0.06);
+  box-shadow: 0 8rpx 24rpx rgba(40, 45, 54, 0.05);
   pointer-events: none;
-}
-
-.waybill-page__spinner {
-  width: 30rpx;
-  height: 30rpx;
-  border-width: 4rpx;
-  border-color: #dbe4ff;
-  border-top-color: var(--tms-primary);
 }
 
 @keyframes waybill-spin {

@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
-import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
 import { useProfileStore } from '@/stores/profile'
@@ -51,6 +50,15 @@ const taskButtonText = computed(() => {
   if (status === 'unloading') return '完成卸货'
   return '查看详情'
 })
+const taskButtonIcon = computed(() => {
+  const status = task.value?.status
+  if (status === 'accepted' || status === 'loading') return 'upload'
+  if (status === 'unloading') return 'check'
+  if (status === 'pending' || status === 'transporting') return 'check-circle'
+  return 'arrow-right'
+})
+const taskButtonLabel = computed(() => (waybill.actionLoading ? '处理中...' : taskButtonText.value))
+const taskButtonDisabled = computed(() => waybill.actionLoading || refreshing.value)
 
 onShow(() => {
   void refresh()
@@ -123,9 +131,14 @@ async function handleTaskAction() {
           <text class="home-page__welcome">欢迎您，{{ driver?.driverName || '司机师傅' }}</text>
           <text class="home-page__company">{{ carrier?.companyName || '物流运输有限公司' }}</text>
         </view>
-        <button class="home-page__settings" hover-class="none" :disabled="refreshing">
-          <TmsIcon name="settings" size="42rpx" />
-        </button>
+        <wd-button
+          class="home-page__settings"
+          type="icon"
+          custom-style="width: 62rpx; min-width: 62rpx; height: 62rpx; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); border: 2rpx solid rgba(255,255,255,0.22); color: #fff;"
+          :disabled="refreshing"
+        >
+          <wd-icon name="setting" size="42rpx" />
+        </wd-button>
       </view>
     </view>
 
@@ -134,7 +147,13 @@ async function handleTaskAction() {
         <view class="vehicle-card card">
           <view class="vehicle-card__title-row">
             <text class="section-title">车辆状态</text>
-            <text class="vehicle-card__normal">正常</text>
+            <view class="vehicle-card__status-group">
+              <view v-if="refreshing" class="vehicle-card__refreshing">
+                <wd-loading type="ring" color="#3763f4" size="28rpx" />
+                <text>刷新中</text>
+              </view>
+              <text class="vehicle-card__normal">正常</text>
+            </view>
           </view>
           <view class="vehicle-card__body">
             <image
@@ -160,15 +179,22 @@ async function handleTaskAction() {
             @open="openDetail(task.id)"
             @navigate="navigate"
           >
-            <button
-              class="task-card__button"
-              hover-class="none"
-              :loading="waybill.actionLoading"
-              @tap.stop="handleTaskAction"
-            >
-              <TmsIcon name="check" size="36rpx" />
-              <text>{{ taskButtonText }}</text>
-            </button>
+            <view class="task-card__button-wrap" @tap.stop>
+              <wd-button
+                class="task-card__button"
+                type="primary"
+                size="large"
+                block
+                :round="false"
+                :icon="taskButtonIcon"
+                :loading="waybill.actionLoading"
+                loading-color="#ffffff"
+                :disabled="taskButtonDisabled"
+                @click="handleTaskAction"
+              >
+                <text>{{ taskButtonLabel }}</text>
+              </wd-button>
+            </view>
           </TmsRouteCard>
         </view>
 
@@ -180,10 +206,10 @@ async function handleTaskAction() {
         <view v-if="todoList.length" class="todo-card card">
           <view class="todo-card__title-row">
             <text class="section-title">待处理运单</text>
-            <view class="todo-card__all" @tap="openWaybillList">
+            <wd-button class="todo-card__all" type="text" @click="openWaybillList">
               <text>全部</text>
-              <TmsIcon name="arrow-right" size="26rpx" />
-            </view>
+              <wd-icon name="chevron-right" size="26rpx" />
+            </wd-button>
           </view>
           <view class="todo-card__stack">
             <TmsRouteCard
@@ -195,10 +221,6 @@ async function handleTaskAction() {
               @navigate="navigate"
             />
           </view>
-        </view>
-        <view v-if="refreshing" class="home-page__loading">
-          <view class="home-page__spinner" />
-          <text>正在刷新</text>
         </view>
       </view>
     </scroll-view>
@@ -259,12 +281,24 @@ async function handleTaskAction() {
   height: 62rpx;
   margin: 0 0 0 auto;
   padding: 0;
-  border-radius: 0;
+  min-width: 0;
+  border-radius: 50%;
   color: #fff;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.14);
+  border: 2rpx solid rgba(255, 255, 255, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.home-page__settings.is-disabled {
+  opacity: 0.72;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.home-page__settings::after {
+  border: 0;
 }
 
 .home-page__scroll {
@@ -281,41 +315,6 @@ async function handleTaskAction() {
   padding: 0 26rpx 148rpx;
 }
 
-.home-page__loading {
-  position: fixed;
-  left: 26rpx;
-  right: 26rpx;
-  top: calc(286rpx + env(safe-area-inset-top));
-  z-index: 4;
-  height: 96rpx;
-  border-radius: 12rpx;
-  color: var(--tms-primary);
-  background: rgba(255, 255, 255, 0.88);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14rpx;
-  font-size: 26rpx;
-  font-weight: 700;
-  pointer-events: none;
-  box-shadow: 0 8rpx 24rpx rgba(40, 45, 54, 0.06);
-}
-
-.home-page__spinner {
-  width: 30rpx;
-  height: 30rpx;
-  border: 4rpx solid #dbe4ff;
-  border-top-color: var(--tms-primary);
-  border-radius: 50%;
-  animation: home-spin 0.8s linear infinite;
-}
-
-@keyframes home-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .vehicle-card,
 .empty-card {
   padding: 28rpx;
@@ -327,6 +326,13 @@ async function handleTaskAction() {
   align-items: center;
   justify-content: space-between;
   gap: 20rpx;
+}
+
+.vehicle-card__status-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12rpx;
 }
 
 .section-title {
@@ -343,6 +349,19 @@ async function handleTaskAction() {
   background: #e9f9f1;
   font-size: 24rpx;
   font-weight: 600;
+}
+
+.vehicle-card__refreshing {
+  height: 48rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  color: var(--tms-primary);
+  background: #edf2ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 23rpx;
+  font-weight: 700;
 }
 
 .vehicle-card__body {
@@ -381,20 +400,32 @@ async function handleTaskAction() {
   margin-top: 22rpx;
 }
 
-.task-card__button {
+.task-card__button-wrap {
   margin-top: 30rpx;
+}
+
+.task-card__button {
   width: 100%;
   height: 88rpx;
   padding: 0;
   border-radius: 12rpx;
   color: #fff;
   background: var(--tms-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10rpx;
   font-size: 30rpx;
   font-weight: 700;
+}
+
+.task-card__button :deep(.wd-button__content) {
+  gap: 0;
+}
+
+.task-card__button :deep(.wd-button__icon),
+.task-card__button :deep(.wd-button__loading) {
+  margin-right: 10rpx;
+}
+
+.task-card__button :deep(.wd-button__icon) {
+  font-size: 34rpx;
 }
 
 .empty-card {
@@ -423,10 +454,14 @@ async function handleTaskAction() {
 
 .todo-card__all {
   color: var(--tms-muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 2rpx;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
   font-size: 24rpx;
+}
+
+.todo-card__all :deep(.wd-button__content) {
+  gap: 2rpx;
 }
 
 .todo-card__stack {

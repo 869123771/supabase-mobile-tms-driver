@@ -70,7 +70,18 @@ interface OrderRouteSnapshot {
 
 const activeStatuses: WaybillStatus[] = ['accepted', 'loading', 'transporting', 'unloading']
 const driverActionEvents = ['accepted', 'loaded', 'arrived', 'completed', 'cancelled']
-const driverActionPayloads = ['accept', 'upload_pickup', 'confirm_arrival', 'complete']
+const driverActionPayloads = ['accept', 'upload_pickup', 'confirm_arrival', 'complete', 'cancel']
+
+interface DriverProgressPatch {
+  status: WaybillStatus
+  acceptedAt?: string
+  loadedAt?: string
+  departedAt?: string
+  arrivedAt?: string
+  unloadedAt?: string
+  completedAt?: string
+  cancelledAt?: string
+}
 
 function addFilter(parts: string[], name: string, value?: string) {
   if (!value) return
@@ -315,36 +326,127 @@ function findRelatedOrder(waybill: Waybill, orders: OrderDispatchSnapshot[]) {
   })
 }
 
-async function listActionWaybillIds(token: string, ids: string[]) {
-  if (!ids.length) return new Set<string>()
+function mergeProgressPatch(
+  map: Map<string, DriverProgressPatch>,
+  waybillId: string,
+  patch: DriverProgressPatch
+) {
+  const current = map.get(waybillId)
+  if (!current || getStatusRank(patch.status) >= getStatusRank(current.status)) {
+    map.set(waybillId, { ...current, ...patch })
+  }
+}
+
+function getStatusRank(status: WaybillStatus) {
+  const rank: Record<WaybillStatus, number> = {
+    pending: 0,
+    accepted: 1,
+    loading: 2,
+    transporting: 3,
+    unloading: 4,
+    completed: 5,
+    cancelled: 6
+  }
+  return rank[status] ?? 0
+}
+
+async function listDriverProgressPatches(token: string, ids: string[]) {
+  const patches = new Map<string, DriverProgressPatch>()
+  if (!ids.length) return patches
   const filter = inFilter(ids)
-  const eventQuery = request<Array<{ waybill_id: string; payload?: Record<string, unknown> }>>(
+  const eventQuery = request<
+    Array<{
+      waybill_id: string
+      event_type?: string
+      event_time?: string
+      payload?: Record<string, unknown>
+    }>
+  >(
     restPath(
       'tms_waybill_event',
-      `?select=waybill_id,payload&waybill_id=${filter}&event_type=${inFilter(driverActionEvents)}`
+      `?select=waybill_id,event_type,event_time,payload&waybill_id=${filter}&event_type=${inFilter(driverActionEvents)}&order=event_time.asc`
     ),
     { token }
   )
-  const proofQuery = request<Array<{ waybill_id: string }>>(
-    restPath('tms_waybill_proof', `?select=waybill_id&waybill_id=${filter}&limit=1000`),
+  const proofQuery = request<
+    Array<{ waybill_id: string; proof_type?: string; uploaded_at?: string }>
+  >(
+    restPath(
+      'tms_waybill_proof',
+      `?select=waybill_id,proof_type,uploaded_at&waybill_id=${filter}&limit=1000&order=uploaded_at.asc`
+    ),
     { token }
   )
   const [eventResult, proofResult] = await Promise.allSettled([eventQuery, proofQuery])
-  const driverEventIds =
-    eventResult.status === 'fulfilled'
-      ? eventResult.value
-          .filter((item) => driverActionPayloads.includes(String(item.payload?.action || '')))
-          .map((item) => item.waybill_id)
-      : []
-  return new Set([
-    ...driverEventIds,
-    ...(proofResult.status === 'fulfilled' ? proofResult.value.map((item) => item.waybill_id) : [])
-  ])
+
+  if (eventResult.status === 'fulfilled') {
+    for (const item of eventResult.value) {
+      const action = String(item.payload?.action || '')
+      if (!driverActionPayloads.includes(action)) continue
+      if (action === 'accept') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'accepted',
+          acceptedAt: item.event_time
+        })
+      }
+      if (action === 'upload_pickup') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'transporting',
+          loadedAt: item.event_time,
+          departedAt: item.event_time
+        })
+      }
+      if (action === 'confirm_arrival') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'unloading',
+          arrivedAt: item.event_time
+        })
+      }
+      if (action === 'complete') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'completed',
+          unloadedAt: item.event_time,
+          completedAt: item.event_time
+        })
+      }
+      if (action === 'cancel') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'cancelled',
+          cancelledAt: item.event_time
+        })
+      }
+    }
+  }
+
+  if (proofResult.status === 'fulfilled') {
+    for (const item of proofResult.value) {
+      if (item.proof_type === 'pickup_photo') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'transporting',
+          loadedAt: item.uploaded_at,
+          departedAt: item.uploaded_at
+        })
+      }
+      if (item.proof_type === 'delivery_photo' || item.proof_type === 'receipt') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'completed',
+          unloadedAt: item.uploaded_at,
+          completedAt: item.uploaded_at
+        })
+      }
+    }
+  }
+
+  return patches
 }
 
-function shouldResetToPending(waybill: Waybill, order: OrderDispatchSnapshot | undefined, actionWaybillIds: Set<string>) {
+function shouldResetToPending(
+  waybill: Waybill,
+  order: OrderDispatchSnapshot | undefined,
+  progressPatches: Map<string, DriverProgressPatch>
+) {
   if (!activeStatuses.includes(waybill.status)) return false
-  if (actionWaybillIds.has(waybill.id)) return false
+  if (progressPatches.has(waybill.id)) return false
   if (!order) return true
   return order.dispatchStatus === 'loaded' && order.orderStatus !== 'cancelled'
 }
@@ -357,15 +459,34 @@ export async function normalizeAssignedWaybillStatuses(
   const candidates = waybills.filter((item) => activeStatuses.includes(item.status))
   if (!candidates.length) return []
 
-  const [orders, actionWaybillIds] = await Promise.all([
+  const [orders, progressPatches] = await Promise.all([
     listRelatedOrders(token, candidates),
-    listActionWaybillIds(token, candidates.map((item) => item.id))
+    listDriverProgressPatches(token, candidates.map((item) => item.id))
   ])
+  const progressedCandidates = candidates.filter((item) => {
+    const patch = progressPatches.get(item.id)
+    return Boolean(patch && getStatusRank(patch.status) > getStatusRank(item.status))
+  })
   const pendingCandidates = candidates.filter((item) =>
-    shouldResetToPending(item, findRelatedOrder(item, orders), actionWaybillIds)
+    shouldResetToPending(item, findRelatedOrder(item, orders), progressPatches)
   )
 
   const updated: Waybill[] = []
+  for (const item of progressedCandidates) {
+    const patch = progressPatches.get(item.id)
+    if (!patch) continue
+    const normalized = await updateWaybill(token, item.id, {
+      ...patch,
+      acceptedAt: item.acceptedAt || patch.acceptedAt,
+      loadedAt: item.loadedAt || patch.loadedAt,
+      departedAt: item.departedAt || patch.departedAt,
+      arrivedAt: item.arrivedAt || patch.arrivedAt,
+      unloadedAt: item.unloadedAt || patch.unloadedAt,
+      completedAt: item.completedAt || patch.completedAt,
+      cancelledAt: item.cancelledAt || patch.cancelledAt
+    })
+    if (normalized) updated.push(normalized)
+  }
   for (const item of pendingCandidates) {
     const normalized = await updateWaybill(token, item.id, { status: 'pending' })
     if (normalized) updated.push(normalized)

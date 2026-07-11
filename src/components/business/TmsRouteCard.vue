@@ -58,104 +58,145 @@ function open() {
 
 <template>
   <view class="route-card card" :class="`route-card--${props.variant}`" @tap="open">
-    <view v-if="props.variant === 'task'" class="route-card__section-head">
-      <text class="route-card__section-title">{{ props.title || '当前任务' }}</text>
-      <TmsStatusTag v-if="props.showStatus" :status="props.waybill.status" />
-    </view>
+    <view v-if="props.variant === 'compact'" class="route-card__compact">
+      <view class="route-card__compact-top">
+        <view class="route-card__compact-main">
+          <view class="route-card__route route-card__route--compact">
+            <text>{{ props.waybill.originCity || '--' }}</text>
+            <TmsIcon name="route-arrow" size="44rpx" />
+            <text>{{ props.waybill.destinationCity || '--' }}</text>
+          </view>
 
-    <view class="route-card__head">
-      <view class="route-card__route">
-        <text>{{ props.waybill.originCity || '--' }}</text>
-        <TmsIcon name="route-arrow" size="44rpx" />
-        <text>{{ props.waybill.destinationCity || '--' }}</text>
-      </view>
-      <TmsStatusTag
-        v-if="props.showStatus && props.variant !== 'task' && props.variant !== 'list'"
-        :status="props.waybill.status"
-      />
-      <view
-        v-if="props.showStatus && props.variant === 'list'"
-        class="route-card__group-status"
-        :class="`route-card__group-status--${groupStatus.tone}`"
-      >
-        {{ groupStatus.label }}
-      </view>
-    </view>
-
-    <view v-if="props.variant !== 'task'" class="route-card__no-row">
-      <text>运单号：{{ props.waybill.waybillNo }}</text>
-      <text v-if="cargoNo !== '--' && props.variant !== 'compact'">货号：{{ cargoNo }}</text>
-    </view>
-
-    <view v-if="props.variant !== 'compact'" class="route-card__points">
-      <view class="route-card__point">
-        <view class="route-card__dot route-card__dot--start">
-          <text v-if="props.variant === 'list'">起</text>
-          <TmsIcon v-else name="location" size="22rpx" color="#fff" />
+          <view class="route-card__no-row route-card__no-row--compact">
+            <text>运单号：{{ props.waybill.waybillNo }}</text>
+          </view>
         </view>
-        <view class="route-card__point-main">
-          <text class="route-card__address">{{ pickupAddress }}</text>
-          <text
-            v-if="props.waybill.plannedLoadTime && props.variant !== 'list'"
-            class="route-card__time"
+        <view class="route-card__compact-side">
+          <TmsStatusTag v-if="props.showStatus" :status="props.waybill.status" />
+        </view>
+      </view>
+
+      <view class="route-card__meta route-card__meta--compact">
+        <view class="route-card__meta-item">
+          <TmsIcon name="location" size="26rpx" />
+          <text>{{ originStation }}</text>
+        </view>
+        <view class="route-card__meta-item route-card__meta-item--center">
+          <TmsIcon name="time" size="26rpx" />
+          <text>预计{{ formatDuration(displayDurationMin) }}</text>
+        </view>
+        <view class="route-card__meta-item route-card__meta-item--right">
+          <TmsIcon name="box" size="26rpx" />
+          <text>{{ formatTon(props.waybill.cargoWeightTon) }}</text>
+        </view>
+      </view>
+    </view>
+
+    <template v-else>
+      <view v-if="props.variant === 'task'" class="route-card__section-head">
+        <text class="route-card__section-title">{{ props.title || '当前任务' }}</text>
+        <TmsStatusTag v-if="props.showStatus" :status="props.waybill.status" />
+      </view>
+
+      <view class="route-card__head">
+        <view class="route-card__route">
+          <text>{{ props.waybill.originCity || '--' }}</text>
+          <TmsIcon name="route-arrow" size="44rpx" />
+          <text>{{ props.waybill.destinationCity || '--' }}</text>
+        </view>
+        <TmsStatusTag
+          v-if="props.showStatus && props.variant !== 'task' && props.variant !== 'list'"
+          :status="props.waybill.status"
+        />
+        <view
+          v-if="props.showStatus && props.variant === 'list'"
+          class="route-card__group-status"
+          :class="`route-card__group-status--${groupStatus.tone}`"
+        >
+          {{ groupStatus.label }}
+        </view>
+      </view>
+
+      <view v-if="props.variant !== 'task'" class="route-card__no-row">
+        <text>运单号：{{ props.waybill.waybillNo }}</text>
+        <text v-if="cargoNo !== '--'">货号：{{ cargoNo }}</text>
+      </view>
+
+      <view class="route-card__points">
+        <view class="route-card__point">
+          <view class="route-card__dot route-card__dot--start">
+            <text v-if="props.variant === 'list'">起</text>
+            <TmsIcon v-else name="location" size="22rpx" color="#fff" />
+          </view>
+          <view class="route-card__point-main">
+            <text class="route-card__address">{{ pickupAddress }}</text>
+            <text
+              v-if="props.waybill.plannedLoadTime && props.variant !== 'list'"
+              class="route-card__time"
+            >
+              装货：{{ formatDateTime(props.waybill.plannedLoadTime) }}
+            </text>
+          </view>
+        </view>
+        <view class="route-card__point">
+          <view class="route-card__dot route-card__dot--end">
+            <text v-if="props.variant === 'list'">终</text>
+            <TmsIcon v-else name="flag" size="22rpx" color="#fff" />
+          </view>
+          <view class="route-card__point-main">
+            <text class="route-card__address">{{ deliveryAddress }}</text>
+            <text
+              v-if="props.waybill.plannedUnloadTime && props.variant !== 'list'"
+              class="route-card__time"
+            >
+              卸货：{{ formatDateTime(props.waybill.plannedUnloadTime) }}
+            </text>
+          </view>
+        </view>
+        <view
+          v-if="props.variant !== 'list'"
+          class="route-card__nav"
+          @tap.stop
+        >
+          <wd-button
+            class="route-card__nav-button"
+            type="text"
+            @click="emit('navigate', props.waybill)"
           >
-            装货：{{ formatDateTime(props.waybill.plannedLoadTime) }}
-          </text>
+            <view class="route-card__nav-icon">
+              <TmsIcon name="nav" size="22rpx" />
+            </view>
+            <text class="route-card__nav-label">导航</text>
+          </wd-button>
         </view>
       </view>
-      <view class="route-card__point">
-        <view class="route-card__dot route-card__dot--end">
-          <text v-if="props.variant === 'list'">终</text>
-          <TmsIcon v-else name="flag" size="22rpx" color="#fff" />
-        </view>
-        <view class="route-card__point-main">
-          <text class="route-card__address">{{ deliveryAddress }}</text>
-          <text
-            v-if="props.waybill.plannedUnloadTime && props.variant !== 'list'"
-            class="route-card__time"
-          >
-            卸货：{{ formatDateTime(props.waybill.plannedUnloadTime) }}
-          </text>
-        </view>
-      </view>
-      <button
-        v-if="props.variant !== 'list'"
-        class="route-card__nav"
-        hover-class="none"
-        @tap.stop="emit('navigate', props.waybill)"
-      >
-        <view class="route-card__nav-icon">
-          <TmsIcon name="nav" size="28rpx" />
-        </view>
-        <text>导航</text>
-      </button>
-    </view>
 
-    <view v-if="props.variant === 'task'" class="route-card__meta route-card__meta--task">
-      <view class="route-card__meta-item">
-        <TmsIcon name="time" size="28rpx" />
-        <text>预计{{ formatDuration(displayDurationMin) }}</text>
+      <view v-if="props.variant === 'task'" class="route-card__meta route-card__meta--task">
+        <view class="route-card__meta-item">
+          <TmsIcon name="time" size="28rpx" />
+          <text>预计{{ formatDuration(displayDurationMin) }}</text>
+        </view>
+        <view class="route-card__meta-item route-card__meta-item--right">
+          <text>剩余距离：{{ formatKm(displayDistanceKm) }}</text>
+        </view>
       </view>
-      <view class="route-card__meta-item route-card__meta-item--right">
-        <text>剩余距离：{{ formatKm(displayDistanceKm) }}</text>
+      <view v-else class="route-card__meta">
+        <view class="route-card__meta-item">
+          <TmsIcon name="location" size="28rpx" />
+          <text>{{ originStation }}</text>
+        </view>
+        <view class="route-card__meta-item route-card__meta-item--center">
+          <TmsIcon name="time" size="28rpx" />
+          <text>预计{{ formatDuration(displayDurationMin) }}</text>
+        </view>
+        <view class="route-card__meta-item route-card__meta-item--right">
+          <TmsIcon name="box" size="28rpx" />
+          <text>{{ formatTon(props.waybill.cargoWeightTon) }}</text>
+        </view>
       </view>
-    </view>
-    <view v-else class="route-card__meta">
-      <view class="route-card__meta-item">
-        <TmsIcon name="location" size="28rpx" />
-        <text>{{ originStation }}</text>
-      </view>
-      <view class="route-card__meta-item">
-        <TmsIcon name="time" size="28rpx" />
-        <text>预计{{ formatDuration(displayDurationMin) }}</text>
-      </view>
-      <view class="route-card__meta-item">
-        <TmsIcon name="box" size="28rpx" />
-        <text>{{ formatTon(props.waybill.cargoWeightTon) }}</text>
-      </view>
-    </view>
 
-    <TmsProgress v-if="props.showProgress" :status="props.waybill.status" />
+      <TmsProgress v-if="props.showProgress" :status="props.waybill.status" />
+    </template>
     <slot />
   </view>
 </template>
@@ -172,9 +213,9 @@ function open() {
 }
 
 .route-card--compact {
-  padding: 22rpx 24rpx;
-  border-radius: 8rpx;
-  background: var(--tms-panel);
+  padding: 22rpx 0 18rpx;
+  border-radius: 0;
+  background: transparent;
 }
 
 .route-card--list {
@@ -250,7 +291,8 @@ function open() {
 }
 
 .route-card__route :deep(.tms-icon),
-.route-card__route :deep(.tms-icon__svg) {
+.route-card__route :deep(.tms-icon__svg),
+.route-card__route :deep(.wd-icon) {
   flex: 0 0 auto;
   color: var(--tms-primary);
 }
@@ -349,10 +391,12 @@ function open() {
 .route-card__nav {
   position: absolute;
   right: 18rpx;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 64rpx;
-  height: 72rpx;
+  top: 18rpx;
+}
+
+.route-card__nav-button {
+  width: 50rpx;
+  height: 50rpx;
   padding: 0;
   color: var(--tms-muted);
   background: transparent;
@@ -361,14 +405,19 @@ function open() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4rpx;
-  font-size: 21rpx;
+  justify-content: flex-start;
+  gap: 1rpx;
+  font-size: 14rpx;
   line-height: 1;
+  min-width: 0;
 }
 
-.route-card__nav::after {
-  border: 0;
+.route-card__nav-button :deep(.wd-button__content) {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4rpx;
+  line-height: 1;
 }
 
 .route-card__nav-icon {
@@ -380,6 +429,31 @@ function open() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.route-card__nav-icon :deep(.uni-icons) {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.route-card__nav-label {
+  color: #526174;
+  font-size: 18rpx;
+  font-weight: 500;
+  transform: scale(0.92);
+  transform-origin: center top;
+  line-height: 1;
+}
+
+.route-card__nav-button :deep(.wd-button__text) {
+  font-size: 14rpx;
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  gap : 4rpx;
 }
 
 .route-card__meta {
@@ -413,26 +487,59 @@ function open() {
   text-overflow: ellipsis;
 }
 
-.route-card--compact .route-card__head {
-  min-height: 42rpx;
+.route-card__compact {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
-.route-card--compact .route-card__route {
+.route-card__compact-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.route-card__compact-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.route-card__route--compact {
   gap: 14rpx;
   font-size: 30rpx;
+  line-height: 1.2;
 }
 
-.route-card--compact .route-card__no-row {
-  margin-top: 8rpx;
+.route-card__no-row--compact {
+  margin-top: 10rpx;
 }
 
-.route-card--compact .route-card__meta {
-  margin: 14rpx 0 0;
-  gap: 8rpx;
+.route-card__meta--compact {
+  width: 100%;
+  margin: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16rpx;
 }
 
-.route-card--compact .route-card__meta-item {
+.route-card__meta--compact .route-card__meta-item {
   font-size: 22rpx;
+}
+
+.route-card__meta--compact .route-card__meta-item:first-child {
+  justify-content: flex-start;
+}
+
+.route-card__meta-item--center {
+  justify-content: center;
+}
+
+.route-card__compact-side {
+  flex: 0 0 auto;
+  color: var(--tms-light);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .route-card--list .route-card__route {

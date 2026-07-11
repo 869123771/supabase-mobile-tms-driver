@@ -40,12 +40,12 @@ function back() {
 <style scoped lang="scss">
 .top-bar {
   height: 168rpx;
-  padding: calc(32rpx + env(safe-area-inset-top)) 34rpx 28rpx;
+  padding: calc(34rpx + env(safe-area-inset-top)) 34rpx 30rpx;
   color: #fff;
   background: var(--tms-primary);
   display: grid;
   grid-template-columns: 64rpx 1fr 64rpx;
-  align-items: end;
+  align-items: center;
   gap: 18rpx;
 }
 
@@ -53,7 +53,7 @@ function back() {
   min-width: 0;
   font-size: 36rpx;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 64rpx;
 }
 
 .top-bar__icon,

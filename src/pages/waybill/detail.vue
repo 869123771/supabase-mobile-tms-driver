@@ -229,49 +229,62 @@ function viewReceipt() {
           @navigate="navigate"
         >
           <view v-if="!isPending" class="detail-actions">
-            <button
+            <wd-button
               v-if="isAccepted"
               class="detail-actions__outline"
-              hover-class="none"
-              @tap.stop="cancel"
+              type="primary"
+              plain
+              :round="false"
+              @click.stop="cancel"
             >
               取消运单
-            </button>
-            <button
+            </wd-button>
+            <wd-button
               v-if="isAccepted"
               class="detail-actions__primary"
-              hover-class="none"
+              type="primary"
+              :round="false"
               :loading="waybill.actionLoading"
-              @tap.stop="uploadPickup"
+              loading-color="#ffffff"
+              :disabled="waybill.actionLoading"
+              @click.stop="uploadPickup"
             >
               上传提货照片
-            </button>
-            <button
+            </wd-button>
+            <wd-button
               v-else-if="isTransporting"
               class="detail-actions__primary detail-actions__primary--wide"
-              hover-class="none"
+              type="primary"
+              :round="false"
               :loading="waybill.actionLoading"
-              @tap.stop="confirmArrival"
+              loading-color="#ffffff"
+              :disabled="waybill.actionLoading"
+              @click.stop="confirmArrival"
             >
               确认到达
-            </button>
-            <button
+            </wd-button>
+            <wd-button
               v-else-if="isUnloading"
               class="detail-actions__primary detail-actions__primary--wide"
-              hover-class="none"
+              type="primary"
+              :round="false"
               :loading="waybill.actionLoading"
-              @tap.stop="complete"
+              loading-color="#ffffff"
+              :disabled="waybill.actionLoading"
+              @click.stop="complete"
             >
               完成卸货
-            </button>
-            <button
+            </wd-button>
+            <wd-button
               v-else-if="isCompleted"
               class="detail-actions__outline detail-actions__outline--right"
-              hover-class="none"
-              @tap.stop="viewReceipt"
+              type="primary"
+              plain
+              :round="false"
+              @click.stop="viewReceipt"
             >
               查看单据
-            </button>
+            </wd-button>
           </view>
         </TmsRouteCard>
 
@@ -291,14 +304,21 @@ function viewReceipt() {
             <view v-for="row in stationRows" :key="row.label" class="station-list__row">
               <text class="station-list__label">{{ row.label }}</text>
               <view class="station-list__main">
-                <text>{{ row.station }}</text>
-                <text>{{ row.name }}</text>
-                <text>{{ maskPhone(row.phone) }}</text>
+                <view class="station-list__head">
+                  <text class="station-list__station">{{ row.station }}</text>
+                  <text class="station-list__name">{{ row.name }}</text>
+                </view>
+                <text class="station-list__phone">{{ maskPhone(row.phone) }}</text>
                 <text class="station-list__address">{{ row.address }}</text>
               </view>
-              <button class="station-list__call" hover-class="none" @tap="callPhone(row.phone)">
-                <TmsIcon name="phone" size="30rpx" color="#fff" />
-              </button>
+              <wd-button
+                class="station-list__call"
+                type="icon"
+                custom-style="width: 50rpx; min-width: 50rpx; height: 50rpx; padding: 0; border-radius: 50%; background: #25bf75; color: #fff;"
+                @click="callPhone(row.phone)"
+              >
+                <wd-icon name="phone" size="30rpx" />
+              </wd-button>
             </view>
           </view>
         </view>
@@ -324,15 +344,18 @@ function viewReceipt() {
         <text class="pending-footer__label">运费：</text>
         <text class="pending-footer__money">{{ formatMoney(current.freightAmount) }}</text>
       </view>
-      <button
+      <wd-button
         class="pending-footer__button"
-        hover-class="none"
+        type="primary"
+        :round="false"
         :loading="waybill.actionLoading"
-        @tap="accept"
+        loading-color="#ffffff"
+        :disabled="waybill.actionLoading"
+        @click="accept"
       >
-        <TmsIcon name="check" size="34rpx" />
+        <wd-icon v-if="!waybill.actionLoading" name="check-circle" size="34rpx" />
         <text>接受任务</text>
-      </button>
+      </wd-button>
     </view>
   </view>
 </template>
@@ -350,10 +373,10 @@ function viewReceipt() {
 }
 
 .detail-page__status {
-  padding: 24rpx 34rpx 36rpx;
+  padding: 22rpx 34rpx 34rpx;
   border-top: 1rpx solid rgba(255, 255, 255, 0.14);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16rpx;
 }
 
@@ -378,17 +401,17 @@ function viewReceipt() {
 
 .detail-page--pending .detail-page__scroll {
   height: calc(100vh - 520rpx - 128rpx - env(safe-area-inset-bottom));
-  margin-top: -22rpx;
 }
 
 .detail-page__content {
-  padding: 28rpx 30rpx 54rpx;
+  padding: 24rpx 30rpx 58rpx;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 20rpx;
 }
 
 .detail-page--pending .detail-page__content {
+  padding-top: 26rpx;
   padding-bottom: 34rpx;
 }
 
@@ -399,22 +422,19 @@ function viewReceipt() {
 }
 
 .detail-actions {
-  margin-top: 36rpx;
+  margin-top: 32rpx;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 18rpx;
+  gap: 20rpx;
 }
 
 .detail-actions__primary,
 .detail-actions__outline {
   height: 76rpx;
-  min-width: 190rpx;
+  min-width: 0;
   padding: 0 34rpx;
   border-radius: 999rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 27rpx;
   font-weight: 800;
 }
@@ -422,13 +442,17 @@ function viewReceipt() {
 .detail-actions__primary {
   color: #fff;
   background: var(--tms-primary);
+  flex: 1;
+  max-width: 260rpx;
 }
 
 .detail-actions__primary--wide {
+  max-width: none;
   width: 100%;
 }
 
 .detail-actions__outline {
+  flex: 0 0 190rpx;
   color: var(--tms-primary);
   background: #fff;
   border: 2rpx solid var(--tms-primary);
@@ -440,8 +464,8 @@ function viewReceipt() {
 
 .info-card,
 .proof-card {
-  padding: 30rpx;
-  border-radius: 12rpx;
+  padding: 32rpx 30rpx;
+  border-radius: 16rpx;
 }
 
 .info-list {
@@ -449,7 +473,7 @@ function viewReceipt() {
 }
 
 .info-list__row {
-  min-height: 70rpx;
+  min-height: 66rpx;
   color: var(--tms-muted);
   display: flex;
   align-items: center;
@@ -465,44 +489,60 @@ function viewReceipt() {
 }
 
 .station-list {
-  margin-top: 26rpx;
+  margin-top: 28rpx;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 28rpx;
 }
 
 .station-list__row {
   min-width: 0;
   display: grid;
-  grid-template-columns: 92rpx minmax(0, 1fr) 46rpx;
-  align-items: flex-start;
-  gap: 14rpx;
+  grid-template-columns: 86rpx minmax(0, 1fr) 54rpx;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .station-list__label {
   color: var(--tms-muted);
   font-size: 26rpx;
+  line-height: 1.2;
 }
 
 .station-list__main {
   min-width: 0;
   color: var(--tms-text);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8rpx 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
   font-size: 26rpx;
   font-weight: 700;
 }
 
-.station-list__main text {
+.station-list__head {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 12rpx;
+}
+
+.station-list__station,
+.station-list__name,
+.station-list__phone {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
+.station-list__phone {
+  color: var(--tms-text);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .station-list__address {
-  grid-column: 1 / -1;
   color: var(--tms-muted);
   font-size: 24rpx;
   font-weight: 600;
@@ -514,19 +554,13 @@ function viewReceipt() {
 }
 
 .station-list__call {
-  width: 44rpx;
-  height: 44rpx;
+  width: 50rpx;
+  height: 50rpx;
+  min-width: 50rpx;
   padding: 0;
   border-radius: 50%;
   color: #fff;
   background: var(--tms-green);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.station-list__call::after {
-  border: 0;
 }
 
 .proof-card__grid {
@@ -573,21 +607,16 @@ function viewReceipt() {
 .pending-footer__button {
   flex: 0 0 328rpx;
   height: 86rpx;
+  min-width: 0;
   padding: 0;
   border-radius: 999rpx;
   color: #fff;
   background: var(--tms-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10rpx;
   font-size: 30rpx;
   font-weight: 800;
 }
 
-.pending-footer__button::after,
-.detail-actions__primary::after,
-.detail-actions__outline::after {
-  border: 0;
+.pending-footer__button :deep(.wd-button__content) {
+  gap: 10rpx;
 }
 </style>

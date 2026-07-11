@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
@@ -11,6 +11,8 @@ const password = ref('')
 const remember = ref(true)
 const loading = ref(false)
 const phoneLoading = ref(false)
+const accountValue = computed(() => account.value.trim())
+const canSubmit = computed(() => Boolean(accountValue.value && password.value && !loading.value))
 
 onLoad(() => {
   auth.hydrate()
@@ -22,7 +24,8 @@ onLoad(() => {
 })
 
 async function submit() {
-  if (!account.value.trim()) {
+  if (loading.value) return
+  if (!accountValue.value) {
     uni.showToast({ title: '请输入账号', icon: 'none' })
     return
   }
@@ -33,9 +36,9 @@ async function submit() {
 
   loading.value = true
   try {
-    await auth.login(account.value, password.value)
+    await auth.login(accountValue.value, password.value)
     if (remember.value) {
-      uni.setStorageSync('tms-driver-account', account.value)
+      uni.setStorageSync('tms-driver-account', accountValue.value)
     } else {
       uni.removeStorageSync('tms-driver-account')
     }
@@ -52,7 +55,9 @@ async function submit() {
 }
 
 async function phoneLogin(event?: unknown) {
-  const detail = (event as { detail?: { code?: string; errMsg?: string } } | undefined)?.detail
+  if (phoneLoading.value) return
+  const payload = event as { code?: string; detail?: { code?: string; errMsg?: string } } | undefined
+  const detail = payload?.detail || payload
   const phoneCode = detail?.code
 
   if (!phoneCode) {
@@ -93,35 +98,61 @@ async function phoneLogin(event?: unknown) {
     </view>
 
     <view class="login-form">
-      <view class="login-form__field">
-        <wd-icon name="phone" size="38rpx" />
-        <input v-model="account" placeholder="请输入手机号/邮箱" confirm-type="next" />
-      </view>
-      <view class="login-form__field">
-        <wd-icon name="lock-on" size="38rpx" />
-        <input v-model="password" password placeholder="密码" confirm-type="done" @confirm="submit" />
-      </view>
+      <wd-input
+        v-model="account"
+        class="login-form__field"
+        prefix-icon="phone"
+        placeholder="请输入手机号/邮箱"
+        type="text"
+        confirm-type="next"
+        clearable
+        no-border
+        :disabled="loading"
+      />
+      <wd-input
+        v-model="password"
+        class="login-form__field"
+        prefix-icon="lock-on"
+        placeholder="密码"
+        show-password
+        confirm-type="done"
+        no-border
+        :disabled="loading"
+        @confirm="submit"
+      />
 
       <view class="login-form__options">
-        <view class="login-form__remember" @tap="remember = !remember">
-          <view class="login-form__checkbox" :class="{ 'login-form__checkbox--checked': remember }">
-            <wd-icon v-if="remember" name="check" size="24rpx" />
-          </view>
-          <text>记住我</text>
-        </view>
+        <wd-checkbox
+          v-model="remember"
+          class="login-form__remember"
+          shape="square"
+          checked-color="#3763f4"
+          :disabled="loading"
+        >
+          记住我
+        </wd-checkbox>
         <text class="login-form__link">忘记密码?</text>
       </view>
 
-      <button class="login-form__button" hover-class="none" :loading="loading" @tap="submit">
+      <wd-button
+        class="login-form__button"
+        type="primary"
+        size="large"
+        block
+        :round="false"
+        :loading="loading"
+        :disabled="!canSubmit"
+        @click="submit"
+      >
         登录
-      </button>
+      </wd-button>
     </view>
 
     <!-- #ifdef MP-WEIXIN -->
-    <button
+    <wd-button
       class="login-page__phone"
-      hover-class="none"
       open-type="getPhoneNumber"
+      type="text"
       :loading="phoneLoading"
       :disabled="phoneLoading"
       @getphonenumber="phoneLogin"
@@ -130,7 +161,7 @@ async function phoneLogin(event?: unknown) {
         <wd-icon name="mobile" size="54rpx" />
       </view>
       <text>手机一键登录</text>
-    </button>
+    </wd-button>
     <!-- #endif -->
     <!-- #ifndef MP-WEIXIN -->
     <view class="login-page__phone" @tap="phoneLogin">
@@ -239,25 +270,45 @@ async function phoneLogin(event?: unknown) {
 }
 
 .login-form__field {
+  box-sizing: border-box;
   height: 98rpx;
   padding: 0 28rpx;
   border-radius: 16rpx;
   background: #f5f6fa;
   color: var(--tms-light);
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
 }
 
 .login-form__field + .login-form__field {
   margin-top: 32rpx;
 }
 
-.login-form__field input {
-  flex: 1;
+.login-form__field :deep(.wd-input__value) {
+  height: 98rpx;
+}
+
+.login-form__field :deep(.wd-input__prefix) {
+  margin-right: 24rpx;
+}
+
+.login-form__field :deep(.wd-input__icon),
+.login-form__field :deep(.wd-input__clear) {
+  color: var(--tms-light);
+  font-size: 38rpx;
+}
+
+.login-form__field :deep(.wd-input__inner) {
   height: 98rpx;
   color: var(--tms-text);
   font-size: 28rpx;
+  background: transparent;
+}
+
+.login-form__field :deep(.wd-input__inner::placeholder) {
+  color: var(--tms-light);
+}
+
+.login-form__field.is-disabled {
+  opacity: 0.72;
 }
 
 .login-form__options {
@@ -270,25 +321,20 @@ async function phoneLogin(event?: unknown) {
 }
 
 .login-form__remember {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
+  margin-bottom: 0;
+  font-size: 26rpx;
 }
 
-.login-form__checkbox {
+.login-form__remember :deep(.wd-checkbox__shape) {
   width: 32rpx;
   height: 32rpx;
-  border: 2rpx solid #d6dce7;
+  border-width: 2rpx;
   border-radius: 8rpx;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.login-form__checkbox--checked {
-  border-color: var(--tms-primary);
-  background: var(--tms-primary);
+.login-form__remember :deep(.wd-checkbox__label) {
+  color: var(--tms-text);
+  font-size: 26rpx;
 }
 
 .login-form__link {
@@ -302,11 +348,13 @@ async function phoneLogin(event?: unknown) {
   color: #fff;
   background: var(--tms-primary);
   box-shadow: 0 14rpx 24rpx rgba(55, 99, 244, 0.28);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 30rpx;
   font-weight: 800;
+}
+
+.login-form__button.is-disabled {
+  background: #c5cfeb;
+  box-shadow: none;
 }
 
 .login-page__phone {
@@ -325,6 +373,11 @@ async function phoneLogin(event?: unknown) {
 
 .login-page__phone::after {
   border: 0;
+}
+
+.login-page__phone :deep(.wd-button__content) {
+  flex-direction: column;
+  gap: 18rpx;
 }
 
 .login-page__phone-icon {
