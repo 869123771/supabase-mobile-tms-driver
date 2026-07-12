@@ -3,21 +3,18 @@ import { onLaunch, onShow } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
 import { useDictionaryStore } from '@/stores/dictionary'
 
-onLaunch(() => {
+async function loadStartupData() {
   const auth = useAuthStore()
-  auth.hydrate()
-  if (auth.isLoggedIn) {
-    void useDictionaryStore().load(auth.token)
-  }
+  const isValid = await auth.ensureValidSession()
+  if (isValid) await useDictionaryStore().load(auth.token)
+}
+
+onLaunch(() => {
+  void loadStartupData()
 })
 
 onShow(() => {
-  const auth = useAuthStore()
-  if (auth.isTokenExpired) {
-    void auth.refreshSession()
-  } else if (auth.isLoggedIn) {
-    void useDictionaryStore().load(auth.token)
-  }
+  void loadStartupData()
 })
 </script>
 

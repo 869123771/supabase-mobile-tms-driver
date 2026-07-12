@@ -23,20 +23,11 @@ export const useProfileStore = defineStore('profile', {
   actions: {
     async load(force = false) {
       const auth = useAuthStore()
-      auth.hydrate()
-      if (!auth.token) return null
+      if (!(await auth.ensureValidSession())) return null
       if (this.summary && !force) return this.summary
 
       this.loading = true
       try {
-        if (auth.isTokenExpired) {
-          try {
-            await auth.refreshSession()
-          } catch (error) {
-            uni.reLaunch({ url: '/pages/login/index' })
-            throw error
-          }
-        }
         await useDictionaryStore().load(auth.token)
         this.summary = await getProfileSummary(auth.token, auth.user)
         return this.summary

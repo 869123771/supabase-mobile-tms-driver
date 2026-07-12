@@ -72,19 +72,7 @@ export const useWaybillStore = defineStore('waybill', {
     },
     async ensureSession() {
       const auth = useAuthStore()
-      auth.hydrate()
-      if (!auth.token) {
-        uni.reLaunch({ url: '/pages/login/index' })
-        throw new Error('请先登录')
-      }
-      if (auth.isTokenExpired) {
-        try {
-          await auth.refreshSession()
-        } catch (error) {
-          uni.reLaunch({ url: '/pages/login/index' })
-          throw error
-        }
-      }
+      if (!(await auth.ensureValidSession())) throw new Error('请先登录')
       return auth
     },
     async loadList(group?: WaybillStatusGroup) {

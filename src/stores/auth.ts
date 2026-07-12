@@ -4,6 +4,10 @@ import type { Session } from '@/api/types'
 import { useDictionaryStore } from './dictionary'
 
 const STORAGE_KEY = 'tms-driver-session'
+const LOGIN_URL = '/pages/login/index'
+const LOGIN_ROUTE = 'pages/login/index'
+
+let refreshSessionPromise: Promise<void> | null = null
 
 interface AuthState {
   session: Session | null
@@ -16,6 +20,16 @@ function normalizeSession(session: Session | null) {
     session.expires_at = Math.floor(Date.now() / 1000) + session.expires_in
   }
   return session
+}
+
+function isLoginPage() {
+  const pages = getCurrentPages()
+  return pages[pages.length - 1]?.route === LOGIN_ROUTE
+}
+
+function redirectToLogin() {
+  if (isLoginPage()) return
+  uni.reLaunch({ url: LOGIN_URL })
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -54,6 +68,27 @@ export const useAuthStore = defineStore('auth', {
         uni.removeStorageSync(STORAGE_KEY)
       }
     },
+    clearSession(redirect = false) {
+      useDictionaryStore().clear()
+      this.session = null
+      this.persist()
+      if (redirect) redirectToLogin()
+    },
+    async ensureValidSession(redirect = true) {
+      this.hydrate()
+      if (!this.token) {
+        this.clearSession(redirect)
+        return false
+      }
+      if (!this.isTokenExpired) return true
+
+      try {
+        await this.refreshSession(redirect)
+        return Boolean(this.token)
+      } catch {
+        return false
+      }
+    },
     async login(account: string, password: string) {
       this.session = normalizeSession(await driverPasswordLogin(account.trim(), password))
       this.persist()
@@ -66,15 +101,32 @@ export const useAuthStore = defineStore('auth', {
       await useDictionaryStore().load(this.token, true)
       return this.session
     },
-    async refreshSession() {
+    async refreshSession(redirect = true) {
+      if (refreshSessionPromise) return refreshSessionPromise
+
       if (!this.session?.refresh_token) {
-        this.session = null
-        this.persist()
+        this.clearSession(redirect)
         throw new Error('登录已过期，请重新登录')
       }
-      this.session = normalizeSession(await refreshToken(this.session.refresh_token))
-      this.persist()
-      await useDictionaryStore().load(this.token, true)
+
+      const currentRefreshToken = this.session.refresh_token
+      refreshSessionPromise = (async () => {
+        try {
+          const nextSession = normalizeSession(await refreshToken(currentRefreshToken))
+          if (!nextSession?.access_token) throw new Error('登录已过期，请重新登录')
+          if (!this.session || this.session.refresh_token !== currentRefreshToken) return
+          this.session = nextSession
+          this.persist()
+          await useDictionaryStore().load(this.token, true)
+        } catch (error) {
+          this.clearSession(redirect)
+          throw error
+        } finally {
+          refreshSessionPromise = null
+        }
+      })()
+
+      return refreshSessionPromise
     },
     async logout() {
       if (this.session?.access_token) {
@@ -84,10 +136,7 @@ export const useAuthStore = defineStore('auth', {
           // Local logout still clears stale credentials if remote logout is unavailable.
         }
       }
-      useDictionaryStore().clear()
-      this.session = null
-      this.persist()
-      uni.reLaunch({ url: '/pages/login/index' })
+      this.clearSession(true)
     }
   }
 })
