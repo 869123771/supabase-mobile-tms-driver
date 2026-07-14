@@ -1,15 +1,22 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { WaybillStatus } from '@/api/types'
 import { STATUS_LABEL, STATUS_TONE } from '@/utils/format'
+import { useDictionaryStore } from '@/stores/dictionary'
 
 const props = defineProps<{
   status: WaybillStatus
 }>()
+
+const dictionary = useDictionaryStore()
+const label = computed(
+  () => dictionary.findLabel('tmsWaybillStatus', props.status) || STATUS_LABEL[props.status] || props.status
+)
 </script>
 
 <template>
   <view class="status-tag" :class="`status-tag--${STATUS_TONE[props.status] || 'gray'}`">
-    {{ STATUS_LABEL[props.status] || props.status }}
+    {{ label }}
   </view>
 </template>
 

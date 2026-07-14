@@ -18,30 +18,26 @@ const id = ref('')
 const current = computed(() => waybill.current)
 const isPending = computed(() => current.value?.status === 'pending')
 const isCompleted = computed(() => current.value?.status === 'completed')
-const isAccepted = computed(
-  () => current.value?.status === 'accepted' || current.value?.status === 'loading'
-)
+const isAccepted = computed(() => current.value?.status === 'accepted')
+const isLoading = computed(() => current.value?.status === 'loading')
 const isTransporting = computed(() => current.value?.status === 'transporting')
 const isUnloading = computed(() => current.value?.status === 'unloading')
+const isSigned = computed(() => current.value?.status === 'signed')
 
 const statusTitle = computed(() => {
-  const status = current.value?.status
-  if (status === 'accepted' || status === 'loading') return '待提货'
-  if (status === 'transporting') return '运输中'
-  if (status === 'unloading') return '待卸货'
-  if (status === 'completed') return '已完成'
-  if (status === 'cancelled') return '已取消'
-  return '待处理'
+  return dictionary.label('tmsWaybillStatus', current.value?.status, '待处理')
 })
 
 const statusHint = computed(() => {
   const item = current.value
   if (!item) return ''
-  if (item.status === 'accepted' || item.status === 'loading') {
+  if (item.status === 'accepted') {
     return '提货后请拍照上传装货单据和货车照片'
   }
+  if (item.status === 'loading') return '提货凭证已上传，请确认发车'
   if (item.status === 'transporting') return '到达目的地后请确认到达'
   if (item.status === 'unloading') return '卸货完成后上传回单照片'
+  if (item.status === 'signed') return '卸货单据已提交，等待收货方签收'
   if (item.status === 'completed') return `已于${formatDateTime(item.completedAt || item.unloadedAt)}送达!`
   if (item.status === 'cancelled') return '该运单已取消'
   return '请核对订单信息后接受任务'
@@ -152,6 +148,18 @@ async function uploadPickup() {
   }
 }
 
+async function confirmDeparture() {
+  try {
+    await waybill.confirmDeparture()
+    uni.showToast({ title: '已确认发车', icon: 'success' })
+  } catch (error) {
+    uni.showToast({
+      title: error instanceof Error ? error.message : '操作失败',
+      icon: 'none'
+    })
+  }
+}
+
 async function confirmArrival() {
   try {
     await waybill.confirmArrival()
@@ -168,7 +176,7 @@ async function complete() {
   try {
     const files = await chooseImages(3)
     await waybill.completeCurrent(files)
-    uni.showToast({ title: '运单已完成', icon: 'success' })
+    uni.showToast({ title: '已提交待签收', icon: 'success' })
   } catch (error) {
     uni.showToast({
       title: error instanceof Error ? error.message : '操作失败',
@@ -230,7 +238,7 @@ function viewReceipt() {
         >
           <view v-if="!isPending" class="detail-actions">
             <wd-button
-              v-if="isAccepted"
+              v-if="isAccepted && !isLoading"
               class="detail-actions__outline"
               type="primary"
               plain
@@ -240,7 +248,7 @@ function viewReceipt() {
               取消运单
             </wd-button>
             <wd-button
-              v-if="isAccepted"
+              v-if="isAccepted && !isLoading"
               class="detail-actions__primary"
               type="primary"
               :round="false"
@@ -250,6 +258,18 @@ function viewReceipt() {
               @click.stop="uploadPickup"
             >
               上传提货照片
+            </wd-button>
+            <wd-button
+              v-else-if="isLoading"
+              class="detail-actions__primary detail-actions__primary--wide"
+              type="primary"
+              :round="false"
+              :loading="waybill.actionLoading"
+              loading-color="#ffffff"
+              :disabled="waybill.actionLoading"
+              @click.stop="confirmDeparture"
+            >
+              确认发车
             </wd-button>
             <wd-button
               v-else-if="isTransporting"
@@ -276,7 +296,7 @@ function viewReceipt() {
               完成卸货
             </wd-button>
             <wd-button
-              v-else-if="isCompleted"
+              v-else-if="isSigned || isCompleted"
               class="detail-actions__outline detail-actions__outline--right"
               type="primary"
               plain

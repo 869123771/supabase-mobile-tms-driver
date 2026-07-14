@@ -4,6 +4,7 @@ export type WaybillStatus =
   | 'loading'
   | 'transporting'
   | 'unloading'
+  | 'signed'
   | 'completed'
   | 'cancelled'
 

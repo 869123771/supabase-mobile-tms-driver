@@ -6,7 +6,7 @@ const props = defineProps<{
   status: WaybillStatus
 }>()
 
-const steps = ['接单', '装货', '运输中', '卸货', '完成']
+const steps = ['接单', '装货', '运输中', '卸货', '待签收', '完成']
 </script>
 
 <template>
@@ -37,7 +37,7 @@ const steps = ['接单', '装货', '运输中', '卸货', '完成']
 
 .progress__labels {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   margin-bottom: 14rpx;
 }
 

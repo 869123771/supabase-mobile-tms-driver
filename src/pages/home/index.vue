@@ -45,14 +45,16 @@ const vehicleMetrics = computed(() => [
 const taskButtonText = computed(() => {
   const status = task.value?.status
   if (status === 'pending') return '接受任务'
-  if (status === 'accepted' || status === 'loading') return '上传提货照片'
+  if (status === 'accepted') return '上传提货照片'
+  if (status === 'loading') return '确认发车'
   if (status === 'transporting') return '确认到达'
   if (status === 'unloading') return '完成卸货'
+  if (status === 'signed') return '待签收'
   return '查看详情'
 })
 const taskButtonIcon = computed(() => {
   const status = task.value?.status
-  if (status === 'accepted' || status === 'loading') return 'upload'
+  if (status === 'accepted') return 'upload'
   if (status === 'unloading') return 'check'
   if (status === 'pending' || status === 'transporting') return 'check-circle'
   return 'arrow-right'
@@ -99,10 +101,12 @@ async function handleTaskAction() {
     await waybill.loadDetail(task.value.id)
     if (task.value.status === 'pending') {
       await waybill.acceptCurrent()
-    } else if (task.value.status === 'accepted' || task.value.status === 'loading') {
+    } else if (task.value.status === 'accepted') {
       const files = await chooseImages(3)
       if (files.length === 0) return
       await waybill.uploadPickup(files)
+    } else if (task.value.status === 'loading') {
+      await waybill.confirmDeparture()
     } else if (task.value.status === 'transporting') {
       await waybill.confirmArrival()
     } else if (task.value.status === 'unloading') {

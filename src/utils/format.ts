@@ -3,9 +3,10 @@ import type { WaybillStatus } from '@/api/types'
 export const STATUS_LABEL: Record<WaybillStatus, string> = {
   pending: '待处理',
   accepted: '待提货',
-  loading: '装货中',
+  loading: '待发车',
   transporting: '运输中',
   unloading: '卸货中',
+  signed: '待签收',
   completed: '已完成',
   cancelled: '已取消'
 }
@@ -16,6 +17,7 @@ export const STATUS_TONE: Record<WaybillStatus, 'blue' | 'orange' | 'green' | 'g
   loading: 'blue',
   transporting: 'blue',
   unloading: 'orange',
+  signed: 'orange',
   completed: 'green',
   cancelled: 'red'
 }
@@ -26,7 +28,8 @@ const STATUS_STEP: Record<WaybillStatus, number> = {
   loading: 1,
   transporting: 2,
   unloading: 3,
-  completed: 4,
+  signed: 4,
+  completed: 5,
   cancelled: 0
 }
 

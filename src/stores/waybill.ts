@@ -5,7 +5,6 @@ import {
   listWaybillEvents,
   listWaybillProofs,
   listWaybills,
-  normalizeAssignedWaybillStatuses,
   updateWaybill,
   uploadWaybillProofFiles,
   type WaybillStatusGroup
@@ -27,7 +26,7 @@ interface WaybillState {
   activeGroup: WaybillStatusGroup
 }
 
-const activeStatuses: WaybillStatus[] = ['accepted', 'loading', 'transporting', 'unloading']
+const activeStatuses: WaybillStatus[] = ['accepted', 'loading', 'transporting', 'unloading', 'signed']
 
 function isJwtExpiredError(error: unknown) {
   return error instanceof Error && /jwt expired/i.test(error.message)
@@ -63,11 +62,6 @@ export const useWaybillStore = defineStore('waybill', {
         await syncDriverWaybills(token)
       } catch (error) {
         console.warn('sync driver waybills failed', error)
-      }
-      try {
-        await normalizeAssignedWaybillStatuses(token, identities)
-      } catch (error) {
-        console.warn('normalize driver waybill statuses failed', error)
       }
     },
     async ensureSession() {
@@ -234,9 +228,8 @@ export const useWaybillStore = defineStore('waybill', {
         const pickupPhotos = [...(this.current.pickupPhotos || []), ...files]
         const now = new Date().toISOString()
         const updated = await updateWaybill(auth.token, this.current.id, {
-          status: 'transporting',
+          status: 'loading',
           loadedAt: this.current.loadedAt || now,
-          departedAt: this.current.departedAt || now,
           pickupPhotos
         })
         if (updated) this.current = updated
@@ -250,6 +243,14 @@ export const useWaybillStore = defineStore('waybill', {
       } finally {
         this.actionLoading = false
       }
+    },
+    async confirmDeparture() {
+      return this.applyStatus(
+        'transporting',
+        { departedAt: new Date().toISOString() },
+        'departed',
+        { action: 'confirm_departure' }
+      )
     },
     async confirmArrival() {
       return this.applyStatus(
@@ -280,15 +281,14 @@ export const useWaybillStore = defineStore('waybill', {
         const receiptAttachments = [...(this.current.receiptAttachments || []), ...files]
         const now = new Date().toISOString()
         const updated = await updateWaybill(auth.token, this.current.id, {
-          status: 'completed',
+          status: 'signed',
           unloadedAt: this.current.unloadedAt || now,
-          completedAt: now,
           deliveryPhotos,
           receiptAttachments
         })
         if (updated) this.current = updated
         await createWaybillEvent(auth.token, this.current, 'completed', operatorName, {
-          action: 'complete',
+          action: 'complete_unload',
           fileCount: files.length
         })
         await this.loadDetail(this.current.id)

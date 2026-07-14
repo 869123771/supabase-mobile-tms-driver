@@ -46,6 +46,7 @@ const displayDurationMin = computed(() => getEstimatedDurationMin(props.waybill)
 const groupStatus = computed(() => {
   const status = props.waybill.status
   if (status === 'pending') return { label: '待处理', tone: 'orange' }
+  if (status === 'signed') return { label: '待签收', tone: 'orange' }
   if (status === 'completed') return { label: '已完成', tone: 'green' }
   if (status === 'cancelled') return { label: '已取消', tone: 'red' }
   return { label: '进行中', tone: 'blue' }

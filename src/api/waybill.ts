@@ -15,8 +15,6 @@ const EVENT_SELECT =
   'id,tenant_id,waybill_id,event_type,event_time,operator_name,location_text,payload,remark,create_time'
 const PROOF_SELECT =
   'id,tenant_id,waybill_id,proof_type,file_url,file_name,mime_type,file_size,uploaded_at,uploader_name,remark,create_time'
-const ORDER_DISPATCH_SELECT =
-  'id,order_no,cargo_no,dispatch_status,dispatch_driver_id,dispatch_vehicle_id,order_status'
 const ORDER_ROUTE_SELECT =
   'id,order_no,cargo_no,origin_station,destination_station,shipping_contact_name,shipping_contact_phone,shipping_address_detail,shipping_longitude,shipping_latitude,receiving_contact_name,receiving_contact_phone,receiving_address_detail,receiving_longitude,receiving_latitude,planned_departure_time,planned_arrival_time'
 
@@ -25,7 +23,7 @@ export type WaybillStatusGroup = 'all' | 'pending' | 'active' | 'completed'
 const GROUP_STATUS: Record<WaybillStatusGroup, WaybillStatus[]> = {
   all: [],
   pending: ['pending'],
-  active: ['accepted', 'loading', 'transporting', 'unloading'],
+  active: ['accepted', 'loading', 'transporting', 'unloading', 'signed'],
   completed: ['completed']
 }
 
@@ -36,16 +34,6 @@ interface ListWaybillOptions {
   driverName?: string
   vehicleId?: string
   limit?: number
-}
-
-interface OrderDispatchSnapshot {
-  id: string
-  orderNo?: string
-  cargoNo?: string
-  dispatchStatus?: string
-  dispatchDriverId?: string
-  dispatchVehicleId?: string
-  orderStatus?: string
 }
 
 interface OrderRouteSnapshot {
@@ -68,9 +56,17 @@ interface OrderRouteSnapshot {
   plannedArrivalTime?: string
 }
 
-const activeStatuses: WaybillStatus[] = ['accepted', 'loading', 'transporting', 'unloading']
-const driverActionEvents = ['accepted', 'loaded', 'arrived', 'completed', 'cancelled']
-const driverActionPayloads = ['accept', 'upload_pickup', 'confirm_arrival', 'complete', 'cancel']
+const activeStatuses: WaybillStatus[] = ['accepted', 'loading', 'transporting', 'unloading', 'signed']
+const driverActionEvents = ['accepted', 'loaded', 'departed', 'arrived', 'signed', 'completed', 'cancelled']
+const driverActionPayloads = [
+  'accept',
+  'upload_pickup',
+  'confirm_departure',
+  'confirm_arrival',
+  'complete_unload',
+  'complete',
+  'cancel'
+]
 
 interface DriverProgressPatch {
   status: WaybillStatus
@@ -210,15 +206,6 @@ function hasRouteCoordinates(waybill: Waybill) {
   )
 }
 
-async function listOrdersByField(token: string, field: string, values: string[]) {
-  if (!values.length) return []
-  const rows = await request<unknown[]>(
-    restPath('tms_order', `?select=${ORDER_DISPATCH_SELECT}&${field}=${inFilter(values)}`),
-    { token }
-  )
-  return keysToCamel<OrderDispatchSnapshot[]>(rows)
-}
-
 async function listRouteOrdersByField(token: string, field: string, values: string[]) {
   if (!values.length) return []
   const rows = await request<unknown[]>(
@@ -306,26 +293,6 @@ async function enrichWaybillRouteFromOrder(token: string, waybill: Waybill) {
   }
 }
 
-async function listRelatedOrders(token: string, waybills: Waybill[]) {
-  const queries = [
-    listOrdersByField(token, 'order_no', unique(waybills.map((item) => item.orderNo || item.waybillNo))),
-    listOrdersByField(token, 'cargo_no', unique(waybills.flatMap((item) => [item.cargoNo, item.goodsNo])))
-  ]
-  const results = await Promise.allSettled(queries)
-  const orders = results.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
-  return Array.from(new Map(orders.map((order) => [order.id, order])).values())
-}
-
-function findRelatedOrder(waybill: Waybill, orders: OrderDispatchSnapshot[]) {
-  return orders.find((order) => {
-    if (waybill.orderNo && order.orderNo === waybill.orderNo) return true
-    if (waybill.waybillNo && order.orderNo === waybill.waybillNo) return true
-    if (waybill.cargoNo && order.cargoNo === waybill.cargoNo) return true
-    if (waybill.goodsNo && order.cargoNo === waybill.goodsNo) return true
-    return false
-  })
-}
-
 function mergeProgressPatch(
   map: Map<string, DriverProgressPatch>,
   waybillId: string,
@@ -344,8 +311,9 @@ function getStatusRank(status: WaybillStatus) {
     loading: 2,
     transporting: 3,
     unloading: 4,
-    completed: 5,
-    cancelled: 6
+    signed: 5,
+    completed: 6,
+    cancelled: 7
   }
   return rank[status] ?? 0
 }
@@ -391,8 +359,13 @@ async function listDriverProgressPatches(token: string, ids: string[]) {
       }
       if (action === 'upload_pickup') {
         mergeProgressPatch(patches, item.waybill_id, {
+          status: 'loading',
+          loadedAt: item.event_time
+        })
+      }
+      if (action === 'confirm_departure') {
+        mergeProgressPatch(patches, item.waybill_id, {
           status: 'transporting',
-          loadedAt: item.event_time,
           departedAt: item.event_time
         })
       }
@@ -400,6 +373,12 @@ async function listDriverProgressPatches(token: string, ids: string[]) {
         mergeProgressPatch(patches, item.waybill_id, {
           status: 'unloading',
           arrivedAt: item.event_time
+        })
+      }
+      if (action === 'complete_unload') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'signed',
+          unloadedAt: item.event_time
         })
       }
       if (action === 'complete') {
@@ -422,33 +401,20 @@ async function listDriverProgressPatches(token: string, ids: string[]) {
     for (const item of proofResult.value) {
       if (item.proof_type === 'pickup_photo') {
         mergeProgressPatch(patches, item.waybill_id, {
-          status: 'transporting',
-          loadedAt: item.uploaded_at,
-          departedAt: item.uploaded_at
+          status: 'loading',
+          loadedAt: item.uploaded_at
         })
       }
       if (item.proof_type === 'delivery_photo' || item.proof_type === 'receipt') {
         mergeProgressPatch(patches, item.waybill_id, {
-          status: 'completed',
-          unloadedAt: item.uploaded_at,
-          completedAt: item.uploaded_at
+          status: 'signed',
+          unloadedAt: item.uploaded_at
         })
       }
     }
   }
 
   return patches
-}
-
-function shouldResetToPending(
-  waybill: Waybill,
-  order: OrderDispatchSnapshot | undefined,
-  progressPatches: Map<string, DriverProgressPatch>
-) {
-  if (!activeStatuses.includes(waybill.status)) return false
-  if (progressPatches.has(waybill.id)) return false
-  if (!order) return true
-  return order.dispatchStatus === 'loaded' && order.orderStatus !== 'cancelled'
 }
 
 export async function normalizeAssignedWaybillStatuses(
@@ -459,18 +425,11 @@ export async function normalizeAssignedWaybillStatuses(
   const candidates = waybills.filter((item) => activeStatuses.includes(item.status))
   if (!candidates.length) return []
 
-  const [orders, progressPatches] = await Promise.all([
-    listRelatedOrders(token, candidates),
-    listDriverProgressPatches(token, candidates.map((item) => item.id))
-  ])
+  const progressPatches = await listDriverProgressPatches(token, candidates.map((item) => item.id))
   const progressedCandidates = candidates.filter((item) => {
     const patch = progressPatches.get(item.id)
     return Boolean(patch && getStatusRank(patch.status) > getStatusRank(item.status))
   })
-  const pendingCandidates = candidates.filter((item) =>
-    shouldResetToPending(item, findRelatedOrder(item, orders), progressPatches)
-  )
-
   const updated: Waybill[] = []
   for (const item of progressedCandidates) {
     const patch = progressPatches.get(item.id)
@@ -485,10 +444,6 @@ export async function normalizeAssignedWaybillStatuses(
       completedAt: item.completedAt || patch.completedAt,
       cancelledAt: item.cancelledAt || patch.cancelledAt
     })
-    if (normalized) updated.push(normalized)
-  }
-  for (const item of pendingCandidates) {
-    const normalized = await updateWaybill(token, item.id, { status: 'pending' })
     if (normalized) updated.push(normalized)
   }
   return updated
@@ -540,7 +495,6 @@ export async function createWaybillEvent(
   payload?: Record<string, unknown>
 ) {
   const body = {
-    tenant_id: waybill.tenantId,
     waybill_id: waybill.id,
     event_type: eventType,
     event_time: new Date().toISOString(),
@@ -602,7 +556,6 @@ export async function createWaybillProof(
   uploaderName?: string
 ) {
   const body = {
-    tenant_id: waybill.tenantId,
     waybill_id: waybill.id,
     proof_type: toDbProofType(proofType),
     file_url: file.url,
