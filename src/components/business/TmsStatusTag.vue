@@ -10,12 +10,13 @@ const props = defineProps<{
 
 const dictionary = useDictionaryStore()
 const label = computed(
-  () => dictionary.findLabel('tmsWaybillStatus', props.status) || STATUS_LABEL[props.status] || props.status
+  () => STATUS_LABEL[props.status] || dictionary.findLabel('tmsWaybillStatus', props.status) || props.status
 )
 </script>
 
 <template>
   <view class="status-tag" :class="`status-tag--${STATUS_TONE[props.status] || 'gray'}`">
+    <text class="status-tag__dot" />
     {{ label }}
   </view>
 </template>
@@ -23,40 +24,50 @@ const label = computed(
 <style scoped lang="scss">
 .status-tag {
   min-width: 96rpx;
-  height: 48rpx;
-  padding: 0 18rpx;
+  height: 46rpx;
+  padding: 0 16rpx;
   border-radius: 999rpx;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 24rpx;
-  font-weight: 600;
+  gap: 9rpx;
+  font-size: 22rpx;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
 }
 
+.status-tag__dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 5rpx currentColor;
+  opacity: 0.82;
+}
+
 .status-tag--blue {
-  color: var(--tms-primary);
-  background: #edf2ff;
+  color: #4f46e5;
+  background: #eef2ff;
 }
 
 .status-tag--green {
-  color: var(--tms-green);
-  background: #e9f9f1;
+  color: #059669;
+  background: #ecfdf5;
 }
 
 .status-tag--orange {
-  color: var(--tms-orange);
-  background: #fff4ea;
+  color: #d97706;
+  background: #fffbeb;
 }
 
 .status-tag--red {
-  color: var(--tms-red);
-  background: #fff0f0;
+  color: #dc2626;
+  background: #fef2f2;
 }
 
 .status-tag--gray {
-  color: var(--tms-muted);
-  background: #f1f3f8;
+  color: #748096;
+  background: #f7f9fc;
 }
 </style>

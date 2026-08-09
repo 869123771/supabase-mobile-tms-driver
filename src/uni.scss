@@ -1,23 +1,7 @@
-:root,
-page {
-  --tms-primary: #3763f4;
-  --tms-primary-pressed: #2450de;
-  --tms-blue-soft: #edf2ff;
-  --tms-green: #25bf75;
-  --tms-orange: #ff8b3d;
-  --tms-red: #f05252;
-  --tms-text: #282d36;
-  --tms-muted: #748094;
-  --tms-light: #a9b0bd;
-  --tms-card: #ffffff;
-  --tms-bg: #f4f6fb;
-  --tms-line: #edf0f7;
-  --tms-panel: #f6f8fd;
-}
-
 .page {
   min-height: 100vh;
-  background: var(--tms-bg);
+  color: #172033;
+  background: #f4f6fa;
 }
 
 .safe-bottom {
@@ -25,31 +9,72 @@ page {
 }
 
 .card {
-  background: var(--tms-card);
-  border-radius: 16rpx;
+  min-width: 0;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1rpx solid #e7ebf2;
+  border-radius: 24rpx;
+  box-shadow: 0 10rpx 28rpx rgba(32, 42, 68, 0.06);
+}
+
+.section-title {
+  color: #172033;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.3rpx;
+}
+
+.section-eyebrow {
+  display: block;
+  color: #6f7c91;
+  font-size: 21rpx;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .primary-button {
   height: 88rpx;
   border-radius: 16rpx;
-  background: var(--tms-primary);
   color: #fff;
-  font-size: 32rpx;
-  font-weight: 700;
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  box-shadow: 0 14rpx 26rpx rgba(79, 70, 229, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 30rpx;
+  font-weight: 800;
 }
 
 .outline-button {
   height: 80rpx;
-  border-radius: 999rpx;
-  border: 2rpx solid var(--tms-primary);
-  color: var(--tms-primary);
-  background: #fff;
+  border: 2rpx solid rgba(79, 70, 229, 0.28);
+  border-radius: 16rpx;
+  color: #4f46e5;
+  background: #f6f7ff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 28rpx;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.tms-loading-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.tms-loading-sheen::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.62) 48%, transparent 76%);
+  transform: translateX(-100%);
+  animation: tms-sheen 1.35s ease-in-out infinite;
+}
+
+@keyframes tms-sheen {
+  to {
+    transform: translateX(100%);
+  }
 }

@@ -64,6 +64,7 @@ const driverActionPayloads = [
   'confirm_departure',
   'confirm_arrival',
   'complete_unload',
+  'submit_signature',
   'complete',
   'cancel'
 ]
@@ -318,6 +319,35 @@ function getStatusRank(status: WaybillStatus) {
   return rank[status] ?? 0
 }
 
+const forwardStatusFlow: WaybillStatus[] = [
+  'pending',
+  'accepted',
+  'loading',
+  'transporting',
+  'unloading',
+  'signed',
+  'completed'
+]
+
+async function updateWaybillProgressively(
+  token: string,
+  waybill: Waybill,
+  patch: DriverProgressPatch
+) {
+  if (patch.status === 'cancelled') return updateWaybill(token, waybill.id, patch)
+
+  const currentIndex = forwardStatusFlow.indexOf(waybill.status)
+  const targetIndex = forwardStatusFlow.indexOf(patch.status)
+  if (currentIndex < 0 || targetIndex <= currentIndex) return waybill
+
+  let updated: Waybill | null = waybill
+  for (const status of forwardStatusFlow.slice(currentIndex + 1, targetIndex + 1)) {
+    updated = await updateWaybill(token, waybill.id, status === patch.status ? patch : { status })
+    if (!updated) throw new Error('运单状态同步失败')
+  }
+  return updated
+}
+
 async function listDriverProgressPatches(token: string, ids: string[]) {
   const patches = new Map<string, DriverProgressPatch>()
   if (!ids.length) return patches
@@ -375,7 +405,7 @@ async function listDriverProgressPatches(token: string, ids: string[]) {
           arrivedAt: item.event_time
         })
       }
-      if (action === 'complete_unload') {
+      if (action === 'complete_unload' || action === 'submit_signature') {
         mergeProgressPatch(patches, item.waybill_id, {
           status: 'signed',
           unloadedAt: item.event_time
@@ -434,7 +464,7 @@ export async function normalizeAssignedWaybillStatuses(
   for (const item of progressedCandidates) {
     const patch = progressPatches.get(item.id)
     if (!patch) continue
-    const normalized = await updateWaybill(token, item.id, {
+    const normalized = await updateWaybillProgressively(token, item, {
       ...patch,
       acceptedAt: item.acceptedAt || patch.acceptedAt,
       loadedAt: item.loadedAt || patch.loadedAt,

@@ -26,38 +26,62 @@ defineProps<{
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22rpx;
+  gap: 14rpx;
 }
 
 .metric-grid__item {
-  min-height: 144rpx;
-  border-radius: 8rpx;
-  background: var(--tms-panel);
+  position: relative;
+  min-width: 0;
+  min-height: 132rpx;
+  padding: 22rpx 14rpx;
+  overflow: hidden;
+  border: 1rpx solid #e8ecf3;
+  border-radius: 18rpx;
+  background: linear-gradient(145deg, #ffffff, #fafbff);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16rpx;
+  gap: 13rpx;
+}
+
+.metric-grid__item::before {
+  position: absolute;
+  top: 0;
+  left: 22rpx;
+  right: 22rpx;
+  height: 4rpx;
+  content: '';
+  border-radius: 0 0 999rpx 999rpx;
+  background: #4f46e5;
+  opacity: 0.64;
 }
 
 .metric-grid__label {
-  color: var(--tms-muted);
-  font-size: 24rpx;
+  color: #748096;
+  font-size: 22rpx;
+  font-weight: 600;
   line-height: 1.2;
+  text-align: center;
 }
 
 .metric-grid__value {
-  color: var(--tms-text);
-  font-size: 34rpx;
-  font-weight: 600;
+  color: #172033;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 32rpx;
+  font-weight: 800;
   display: flex;
   align-items: flex-end;
   line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metric-grid__unit {
   margin-left: 4rpx;
-  font-size: 24rpx;
+  font-size: 21rpx;
   font-weight: 600;
   line-height: 1.1;
 }

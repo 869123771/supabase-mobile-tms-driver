@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
+import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
 import { useProfileStore } from '@/stores/profile'
@@ -11,6 +12,7 @@ import { FALLBACK_TRUCK_IMAGE } from '@/utils/assets'
 import { chooseImages } from '@/utils/file'
 import { getRouteDistanceKm } from '@/utils/route'
 import { openWaybillNavigation } from '@/utils/navigation'
+import { formatVehicleLoad } from '@/utils/format'
 import type { Waybill } from '@/api/types'
 
 const profile = useProfileStore()
@@ -31,6 +33,11 @@ const todoList = computed(() => {
 const routeDistanceKm = computed(() => getRouteDistanceKm(task.value))
 const vehicleTypeLabel = computed(() => dictionary.label('vehicleType', vehicle.value?.vehicleType))
 const fuelTypeLabel = computed(() => dictionary.label('vehicleFuelType', vehicle.value?.fuelType))
+const vehicleModelSummary = computed(() => {
+  const load = vehicle.value?.approvedLoadMass
+  const loadLabel = load === undefined || load === null ? '载重待同步' : `载重 ${formatVehicleLoad(load)}`
+  return `${vehicleTypeLabel.value} · ${loadLabel}`
+})
 
 const vehicleMetrics = computed(() => [
   {
@@ -48,19 +55,42 @@ const taskButtonText = computed(() => {
   if (status === 'accepted') return '上传提货照片'
   if (status === 'loading') return '确认发车'
   if (status === 'transporting') return '确认到达'
-  if (status === 'unloading') return '完成卸货'
-  if (status === 'signed') return '待签收'
+  if (status === 'unloading') return '提交回单并确认签收'
+  if (status === 'signed') return '确认完成运单'
   return '查看详情'
 })
 const taskButtonIcon = computed(() => {
   const status = task.value?.status
   if (status === 'accepted') return 'upload'
-  if (status === 'unloading') return 'check'
+  if (status === 'loading') return 'check-circle'
+  if (status === 'unloading') return 'upload'
+  if (status === 'signed') return 'check'
   if (status === 'pending' || status === 'transporting') return 'check-circle'
   return 'arrow-right'
 })
-const taskButtonLabel = computed(() => (waybill.actionLoading ? '处理中...' : taskButtonText.value))
+const taskButtonLabel = computed(() => {
+  if (!waybill.actionLoading) return taskButtonText.value
+  const status = task.value?.status
+  if (status === 'pending') return '正在接受任务'
+  if (status === 'accepted') return '正在提交提货资料'
+  if (status === 'loading') return '正在确认发车'
+  if (status === 'transporting') return '正在确认到达'
+  if (status === 'unloading') return '正在提交签收资料'
+  if (status === 'signed') return '正在完成运单'
+  return '正在处理'
+})
 const taskButtonDisabled = computed(() => waybill.actionLoading || refreshing.value)
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) return '早上好'
+  if (hour < 18) return '下午好'
+  return '晚上好'
+})
+const taskSummary = computed(() => {
+  if (!task.value) return '今日暂无待执行任务，保持车辆与通讯畅通'
+  if (task.value.status === 'pending') return '有 1 项新任务等待确认，请及时处理'
+  return '当前运输任务进行中，请按节点完成操作'
+})
 
 onShow(() => {
   void refresh()
@@ -91,6 +121,10 @@ function openWaybillList() {
   uni.reLaunch({ url: '/pages/waybill/index' })
 }
 
+function openMine() {
+  uni.reLaunch({ url: '/pages/mine/index' })
+}
+
 function navigate(item?: Waybill) {
   openWaybillNavigation(item || task.value)
 }
@@ -102,16 +136,23 @@ async function handleTaskAction() {
     if (task.value.status === 'pending') {
       await waybill.acceptCurrent()
     } else if (task.value.status === 'accepted') {
-      const files = await chooseImages(3)
-      if (files.length === 0) return
+      const hasPickupProof = waybill.proofs.some((proof) => proof.proofType === 'pickup_photo')
+      const files = hasPickupProof ? [] : await chooseImages(3)
+      if (!hasPickupProof && files.length === 0) return
       await waybill.uploadPickup(files)
     } else if (task.value.status === 'loading') {
       await waybill.confirmDeparture()
     } else if (task.value.status === 'transporting') {
       await waybill.confirmArrival()
     } else if (task.value.status === 'unloading') {
-      const files = await chooseImages(3)
-      await waybill.completeCurrent(files)
+      const hasDeliveryProof = waybill.proofs.some(
+        (proof) => proof.proofType === 'delivery_photo' || proof.proofType === 'receipt'
+      )
+      const files = hasDeliveryProof ? [] : await chooseImages(3)
+      if (!hasDeliveryProof && files.length === 0) return
+      await waybill.submitSignature(files)
+    } else if (task.value.status === 'signed') {
+      await waybill.completeCurrent()
     } else {
       openDetail(task.value.id)
       return
@@ -130,19 +171,32 @@ async function handleTaskAction() {
 <template>
   <view class="home-page page">
     <view class="home-page__hero">
+      <view class="home-page__mesh" />
       <view class="home-page__top">
-        <view>
-          <text class="home-page__welcome">欢迎您，{{ driver?.driverName || '司机师傅' }}</text>
-          <text class="home-page__company">{{ carrier?.companyName || '物流运输有限公司' }}</text>
+        <view class="home-page__identity">
+          <view class="home-page__eyebrow">
+            <text class="home-page__online-dot" />
+            <text>司机工作台</text>
+          </view>
+          <text class="home-page__welcome">{{ greeting }}，{{ driver?.driverName || '司机师傅' }}</text>
+          <text class="home-page__summary">{{ taskSummary }}</text>
         </view>
         <wd-button
           class="home-page__settings"
           type="icon"
           custom-style="width: 62rpx; min-width: 62rpx; height: 62rpx; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); border: 2rpx solid rgba(255,255,255,0.22); color: #fff;"
           :disabled="refreshing"
+          @click="openMine"
         >
-          <wd-icon name="setting" size="42rpx" />
+          <TmsIcon name="settings" size="36rpx" />
         </wd-button>
+      </view>
+      <view class="home-page__company-row">
+        <text class="home-page__company">{{ carrier?.companyName || '暂未绑定承运商' }}</text>
+        <view class="home-page__network">
+          <text class="home-page__online-dot" />
+          <text>运力在线</text>
+        </view>
       </view>
     </view>
 
@@ -150,7 +204,10 @@ async function handleTaskAction() {
       <view class="home-page__content">
         <view class="vehicle-card card">
           <view class="vehicle-card__title-row">
-            <text class="section-title">车辆状态</text>
+            <view>
+              <text class="section-eyebrow">绑定车辆</text>
+              <text class="section-title vehicle-card__title">车辆概览</text>
+            </view>
             <view class="vehicle-card__status-group">
               <view v-if="refreshing" class="vehicle-card__refreshing">
                 <wd-loading type="ring" color="#3763f4" size="28rpx" />
@@ -168,7 +225,7 @@ async function handleTaskAction() {
             <view class="vehicle-card__info">
               <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
               <text class="vehicle-card__model">
-                {{ vehicleTypeLabel }} · 载重{{ vehicle?.approvedLoadMass || '--' }}吨
+                {{ vehicleModelSummary }}
               </text>
             </view>
           </view>
@@ -190,26 +247,36 @@ async function handleTaskAction() {
                 size="large"
                 block
                 :round="false"
-                :icon="taskButtonIcon"
-                :loading="waybill.actionLoading"
-                loading-color="#ffffff"
                 :disabled="taskButtonDisabled"
                 @click="handleTaskAction"
               >
-                <text>{{ taskButtonLabel }}</text>
+                <view class="task-card__button-content">
+                  <wd-loading v-if="waybill.actionLoading" type="ring" color="#ffffff" size="30rpx" />
+                  <wd-icon v-else :name="taskButtonIcon" size="32rpx" />
+                  <text>{{ taskButtonLabel }}</text>
+                </view>
               </wd-button>
             </view>
           </TmsRouteCard>
         </view>
 
         <view v-else class="empty-card card">
-          <text class="section-title">当前任务</text>
-          <text class="empty-card__text">暂无待执行运单</text>
+          <view class="empty-card__icon"><TmsIcon name="waybill" size="54rpx" /></view>
+          <view class="empty-card__copy">
+            <text class="section-title">当前没有运输任务</text>
+            <text class="empty-card__text">新任务到达后会显示在这里，也可以前往运单列表查看。</text>
+          </view>
+          <wd-button class="empty-card__action" type="text" @click="openWaybillList">
+            查看运单
+          </wd-button>
         </view>
 
         <view v-if="todoList.length" class="todo-card card">
           <view class="todo-card__title-row">
-            <text class="section-title">待处理运单</text>
+            <view>
+              <text class="section-eyebrow">待办任务</text>
+              <text class="section-title todo-card__title">接下来</text>
+            </view>
             <wd-button class="todo-card__all" type="text" @click="openWaybillList">
               <text>全部</text>
               <wd-icon name="chevron-right" size="26rpx" />
@@ -238,7 +305,7 @@ async function handleTaskAction() {
   position: relative;
   height: 100vh;
   overflow: hidden;
-  background: var(--tms-bg);
+  background: #f4f6fa;
 }
 
 .home-page__hero {
@@ -247,36 +314,120 @@ async function handleTaskAction() {
   right: 0;
   top: 0;
   z-index: 0;
-  height: 482rpx;
-  padding: calc(60rpx + env(safe-area-inset-top)) 56rpx 126rpx;
+  height: 456rpx;
+  padding: calc(54rpx + env(safe-area-inset-top)) 34rpx 104rpx;
+  overflow: hidden;
   color: #fff;
-  background: var(--tms-primary);
-  border-bottom-left-radius: 58% 92rpx;
-  border-bottom-right-radius: 58% 92rpx;
+  background: linear-gradient(135deg, #292266 0%, #4f46e5 56%, #2563eb 118%);
+  border-bottom-left-radius: 46rpx;
+  border-bottom-right-radius: 46rpx;
+}
+
+.home-page__hero::after {
+  position: absolute;
+  top: -240rpx;
+  right: -180rpx;
+  width: 520rpx;
+  height: 520rpx;
+  content: '';
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 70rpx rgba(255, 255, 255, 0.035),
+    0 0 0 140rpx rgba(255, 255, 255, 0.02);
+}
+
+.home-page__mesh {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx);
+  background-size: 72rpx 72rpx;
+  pointer-events: none;
 }
 
 .home-page__top {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 28rpx;
 }
 
+.home-page__identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.home-page__eyebrow,
+.home-page__network {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  font-size: 18rpx;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+.home-page__online-dot {
+  flex: 0 0 10rpx;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #5eead4;
+  box-shadow: 0 0 0 6rpx rgba(94, 234, 212, 0.13);
+}
+
 .home-page__welcome {
   display: block;
-  font-size: 34rpx;
-  font-weight: 700;
+  margin-top: 24rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 38rpx;
+  font-weight: 800;
   line-height: 1.25;
 }
 
-.home-page__company {
-  display: inline-flex;
-  margin-top: 22rpx;
-  padding: 8rpx 16rpx;
-  border-radius: 8rpx;
-  background: rgba(255, 255, 255, 0.18);
-  font-size: 22rpx;
+.home-page__summary {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 23rpx;
   font-weight: 600;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.home-page__company-row {
+  position: relative;
+  z-index: 1;
+  margin-top: 28rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.13);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.home-page__company {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 22rpx;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+.home-page__network {
+  flex: 0 0 auto;
+  font-size: 19rpx;
+  letter-spacing: 0;
+  opacity: 0.82;
 }
 
 .home-page__settings {
@@ -310,19 +461,20 @@ async function handleTaskAction() {
   z-index: 1;
   left: 0;
   right: 0;
-  top: 270rpx;
-  bottom: calc(132rpx + env(safe-area-inset-bottom));
+  top: 336rpx;
+  bottom: calc(142rpx + env(safe-area-inset-bottom));
 }
 
 .home-page__content {
   position: relative;
-  padding: 0 26rpx 148rpx;
+  padding: 0 28rpx 64rpx;
 }
 
 .vehicle-card,
 .empty-card {
-  padding: 28rpx;
-  border-radius: 16rpx;
+  padding: 30rpx;
+  border-radius: 28rpx;
+  box-shadow: 0 18rpx 46rpx rgba(34, 39, 91, 0.12);
 }
 
 .vehicle-card__title-row {
@@ -340,46 +492,52 @@ async function handleTaskAction() {
 }
 
 .section-title {
-  color: var(--tms-text);
+  color: #172033;
   font-size: 30rpx;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.25;
+}
+
+.vehicle-card__title,
+.todo-card__title {
+  display: block;
+  margin-top: 7rpx;
 }
 
 .vehicle-card__normal {
   padding: 10rpx 24rpx;
   border-radius: 999rpx;
-  color: var(--tms-green);
-  background: #e9f9f1;
-  font-size: 24rpx;
-  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  font-size: 22rpx;
+  font-weight: 700;
 }
 
 .vehicle-card__refreshing {
   height: 48rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  color: var(--tms-primary);
-  background: #edf2ff;
+  color: #4f46e5;
+  background: #eef2ff;
   display: inline-flex;
   align-items: center;
   gap: 8rpx;
   font-size: 23rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .vehicle-card__body {
-  margin: 26rpx 0 24rpx;
+  margin: 30rpx 0 26rpx;
   display: flex;
   align-items: center;
   gap: 24rpx;
 }
 
 .vehicle-card__image {
-  width: 96rpx;
-  height: 82rpx;
-  border-radius: 8rpx;
-  background: var(--tms-panel);
+  width: 112rpx;
+  height: 90rpx;
+  border-radius: 16rpx;
+  background: #f7f9fc;
 }
 
 .vehicle-card__info {
@@ -390,18 +548,18 @@ async function handleTaskAction() {
 }
 
 .vehicle-card__plate {
-  color: var(--tms-text);
-  font-size: 30rpx;
-  font-weight: 700;
+  color: #172033;
+  font-size: 32rpx;
+  font-weight: 800;
 }
 
 .vehicle-card__model {
-  color: var(--tms-light);
+  color: #9aa5b7;
   font-size: 23rpx;
 }
 
 .task-card {
-  margin-top: 22rpx;
+  margin-top: 24rpx;
 }
 
 .task-card__button-wrap {
@@ -412,41 +570,67 @@ async function handleTaskAction() {
   width: 100%;
   height: 88rpx;
   padding: 0;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   color: #fff;
-  background: var(--tms-primary);
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  box-shadow: 0 14rpx 24rpx rgba(79, 70, 229, 0.2);
   font-size: 30rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
-.task-card__button :deep(.wd-button__content) {
-  gap: 0;
-}
-
-.task-card__button :deep(.wd-button__icon),
-.task-card__button :deep(.wd-button__loading) {
-  margin-right: 10rpx;
-}
-
-.task-card__button :deep(.wd-button__icon) {
-  font-size: 34rpx;
+.task-card__button-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
 }
 
 .empty-card {
   margin-top: 24rpx;
+  display: grid;
+  grid-template-columns: 74rpx minmax(0, 1fr);
+  align-items: center;
+  gap: 20rpx;
+}
+
+.empty-card__icon {
+  width: 74rpx;
+  height: 74rpx;
+  border-radius: 22rpx;
+  color: #4f46e5;
+  background: #eef2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-card__copy {
+  min-width: 0;
 }
 
 .empty-card__text {
   display: block;
-  margin-top: 32rpx;
-  color: var(--tms-muted);
-  font-size: 28rpx;
+  margin-top: 8rpx;
+  color: #748096;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.empty-card__action {
+  min-width: 0;
+  grid-column: 2;
+  justify-self: start;
+  margin-top: -8rpx;
+  padding: 0;
+  color: #4f46e5;
+  font-size: 23rpx;
+  font-weight: 700;
 }
 
 .todo-card {
   margin: 24rpx 0 34rpx;
-  padding: 28rpx;
-  border-radius: 16rpx;
+  padding: 30rpx;
+  border-radius: 24rpx;
 }
 
 .todo-card__title-row {
@@ -457,7 +641,7 @@ async function handleTaskAction() {
 }
 
 .todo-card__all {
-  color: var(--tms-muted);
+  color: #748096;
   min-width: 0;
   padding: 0;
   background: transparent;
@@ -469,9 +653,30 @@ async function handleTaskAction() {
 }
 
 .todo-card__stack {
-  margin-top: 18rpx;
+  margin-top: 12rpx;
   display: flex;
   flex-direction: column;
   gap: 20rpx;
+}
+
+@media screen and (max-width: 350px) {
+  .home-page__hero {
+    padding-left: 26rpx;
+    padding-right: 26rpx;
+  }
+
+  .home-page__content {
+    padding-left: 20rpx;
+    padding-right: 20rpx;
+  }
+
+  .empty-card {
+    grid-template-columns: 64rpx minmax(0, 1fr);
+  }
+
+  .empty-card__action {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 </style>

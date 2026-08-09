@@ -213,11 +213,33 @@ export const useWaybillStore = defineStore('waybill', {
     },
     async uploadPickup(filePaths: string[]) {
       if (!this.current) throw new Error('运单不存在')
+      if (!['accepted', 'loading'].includes(this.current.status)) {
+        throw new Error('当前运单已进入下一运输节点')
+      }
       const auth = await this.ensureSession()
       const profile = useProfileStore()
       const operatorName = profile.driver?.driverName || profile.user?.nickName || profile.user?.userName
       this.actionLoading = true
+      const waybillId = this.current.id
       try {
+        if (this.current.status === 'accepted') {
+          const loadingWaybill = await updateWaybill(auth.token, waybillId, { status: 'loading' })
+          if (!loadingWaybill) throw new Error('进入装货节点失败')
+          this.current = loadingWaybill
+        }
+
+        const savedProofFiles: ProofFile[] = this.proofs
+          .filter((proof) => proof.proofType === 'pickup_photo')
+          .map((proof) => ({
+            name: proof.fileName,
+            url: proof.fileUrl,
+            fileType: proof.mimeType,
+            fileSize: proof.fileSize
+          }))
+        if (filePaths.length === 0 && savedProofFiles.length === 0) {
+          throw new Error('请先选择提货照片')
+        }
+
         const files = await uploadWaybillProofFiles(
           auth.token,
           this.current,
@@ -225,21 +247,36 @@ export const useWaybillStore = defineStore('waybill', {
           filePaths,
           operatorName
         )
-        const pickupPhotos = [...(this.current.pickupPhotos || []), ...files]
+        const pickupPhotos = Array.from(
+          new Map(
+            [...(this.current.pickupPhotos || []), ...savedProofFiles, ...files].map((file) => [
+              file.url,
+              file
+            ])
+          ).values()
+        )
         const now = new Date().toISOString()
-        const updated = await updateWaybill(auth.token, this.current.id, {
+        const updated = await updateWaybill(auth.token, waybillId, {
           status: 'loading',
           loadedAt: this.current.loadedAt || now,
           pickupPhotos
         })
-        if (updated) this.current = updated
+        if (!updated) throw new Error('更新运输状态失败')
+        this.current = updated
         await createWaybillEvent(auth.token, this.current, 'loaded', operatorName, {
           action: 'upload_pickup',
-          fileCount: files.length
+          fileCount: pickupPhotos.length
         })
-        await this.loadDetail(this.current.id)
+        await this.loadDetail(waybillId)
         await this.loadHomeTask()
         return files
+      } catch (error) {
+        try {
+          await this.loadDetail(waybillId)
+        } catch {
+          // Preserve the original action error.
+        }
+        throw error
       } finally {
         this.actionLoading = false
       }
@@ -260,40 +297,120 @@ export const useWaybillStore = defineStore('waybill', {
         { action: 'confirm_arrival' }
       )
     },
-    async completeCurrent(filePaths: string[] = []) {
+    async submitSignature(filePaths: string[] = []) {
       if (!this.current) throw new Error('运单不存在')
+      if (this.current.status !== 'unloading') {
+        throw new Error('当前运单尚未进入卸货节点')
+      }
       const auth = await this.ensureSession()
       const profile = useProfileStore()
       const operatorName = profile.driver?.driverName || profile.user?.nickName || profile.user?.userName
       this.actionLoading = true
+      const waybillId = this.current.id
       try {
-        let files: ProofFile[] = []
-        if (filePaths.length > 0) {
-          files = await uploadWaybillProofFiles(
+        const savedProofFiles: ProofFile[] = this.proofs
+          .filter((proof) => proof.proofType === 'delivery_photo' || proof.proofType === 'receipt')
+          .map((proof) => ({
+            name: proof.fileName,
+            url: proof.fileUrl,
+            fileType: proof.mimeType,
+            fileSize: proof.fileSize
+          }))
+        const files = filePaths.length > 0
+          ? await uploadWaybillProofFiles(
             auth.token,
             this.current,
             'delivery',
             filePaths,
             operatorName
           )
+          : []
+        if (files.length === 0 && savedProofFiles.length === 0) {
+          throw new Error('请先选择签收回单照片')
         }
-        const deliveryPhotos = [...(this.current.deliveryPhotos || []), ...files]
-        const receiptAttachments = [...(this.current.receiptAttachments || []), ...files]
+        const deliveryPhotos = Array.from(
+          new Map(
+            [...(this.current.deliveryPhotos || []), ...savedProofFiles, ...files].map((file) => [
+              file.url,
+              file
+            ])
+          ).values()
+        )
+        const receiptAttachments = Array.from(
+          new Map(
+            [...(this.current.receiptAttachments || []), ...savedProofFiles, ...files].map((file) => [
+              file.url,
+              file
+            ])
+          ).values()
+        )
         const now = new Date().toISOString()
-        const updated = await updateWaybill(auth.token, this.current.id, {
+        const signedWaybill = await updateWaybill(auth.token, waybillId, {
           status: 'signed',
           unloadedAt: this.current.unloadedAt || now,
           deliveryPhotos,
           receiptAttachments
         })
-        if (updated) this.current = updated
-        await createWaybillEvent(auth.token, this.current, 'completed', operatorName, {
-          action: 'complete_unload',
-          fileCount: files.length
+        if (!signedWaybill) throw new Error('确认签收状态失败')
+        this.current = signedWaybill
+        await createWaybillEvent(auth.token, this.current, 'signed', operatorName, {
+          action: 'submit_signature',
+          fileCount: deliveryPhotos.length
         })
-        await this.loadDetail(this.current.id)
+        await this.loadDetail(waybillId)
         await this.loadHomeTask()
         return this.current
+      } catch (error) {
+        try {
+          await this.loadDetail(waybillId)
+        } catch {
+          // Preserve the original action error.
+        }
+        throw error
+      } finally {
+        this.actionLoading = false
+      }
+    },
+    async completeCurrent() {
+      if (!this.current) throw new Error('运单不存在')
+      if (this.current.status !== 'signed') {
+        throw new Error('请先提交签收资料，再确认完成运单')
+      }
+      const auth = await this.ensureSession()
+      const profile = useProfileStore()
+      const operatorName = profile.driver?.driverName || profile.user?.nickName || profile.user?.userName
+      this.actionLoading = true
+      const waybillId = this.current.id
+      try {
+        if (!this.events.some((event) => event.eventType === 'signed')) {
+          await createWaybillEvent(auth.token, this.current, 'signed', operatorName, {
+            action: 'submit_signature',
+            fileCount: this.proofs.filter(
+              (proof) => proof.proofType === 'delivery_photo' || proof.proofType === 'receipt'
+            ).length,
+            recovered: true
+          })
+        }
+        const now = new Date().toISOString()
+        const updated = await updateWaybill(auth.token, waybillId, {
+          status: 'completed',
+          completedAt: now
+        })
+        if (!updated) throw new Error('完成运单失败')
+        this.current = updated
+        await createWaybillEvent(auth.token, this.current, 'completed', operatorName, {
+          action: 'complete'
+        })
+        await this.loadDetail(waybillId)
+        await this.loadHomeTask()
+        return this.current
+      } catch (error) {
+        try {
+          await this.loadDetail(waybillId)
+        } catch {
+          // Preserve the original action error.
+        }
+        throw error
       } finally {
         this.actionLoading = false
       }

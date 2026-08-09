@@ -6,7 +6,7 @@ export const STATUS_LABEL: Record<WaybillStatus, string> = {
   loading: '待发车',
   transporting: '运输中',
   unloading: '卸货中',
-  signed: '待签收',
+  signed: '已签收',
   completed: '已完成',
   cancelled: '已取消'
 }
@@ -17,7 +17,7 @@ export const STATUS_TONE: Record<WaybillStatus, 'blue' | 'orange' | 'green' | 'g
   loading: 'blue',
   transporting: 'blue',
   unloading: 'orange',
-  signed: 'orange',
+  signed: 'green',
   completed: 'green',
   cancelled: 'red'
 }
@@ -68,7 +68,20 @@ export function formatTon(value?: number) {
 export function formatMeters(value?: number) {
   if (value === undefined || value === null) return '--'
   const meters = Number(value) > 100 ? Number(value) / 1000 : Number(value)
-  return `${meters.toFixed(meters >= 10 ? 1 : 2)}米`
+  return `${meters.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}米`
+}
+
+export function normalizeVehicleLoadTon(value?: number | string | null) {
+  if (value === undefined || value === null || value === '') return undefined
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return undefined
+  return numberValue > 100 ? numberValue / 1000 : numberValue
+}
+
+export function formatVehicleLoad(value?: number | string | null) {
+  const tons = normalizeVehicleLoadTon(value)
+  if (tons === undefined) return '--'
+  return `${tons.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}吨`
 }
 
 export function formatDateTime(value?: string) {

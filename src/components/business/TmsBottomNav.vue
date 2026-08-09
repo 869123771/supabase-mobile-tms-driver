@@ -40,42 +40,51 @@ function go(item: (typeof items)[number]) {
 <style scoped lang="scss">
 .bottom-nav {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 18rpx;
+  right: 18rpx;
+  bottom: calc(14rpx + env(safe-area-inset-bottom));
   z-index: 20;
-  height: calc(132rpx + env(safe-area-inset-bottom));
-  padding: 14rpx 42rpx calc(14rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  height: 116rpx;
+  padding: 10rpx 22rpx;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1rpx solid #e5e9f1;
+  border-radius: 28rpx;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  box-shadow: 0 -8rpx 24rpx rgba(40, 45, 54, 0.04);
+  box-shadow: 0 18rpx 50rpx rgba(31, 40, 66, 0.16);
 }
 
 .bottom-nav__item {
-  color: #a9b0bd;
+  min-width: 0;
+  color: #9aa5b7;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4rpx;
-  font-size: 22rpx;
+  gap: 2rpx;
+  font-size: 21rpx;
+  font-weight: 600;
   line-height: 1.1;
 }
 
 .bottom-nav__item--active {
-  color: var(--tms-primary);
+  color: #4f46e5;
   font-weight: 700;
 }
 
 .bottom-nav__icon-box {
-  width: 46rpx;
-  height: 46rpx;
-  border-radius: 12rpx;
+  width: 62rpx;
+  height: 56rpx;
+  border-radius: 18rpx;
   color: currentColor;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.2s ease;
 }
 
+.bottom-nav__item--active .bottom-nav__icon-box {
+  background: #eef2ff;
+}
 </style>

@@ -80,24 +80,47 @@ async function phoneLogin(event?: unknown) {
   }
 }
 
+function forgotPassword() {
+  uni.showToast({ title: '请联系车队管理员重置密码', icon: 'none' })
+}
+
 </script>
 
 <template>
   <view class="login-page">
-    <view class="login-page__brand">
-      <view class="login-page__mark">
-        <view class="login-page__mark-main" />
-        <view class="login-page__mark-dots">
-          <text />
-          <text />
-          <text />
+    <view class="login-page__orb login-page__orb--one" />
+    <view class="login-page__orb login-page__orb--two" />
+
+    <view class="login-page__hero">
+      <view class="login-page__brand">
+        <view class="login-page__mark">
+          <view class="login-page__mark-main" />
+          <view class="login-page__mark-dots">
+            <text />
+            <text />
+            <text />
+          </view>
         </view>
+        <text class="login-page__name">TMS</text>
+        <text class="login-page__badge">司机端</text>
       </view>
-      <text class="login-page__name">TMS</text>
-      <text class="login-page__badge">司机端</text>
+      <text class="login-page__eyebrow">智慧运输协同</text>
+      <text class="login-page__title">每一程，都清晰可控</text>
+      <text class="login-page__description">任务、路线、车辆与回单集中处理，让运输履约更简单。</text>
+      <view class="login-page__trust">
+        <view><text class="login-page__trust-dot" />任务实时同步</view>
+        <view><text class="login-page__trust-dot" />数据安全连接</view>
+      </view>
     </view>
 
     <view class="login-form">
+      <view class="login-form__head">
+        <view>
+          <text class="login-form__title">账号登录</text>
+          <text class="login-form__hint">使用后台分配的司机账号</text>
+        </view>
+        <text class="login-form__secure">安全登录</text>
+      </view>
       <wd-input
         v-model="account"
         class="login-form__field"
@@ -131,7 +154,7 @@ async function phoneLogin(event?: unknown) {
         >
           记住我
         </wd-checkbox>
-        <text class="login-form__link">忘记密码?</text>
+        <text class="login-form__link" @tap="forgotPassword">忘记密码？</text>
       </view>
 
       <wd-button
@@ -173,7 +196,7 @@ async function phoneLogin(event?: unknown) {
     <!-- #endif -->
 
     <view class="login-page__agreement">
-      登录即视为同意
+      登录即表示您已阅读并同意
       <text>《用户协议》</text>
       和
       <text>《隐私政策》</text>
@@ -183,34 +206,77 @@ async function phoneLogin(event?: unknown) {
 
 <style scoped lang="scss">
 .login-page {
+  position: relative;
   min-height: 100vh;
-  padding: calc(188rpx + env(safe-area-inset-top)) 54rpx calc(44rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  padding: calc(70rpx + env(safe-area-inset-top)) 34rpx calc(32rpx + env(safe-area-inset-bottom));
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 92% 2%, rgba(79, 70, 229, 0.12), transparent 360rpx),
+    linear-gradient(180deg, #f7f8ff 0%, #ffffff 54%, #f8fafc 100%);
   display: flex;
   flex-direction: column;
+}
+
+.login-page__orb {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.login-page__orb--one {
+  top: -220rpx;
+  right: -220rpx;
+  width: 540rpx;
+  height: 540rpx;
+  border: 1rpx solid rgba(79, 70, 229, 0.12);
+  box-shadow:
+    0 0 0 74rpx rgba(79, 70, 229, 0.025),
+    0 0 0 148rpx rgba(79, 70, 229, 0.018);
+}
+
+.login-page__orb--two {
+  left: -120rpx;
+  bottom: 120rpx;
+  width: 260rpx;
+  height: 260rpx;
+  background: rgba(56, 189, 248, 0.05);
+  filter: blur(8rpx);
+}
+
+.login-page__hero,
+.login-form,
+.login-page__phone,
+.login-page__agreement {
+  position: relative;
+  z-index: 1;
+}
+
+.login-page__hero {
+  padding: 0 14rpx;
 }
 
 .login-page__brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
 .login-page__mark {
   position: relative;
-  width: 82rpx;
-  height: 82rpx;
+  width: 72rpx;
+  height: 72rpx;
 }
 
 .login-page__mark-main {
   position: absolute;
   left: 5rpx;
   top: 14rpx;
-  width: 54rpx;
-  height: 54rpx;
-  background: var(--tms-primary);
-  border-radius: 12rpx;
+  width: 48rpx;
+  height: 48rpx;
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  border-radius: 14rpx;
+  box-shadow: 0 12rpx 22rpx rgba(79, 70, 229, 0.22);
   transform: rotate(45deg);
 }
 
@@ -227,7 +293,7 @@ async function phoneLogin(event?: unknown) {
   width: 12rpx;
   height: 12rpx;
   border-radius: 50%;
-  background: var(--tms-orange);
+  background: #f59e0b;
 }
 
 .login-page__mark-dots text:nth-child(1) {
@@ -246,40 +312,132 @@ async function phoneLogin(event?: unknown) {
 }
 
 .login-page__name {
-  color: #050505;
-  font-size: 58rpx;
+  color: #172033;
+  font-size: 50rpx;
   font-style: italic;
   font-weight: 900;
   letter-spacing: 0;
 }
 
 .login-page__badge {
-  height: 48rpx;
+  height: 42rpx;
   padding: 0 14rpx;
-  border-radius: 8rpx;
-  background: var(--tms-primary);
+  border-radius: 10rpx;
+  background: #4f46e5;
   color: #fff;
-  font-size: 26rpx;
+  font-size: 23rpx;
   font-weight: 700;
   display: flex;
   align-items: center;
 }
 
+.login-page__eyebrow {
+  display: block;
+  margin-top: 64rpx;
+  color: #4f46e5;
+  font-size: 19rpx;
+  font-weight: 800;
+}
+
+.login-page__title {
+  display: block;
+  margin-top: 18rpx;
+  color: #172033;
+  font-size: 46rpx;
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: -1rpx;
+}
+
+.login-page__description {
+  display: block;
+  max-width: 590rpx;
+  margin-top: 18rpx;
+  color: #748096;
+  font-size: 25rpx;
+  font-weight: 500;
+  line-height: 1.65;
+}
+
+.login-page__trust {
+  margin-top: 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 28rpx;
+  color: #4b5870;
+  font-size: 21rpx;
+  font-weight: 600;
+}
+
+.login-page__trust view {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.login-page__trust-dot {
+  width: 9rpx;
+  height: 9rpx;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 5rpx rgba(16, 185, 129, 0.1);
+}
+
 .login-form {
-  margin-top: 126rpx;
+  margin-top: 62rpx;
+  padding: 32rpx;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1rpx solid #e7ebf2;
+  border-radius: 28rpx;
+  box-shadow: 0 18rpx 46rpx rgba(34, 39, 91, 0.12);
+}
+
+.login-form__head {
+  margin-bottom: 28rpx;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.login-form__title,
+.login-form__hint {
+  display: block;
+}
+
+.login-form__title {
+  color: #172033;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.login-form__hint {
+  margin-top: 8rpx;
+  color: #748096;
+  font-size: 21rpx;
+}
+
+.login-form__secure {
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  color: #059669;
+  background: #ecfdf5;
+  font-size: 20rpx;
+  font-weight: 700;
 }
 
 .login-form__field {
   box-sizing: border-box;
   height: 98rpx;
   padding: 0 28rpx;
+  border: 1rpx solid #e8ecf3;
   border-radius: 16rpx;
-  background: #f5f6fa;
-  color: var(--tms-light);
+  background: #f7f9fc;
+  color: #9aa5b7;
 }
 
 .login-form__field + .login-form__field {
-  margin-top: 32rpx;
+  margin-top: 20rpx;
 }
 
 .login-form__field :deep(.wd-input__value) {
@@ -292,19 +450,19 @@ async function phoneLogin(event?: unknown) {
 
 .login-form__field :deep(.wd-input__icon),
 .login-form__field :deep(.wd-input__clear) {
-  color: var(--tms-light);
+  color: #9aa5b7;
   font-size: 38rpx;
 }
 
 .login-form__field :deep(.wd-input__inner) {
   height: 98rpx;
-  color: var(--tms-text);
+  color: #172033;
   font-size: 28rpx;
   background: transparent;
 }
 
 .login-form__field :deep(.wd-input__inner::placeholder) {
-  color: var(--tms-light);
+  color: #9aa5b7;
 }
 
 .login-form__field.is-disabled {
@@ -312,42 +470,43 @@ async function phoneLogin(event?: unknown) {
 }
 
 .login-form__options {
-  margin-top: 26rpx;
+  margin-top: 24rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--tms-text);
+  color: #172033;
   font-size: 26rpx;
 }
 
 .login-form__remember {
   margin-bottom: 0;
-  font-size: 26rpx;
+  font-size: 24rpx;
 }
 
 .login-form__remember :deep(.wd-checkbox__shape) {
   width: 32rpx;
   height: 32rpx;
   border-width: 2rpx;
-  border-radius: 8rpx;
+  border-radius: 10rpx;
 }
 
 .login-form__remember :deep(.wd-checkbox__label) {
-  color: var(--tms-text);
-  font-size: 26rpx;
+  color: #172033;
+  font-size: 23rpx;
 }
 
 .login-form__link {
-  color: var(--tms-orange);
+  color: #4f46e5;
+  font-weight: 700;
 }
 
 .login-form__button {
-  margin-top: 50rpx;
+  margin-top: 34rpx;
   height: 88rpx;
   border-radius: 16rpx;
   color: #fff;
-  background: var(--tms-primary);
-  box-shadow: 0 14rpx 24rpx rgba(55, 99, 244, 0.28);
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  box-shadow: 0 14rpx 24rpx rgba(79, 70, 229, 0.24);
   font-size: 30rpx;
   font-weight: 800;
 }
@@ -358,11 +517,11 @@ async function phoneLogin(event?: unknown) {
 }
 
 .login-page__phone {
-  margin-top: auto;
+  margin-top: 32rpx;
   padding: 0;
   border: 0;
   line-height: 1.2;
-  color: var(--tms-light);
+  color: #748096;
   background: transparent;
   display: flex;
   flex-direction: column;
@@ -381,10 +540,11 @@ async function phoneLogin(event?: unknown) {
 }
 
 .login-page__phone-icon {
-  width: 86rpx;
-  height: 86rpx;
+  width: 74rpx;
+  height: 74rpx;
   border-radius: 50%;
-  background: #ff7d3b;
+  background: linear-gradient(135deg, #fb923c, #f59e0b);
+  box-shadow: 0 12rpx 24rpx rgba(245, 158, 11, 0.22);
   color: #fff;
   display: flex;
   align-items: center;
@@ -392,13 +552,15 @@ async function phoneLogin(event?: unknown) {
 }
 
 .login-page__agreement {
-  margin-top: 72rpx;
-  color: var(--tms-light);
-  font-size: 22rpx;
+  margin-top: auto;
+  padding-top: 30rpx;
+  color: #9aa5b7;
+  font-size: 20rpx;
+  line-height: 1.6;
   text-align: center;
 }
 
 .login-page__agreement text {
-  color: var(--tms-primary);
+  color: #4f46e5;
 }
 </style>

@@ -15,6 +15,7 @@ const refreshing = ref(false)
 const loadingGroup = ref<WaybillStatusGroup | ''>('')
 const isBusy = computed(() => waybill.loading || refreshing.value || Boolean(loadingGroup.value))
 const showListLoading = computed(() => waybill.loading && waybill.list.length > 0)
+const activeLabel = computed(() => tabs.find((item) => item.value === active.value)?.label || '全部')
 
 const tabs: Array<{ label: string; value: WaybillStatusGroup }> = [
   { label: '全部', value: 'all' },
@@ -78,8 +79,9 @@ function navigate(item: Waybill) {
     <view class="waybill-page__header">
       <view class="waybill-page__title-row">
         <view class="waybill-page__title-main">
+          <text class="waybill-page__eyebrow">任务中心</text>
           <text class="waybill-page__title">运输任务</text>
-          <text class="waybill-page__subtitle">与后台订单列表同步</text>
+          <text class="waybill-page__subtitle">聚焦当前节点，按顺序完成每项运输任务</text>
         </view>
         <wd-button
           class="waybill-page__refresh"
@@ -111,6 +113,13 @@ function navigate(item: Waybill) {
 
     <scroll-view scroll-y class="waybill-page__list">
       <view v-if="waybill.list.length" class="waybill-page__stack">
+        <view class="waybill-page__list-head">
+          <view>
+            <text>{{ activeLabel }}任务</text>
+            <text>共 {{ waybill.list.length }} 项</text>
+          </view>
+          <text>下拉可刷新</text>
+        </view>
         <TmsRouteCard
           v-for="item in waybill.list"
           :key="item.id"
@@ -121,11 +130,19 @@ function navigate(item: Waybill) {
         />
       </view>
       <view v-else class="waybill-page__empty card">
-        <TmsIcon name="waybill" size="72rpx" />
-        <text>{{ waybill.loading ? '正在加载运单' : '当前账号暂无匹配运单' }}</text>
-        <text v-if="!waybill.loading" class="waybill-page__empty-hint">
-          请确认后台订单已绑定到该司机档案
+        <view class="waybill-page__empty-icon">
+          <wd-loading v-if="waybill.loading" type="ring" color="#4f46e5" size="54rpx" />
+          <TmsIcon v-else name="waybill" size="62rpx" />
+        </view>
+        <text class="waybill-page__empty-title">
+          {{ waybill.loading ? '正在同步运输任务' : '当前筛选下暂无任务' }}
         </text>
+        <text class="waybill-page__empty-hint">
+          {{ waybill.loading ? '请稍候，正在获取最新运单数据' : '可切换任务状态，或确认后台订单已绑定当前司机' }}
+        </text>
+        <wd-button v-if="!waybill.loading" class="waybill-page__empty-action" type="text" @click="refreshList">
+          重新同步
+        </wd-button>
       </view>
       <view v-if="showListLoading" class="waybill-page__list-loading">
         <wd-loading type="ring" color="#3763f4" size="32rpx" />
@@ -139,7 +156,9 @@ function navigate(item: Waybill) {
 
 <style scoped lang="scss">
 .waybill-page {
-  padding-bottom: 150rpx;
+  height: 100vh;
+  padding-bottom: 0;
+  overflow: hidden;
 }
 
 .waybill-page__header {
@@ -147,14 +166,14 @@ function navigate(item: Waybill) {
   top: 0;
   z-index: 10;
   background: #fff;
-  box-shadow: 0 6rpx 20rpx rgba(40, 45, 54, 0.04);
+  box-shadow: 0 10rpx 30rpx rgba(32, 40, 66, 0.08);
 }
 
 .waybill-page__title-row {
-  height: 184rpx;
-  padding: calc(48rpx + env(safe-area-inset-top)) 30rpx 30rpx;
+  min-height: 190rpx;
+  padding: calc(42rpx + env(safe-area-inset-top)) 32rpx 30rpx;
   color: #fff;
-  background: var(--tms-primary);
+  background: linear-gradient(135deg, #292266 0%, #4f46e5 56%, #2563eb 118%);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -170,9 +189,17 @@ function navigate(item: Waybill) {
 
 .waybill-page__title {
   display: block;
+  margin-top: 7rpx;
   font-size: 36rpx;
   font-weight: 800;
   line-height: 1.12;
+}
+
+.waybill-page__eyebrow {
+  font-size: 20rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.76;
 }
 
 .waybill-page__subtitle {
@@ -206,18 +233,18 @@ function navigate(item: Waybill) {
 }
 
 .waybill-page__tabs {
-  padding: 16rpx 30rpx 18rpx;
+  padding: 18rpx 28rpx 20rpx;
   background: #fff;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14rpx;
+  gap: 12rpx;
 }
 
 .waybill-page__tab {
-  height: 64rpx;
+  height: 62rpx;
   border-radius: 999rpx;
   color: #505867;
-  background: #f7f8fb;
+  background: #f4f6fa;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -228,7 +255,8 @@ function navigate(item: Waybill) {
 
 .waybill-page__tab--active {
   color: #fff;
-  background: var(--tms-primary);
+  background: #4f46e5;
+  box-shadow: 0 10rpx 20rpx rgba(79, 70, 229, 0.18);
 }
 
 .waybill-page__tab--loading {
@@ -251,7 +279,7 @@ function navigate(item: Waybill) {
 
 .waybill-page__list {
   position: relative;
-  height: calc(100vh - 252rpx - env(safe-area-inset-bottom));
+  height: calc(100vh - 272rpx - env(safe-area-inset-bottom));
 }
 
 .waybill-page__list-loading {
@@ -262,13 +290,13 @@ function navigate(item: Waybill) {
   z-index: 2;
   height: 68rpx;
   border-radius: 12rpx;
-  color: var(--tms-primary);
+  color: #4f46e5;
   background: rgba(255, 255, 255, 0.86);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 700;
   box-shadow: 0 8rpx 24rpx rgba(40, 45, 54, 0.05);
   pointer-events: none;
@@ -281,29 +309,78 @@ function navigate(item: Waybill) {
 }
 
 .waybill-page__stack {
-  padding: 24rpx 30rpx 172rpx;
+  padding: 24rpx 28rpx 184rpx;
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  gap: 20rpx;
+}
+
+.waybill-page__list-head {
+  padding: 2rpx 4rpx 4rpx;
+  color: #748096;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20rpx;
+  font-size: 21rpx;
+}
+
+.waybill-page__list-head > view {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+}
+
+.waybill-page__list-head > view text:first-child {
+  color: #172033;
+  font-size: 27rpx;
+  font-weight: 800;
 }
 
 .waybill-page__empty {
-  margin: 48rpx 30rpx;
-  min-height: 300rpx;
-  color: var(--tms-muted);
+  margin: 48rpx 28rpx;
+  min-height: 360rpx;
+  padding: 44rpx 36rpx;
+  color: #748096;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18rpx;
-  font-size: 28rpx;
+  gap: 16rpx;
   text-align: center;
+}
+
+.waybill-page__empty-icon {
+  width: 112rpx;
+  height: 112rpx;
+  margin-bottom: 8rpx;
+  border-radius: 34rpx;
+  color: #4f46e5;
+  background: #eef2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waybill-page__empty-title {
+  color: #172033;
+  font-size: 29rpx;
+  font-weight: 800;
 }
 
 .waybill-page__empty-hint {
   padding: 0 38rpx;
-  color: var(--tms-light);
+  color: #9aa5b7;
   font-size: 24rpx;
   line-height: 1.5;
+}
+
+.waybill-page__empty-action {
+  min-width: 0;
+  margin-top: 8rpx;
+  padding: 0 20rpx;
+  color: #4f46e5;
+  font-size: 24rpx;
+  font-weight: 700;
 }
 </style>

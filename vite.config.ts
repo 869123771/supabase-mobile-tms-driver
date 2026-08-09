@@ -24,5 +24,22 @@ const noJekyllPlugin = () => ({
 export default defineConfig({
   // 使用相对资源路径，兼容 https://<user>.github.io/<repository>/ 形式的 GitHub Pages。
   base: process.env.UNI_PLATFORM === 'h5' ? './' : '/',
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // wot-design-uni 1.x 仍使用 Sass 旧式 @import 与全局函数；只屏蔽依赖层弃用提示。
+        quietDeps: true,
+        silenceDeprecations: ['import', 'global-builtin']
+      }
+    }
+  },
+  build: {
+    rolldownOptions: {
+      checks: {
+        // 关闭仅用于性能诊断的插件耗时提示，构建错误仍会正常抛出。
+        pluginTimings: false
+      }
+    }
+  },
   plugins: [uni(), noJekyllPlugin()]
 })

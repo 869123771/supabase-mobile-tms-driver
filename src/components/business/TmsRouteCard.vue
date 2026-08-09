@@ -43,10 +43,20 @@ const deliveryAddress = computed(
 )
 const displayDistanceKm = computed(() => getRouteDistanceKm(props.waybill))
 const displayDurationMin = computed(() => getEstimatedDurationMin(props.waybill))
+const durationLabel = computed(() =>
+  displayDurationMin.value === undefined
+    ? '预计待计算'
+    : `预计${formatDuration(displayDurationMin.value)}`
+)
+const distanceLabel = computed(() =>
+  displayDistanceKm.value === undefined
+    ? '剩余距离待计算'
+    : `剩余距离：${formatKm(displayDistanceKm.value)}`
+)
 const groupStatus = computed(() => {
   const status = props.waybill.status
   if (status === 'pending') return { label: '待处理', tone: 'orange' }
-  if (status === 'signed') return { label: '待签收', tone: 'orange' }
+  if (status === 'signed') return { label: '已签收', tone: 'green' }
   if (status === 'completed') return { label: '已完成', tone: 'green' }
   if (status === 'cancelled') return { label: '已取消', tone: 'red' }
   return { label: '进行中', tone: 'blue' }
@@ -84,7 +94,7 @@ function open() {
         </view>
         <view class="route-card__meta-item route-card__meta-item--center">
           <TmsIcon name="time" size="26rpx" />
-          <text>预计{{ formatDuration(displayDurationMin) }}</text>
+          <text>{{ durationLabel }}</text>
         </view>
         <view class="route-card__meta-item route-card__meta-item--right">
           <TmsIcon name="box" size="26rpx" />
@@ -175,10 +185,10 @@ function open() {
       <view v-if="props.variant === 'task'" class="route-card__meta route-card__meta--task">
         <view class="route-card__meta-item">
           <TmsIcon name="time" size="28rpx" />
-          <text>预计{{ formatDuration(displayDurationMin) }}</text>
+          <text>{{ durationLabel }}</text>
         </view>
         <view class="route-card__meta-item route-card__meta-item--right">
-          <text>剩余距离：{{ formatKm(displayDistanceKm) }}</text>
+          <text>{{ distanceLabel }}</text>
         </view>
       </view>
       <view v-else class="route-card__meta">
@@ -188,7 +198,7 @@ function open() {
         </view>
         <view class="route-card__meta-item route-card__meta-item--center">
           <TmsIcon name="time" size="28rpx" />
-          <text>预计{{ formatDuration(displayDurationMin) }}</text>
+          <text>{{ durationLabel }}</text>
         </view>
         <view class="route-card__meta-item route-card__meta-item--right">
           <TmsIcon name="box" size="28rpx" />
@@ -204,13 +214,14 @@ function open() {
 
 <style scoped lang="scss">
 .route-card {
-  padding: 26rpx;
-  border-radius: 12rpx;
+  padding: 28rpx;
+  border-radius: 24rpx;
 }
 
 .route-card--task {
-  padding: 30rpx;
-  border-radius: 16rpx;
+  padding: 32rpx;
+  border-radius: 28rpx;
+  box-shadow: 0 18rpx 46rpx rgba(34, 39, 91, 0.12);
 }
 
 .route-card--compact {
@@ -220,12 +231,12 @@ function open() {
 }
 
 .route-card--list {
-  padding: 28rpx 28rpx 24rpx;
-  border-radius: 10rpx;
+  padding: 28rpx;
+  border-radius: 24rpx;
 }
 
 .route-card__section-head {
-  margin-bottom: 18rpx;
+  margin-bottom: 22rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -233,9 +244,9 @@ function open() {
 }
 
 .route-card__section-title {
-  color: var(--tms-text);
-  font-size: 31rpx;
-  font-weight: 700;
+  color: #172033;
+  font-size: 30rpx;
+  font-weight: 800;
   line-height: 1.25;
 }
 
@@ -255,39 +266,39 @@ function open() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24rpx;
-  font-weight: 600;
+  font-size: 22rpx;
+  font-weight: 700;
   line-height: 1;
 }
 
 .route-card__group-status--blue {
-  color: var(--tms-primary);
-  background: #edf2ff;
+  color: #4f46e5;
+  background: #eef2ff;
 }
 
 .route-card__group-status--green {
-  color: var(--tms-green);
-  background: #e9f9f1;
+  color: #059669;
+  background: #ecfdf5;
 }
 
 .route-card__group-status--orange {
-  color: var(--tms-orange);
-  background: #fff4ea;
+  color: #d97706;
+  background: #fffbeb;
 }
 
 .route-card__group-status--red {
-  color: var(--tms-red);
-  background: #fff0f0;
+  color: #dc2626;
+  background: #fef2f2;
 }
 
 .route-card__route {
   min-width: 0;
-  color: var(--tms-text);
+  color: #172033;
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  font-size: 30rpx;
-  font-weight: 700;
+  gap: 14rpx;
+  font-size: 31rpx;
+  font-weight: 800;
   line-height: 1.2;
 }
 
@@ -295,7 +306,7 @@ function open() {
 .route-card__route :deep(.tms-icon__svg),
 .route-card__route :deep(.wd-icon) {
   flex: 0 0 auto;
-  color: var(--tms-primary);
+  color: #4f46e5;
 }
 
 .route-card__route text {
@@ -305,32 +316,33 @@ function open() {
 }
 
 .route-card__no-row {
-  margin-top: 10rpx;
-  color: var(--tms-muted);
+  margin-top: 12rpx;
+  color: #748096;
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx 22rpx;
-  font-size: 23rpx;
+  font-size: 22rpx;
   line-height: 1.35;
 }
 
 .route-card__points {
   position: relative;
-  margin-top: 18rpx;
-  padding: 18rpx 92rpx 18rpx 18rpx;
-  border-radius: 10rpx;
-  background: var(--tms-panel);
+  margin-top: 22rpx;
+  padding: 22rpx 92rpx 22rpx 20rpx;
+  border: 1rpx solid #e8ecf3;
+  border-radius: 18rpx;
+  background: linear-gradient(145deg, #fbfcff, #f6f8fc);
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
 .route-card__points::before {
   content: '';
   position: absolute;
-  left: 34rpx;
-  top: 56rpx;
-  bottom: 56rpx;
+  left: 37rpx;
+  top: 62rpx;
+  bottom: 62rpx;
   border-left: 2rpx dashed #d8dfed;
 }
 
@@ -344,9 +356,10 @@ function open() {
 }
 
 .route-card__dot {
-  flex: 0 0 34rpx;
-  width: 34rpx;
-  height: 34rpx;
+  flex: 0 0 36rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border: 4rpx solid #fff;
   border-radius: 50%;
   color: #fff;
   display: inline-flex;
@@ -363,11 +376,13 @@ function open() {
 }
 
 .route-card__dot--start {
-  background: var(--tms-green);
+  background: #10b981;
+  box-shadow: 0 0 0 5rpx rgba(16, 185, 129, 0.1);
 }
 
 .route-card__dot--end {
-  background: #ff944d;
+  background: #f59e0b;
+  box-shadow: 0 0 0 5rpx rgba(245, 158, 11, 0.1);
 }
 
 .route-card__point-main {
@@ -378,28 +393,29 @@ function open() {
 }
 
 .route-card__address {
-  color: #4b5566;
+  color: #4b5870;
   font-size: 24rpx;
+  font-weight: 600;
   line-height: 1.35;
 }
 
 .route-card__time {
-  color: var(--tms-muted);
+  color: #748096;
   font-size: 22rpx;
   line-height: 1.3;
 }
 
 .route-card__nav {
   position: absolute;
-  right: 18rpx;
-  top: 18rpx;
+  right: 20rpx;
+  top: 20rpx;
 }
 
 .route-card__nav-button {
   width: 50rpx;
   height: 50rpx;
   padding: 0;
-  color: var(--tms-muted);
+  color: #748096;
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -422,11 +438,12 @@ function open() {
 }
 
 .route-card__nav-icon {
-  width: 38rpx;
-  height: 38rpx;
+  width: 42rpx;
+  height: 42rpx;
   border-radius: 50%;
   color: #fff;
-  background: var(--tms-primary);
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  box-shadow: 0 8rpx 16rpx rgba(79, 70, 229, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -458,7 +475,7 @@ function open() {
 }
 
 .route-card__meta {
-  margin: 18rpx 0 24rpx;
+  margin: 20rpx 0 24rpx;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12rpx;
@@ -471,11 +488,12 @@ function open() {
 
 .route-card__meta-item {
   min-width: 0;
-  color: var(--tms-muted);
+  color: #748096;
   display: flex;
   align-items: center;
   gap: 6rpx;
-  font-size: 23rpx;
+  font-size: 22rpx;
+  font-weight: 600;
 }
 
 .route-card__meta-item--right {
@@ -537,7 +555,7 @@ function open() {
 
 .route-card__compact-side {
   flex: 0 0 auto;
-  color: var(--tms-light);
+  color: #9aa5b7;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -548,15 +566,15 @@ function open() {
 }
 
 .route-card--list .route-card__points {
-  margin-top: 16rpx;
-  padding: 18rpx 18rpx;
+  margin-top: 18rpx;
+  padding: 20rpx;
   gap: 14rpx;
 }
 
 .route-card--list .route-card__points::before {
-  left: 34rpx;
-  top: 50rpx;
-  bottom: 50rpx;
+  left: 37rpx;
+  top: 56rpx;
+  bottom: 56rpx;
 }
 
 .route-card--list .route-card__meta {

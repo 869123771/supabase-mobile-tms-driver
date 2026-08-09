@@ -487,7 +487,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <view class="route-map">
+  <view class="route-map" :class="{ 'route-map--empty': points.length < 2 }">
     <button class="route-map__back" hover-class="none" @tap="back">
       <TmsIcon name="back" size="38rpx" />
     </button>
@@ -498,7 +498,7 @@ onBeforeUnmount(() => {
       ref="amapRef"
       class="route-map__canvas route-map__amap"
     />
-    <view v-if="!routeReady" class="route-map__planning">
+    <view v-if="points.length >= 2 && !routeReady" class="route-map__planning">
       {{ routeError || '正在规划车行路线' }}
     </view>
     <!-- #endif -->
@@ -518,7 +518,13 @@ onBeforeUnmount(() => {
     />
     <!-- #endif -->
 
-    <view v-if="points.length < 2" class="route-map__empty">暂无路线坐标</view>
+    <view v-if="points.length < 2" class="route-map__empty">
+      <view class="route-map__empty-icon">
+        <TmsIcon name="location" size="34rpx" />
+      </view>
+      <text class="route-map__empty-title">路线待补充</text>
+      <text class="route-map__empty-hint">暂无可用经纬度，可继续查看站点地址</text>
+    </view>
   </view>
 </template>
 
@@ -528,6 +534,13 @@ onBeforeUnmount(() => {
   height: 520rpx;
   overflow: hidden;
   background: #dfe8f2;
+}
+
+.route-map--empty {
+  height: 360rpx;
+  background:
+    radial-gradient(circle at 78% 20%, rgba(79, 70, 229, 0.12), transparent 42%),
+    linear-gradient(145deg, #edf2fa 0%, #e4ebf5 100%);
 }
 
 .route-map__canvas {
@@ -617,11 +630,11 @@ onBeforeUnmount(() => {
 }
 
 .route-map__marker--start {
-  background: var(--tms-green);
+  background: #10b981;
 }
 
 .route-map__marker--end {
-  background: var(--tms-orange);
+  background: #f59e0b;
 }
 
 .route-map__back {
@@ -650,12 +663,39 @@ onBeforeUnmount(() => {
   left: 50%;
   top: 50%;
   z-index: 2;
+  width: 430rpx;
   transform: translate(-50%, -50%);
-  padding: 12rpx 20rpx;
-  border-radius: 999rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
   color: #667085;
-  background: rgba(255, 255, 255, 0.9);
-  font-size: 24rpx;
+  text-align: center;
+}
+
+.route-map__empty-icon {
+  width: 68rpx;
+  height: 68rpx;
+  margin-bottom: 4rpx;
+  border: 1rpx solid rgba(79, 70, 229, 0.14);
+  border-radius: 22rpx;
+  color: #4f46e5;
+  background: rgba(255, 255, 255, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10rpx 26rpx rgba(79, 70, 229, 0.1);
+}
+
+.route-map__empty-title {
+  color: #344054;
+  font-size: 25rpx;
+  font-weight: 800;
+}
+
+.route-map__empty-hint {
+  font-size: 21rpx;
+  line-height: 1.45;
 }
 </style>
 

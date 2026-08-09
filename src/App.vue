@@ -21,12 +21,15 @@ onShow(() => {
 <style lang="scss">
 page {
   min-height: 100%;
-  background: var(--tms-bg);
-  color: var(--tms-text);
+  background: #f4f6fa;
+  color: #172033;
   font-family:
     'PingFang SC', 'HarmonyOS Sans SC', MiSans, 'Noto Sans SC', -apple-system, BlinkMacSystemFont,
     'Segoe UI', 'Microsoft YaHei', sans-serif;
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 view,
@@ -39,5 +42,10 @@ textarea {
 
 button::after {
   border: 0;
+}
+
+button,
+[role='button'] {
+  -webkit-tap-highlight-color: transparent;
 }
 </style>

@@ -7,7 +7,7 @@ const props = defineProps<{
   status: WaybillStatus
 }>()
 
-const steps = ['接单', '装货', '运输中', '卸货', '待签收', '完成']
+const steps = ['接单', '装货', '运输中', '卸货', '签收', '完成']
 const currentStep = computed(() => getStatusStep(props.status))
 </script>
 
@@ -58,8 +58,8 @@ const currentStep = computed(() => getStatusStep(props.status))
 }
 
 .progress__label {
-  color: var(--tms-muted);
-  font-size: 25rpx;
+  color: #748096;
+  font-size: 22rpx;
   text-align: center;
   line-height: 1.2;
 }
