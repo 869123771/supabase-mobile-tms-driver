@@ -165,7 +165,7 @@ function preview(url?: string) {
   background:
     radial-gradient(circle at 92% 0, rgba(79, 70, 229, 0.1), transparent 220rpx),
     #fff;
-  box-shadow: 0 18rpx 46rpx rgba(34, 39, 91, 0.12);
+  box-shadow: var(--tms-shadow-md);
 }
 
 .vehicle-card__eyebrow {
@@ -196,6 +196,7 @@ function preview(url?: string) {
   height: 94rpx;
   border-radius: 18rpx;
   background: #f7f9fc;
+  box-shadow: 0 10rpx 24rpx rgba(40, 52, 80, 0.1);
 }
 
 .vehicle-card__info {
@@ -292,12 +293,18 @@ function preview(url?: string) {
   border: 1rpx solid #e8ecf3;
   border-radius: 18rpx;
   color: #748096;
-  background: #f7f9fc;
+  background: linear-gradient(145deg, #f9fafc, #f4f7fb);
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 18rpx;
   font-size: 26rpx;
+}
+
+
+.doc-card__item:active {
+  border-color: rgba(79, 70, 229, 0.28);
+  background: #f2f4ff;
 }
 
 .doc-card__icon {

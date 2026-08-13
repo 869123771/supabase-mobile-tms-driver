@@ -29,6 +29,7 @@ function go(item: (typeof items)[number]) {
       :class="{ 'bottom-nav__item--active': item.key === props.active }"
       @tap="go(item)"
     >
+      <view v-if="item.key === props.active" class="bottom-nav__active-pill" />
       <view class="bottom-nav__icon-box">
         <TmsIcon :name="item.icon" size="42rpx" :active="item.key === props.active" />
       </view>
@@ -44,20 +45,22 @@ function go(item: (typeof items)[number]) {
   right: 18rpx;
   bottom: calc(14rpx + env(safe-area-inset-bottom));
   z-index: 20;
-  height: 116rpx;
-  padding: 10rpx 22rpx;
+  height: 122rpx;
+  padding: 10rpx 18rpx;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1rpx solid #e5e9f1;
-  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.91);
+  border: 1rpx solid rgba(224, 230, 240, 0.9);
+  border-radius: 32rpx;
+  backdrop-filter: blur(28rpx) saturate(150%);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  box-shadow: 0 18rpx 50rpx rgba(31, 40, 66, 0.16);
+  box-shadow: 0 20rpx 54rpx rgba(29, 39, 66, 0.17), 0 2rpx 0 rgba(255, 255, 255, 0.9) inset;
 }
 
 .bottom-nav__item {
+  position: relative;
   min-width: 0;
-  color: #9aa5b7;
+  color: #929daf;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -70,10 +73,21 @@ function go(item: (typeof items)[number]) {
 
 .bottom-nav__item--active {
   color: #4f46e5;
-  font-weight: 700;
+  font-weight: 800;
+}
+
+.bottom-nav__active-pill {
+  position: absolute;
+  top: 3rpx;
+  width: 74rpx;
+  height: 60rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(180deg, #eef2ff, #e8edff);
 }
 
 .bottom-nav__icon-box {
+  position: relative;
+  z-index: 1;
   width: 62rpx;
   height: 56rpx;
   border-radius: 18rpx;
@@ -85,6 +99,12 @@ function go(item: (typeof items)[number]) {
 }
 
 .bottom-nav__item--active .bottom-nav__icon-box {
-  background: #eef2ff;
+  background: transparent;
+}
+
+
+.bottom-nav__item text {
+  position: relative;
+  z-index: 1;
 }
 </style>

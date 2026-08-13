@@ -216,12 +216,20 @@ function open() {
 .route-card {
   padding: 28rpx;
   border-radius: 24rpx;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.route-card:active {
+  transform: scale(0.993);
 }
 
 .route-card--task {
   padding: 32rpx;
   border-radius: 28rpx;
-  box-shadow: 0 18rpx 46rpx rgba(34, 39, 91, 0.12);
+  box-shadow: var(--tms-shadow-md);
 }
 
 .route-card--compact {
@@ -331,7 +339,9 @@ function open() {
   padding: 22rpx 92rpx 22rpx 20rpx;
   border: 1rpx solid #e8ecf3;
   border-radius: 18rpx;
-  background: linear-gradient(145deg, #fbfcff, #f6f8fc);
+  background:
+    radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.04), transparent 180rpx),
+    linear-gradient(145deg, #fbfcff, #f5f7fb);
   display: flex;
   flex-direction: column;
   gap: 20rpx;
@@ -442,7 +452,7 @@ function open() {
   height: 42rpx;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  background: var(--tms-primary-gradient);
   box-shadow: 0 8rpx 16rpx rgba(79, 70, 229, 0.22);
   display: flex;
   align-items: center;

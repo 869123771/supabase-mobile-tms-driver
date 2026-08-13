@@ -27,6 +27,7 @@ function back() {
 
 <template>
   <view class="top-bar">
+    <view class="top-bar__glow" />
     <button v-if="showBack" class="top-bar__icon" hover-class="none" @tap="back">
       <TmsIcon name="back" size="38rpx" />
     </button>
@@ -45,17 +46,45 @@ function back() {
 
 <style scoped lang="scss">
 .top-bar {
+  position: relative;
   min-height: 176rpx;
   padding: calc(34rpx + env(safe-area-inset-top)) 30rpx 28rpx;
   color: #fff;
-  background: linear-gradient(135deg, #292266 0%, #4f46e5 56%, #2563eb 118%);
+  overflow: hidden;
+  background: var(--tms-hero-gradient);
   display: grid;
   grid-template-columns: 64rpx 1fr 64rpx;
   align-items: center;
   gap: 18rpx;
 }
 
+.top-bar::after {
+  position: absolute;
+  right: -110rpx;
+  top: -170rpx;
+  width: 390rpx;
+  height: 390rpx;
+  content: '';
+  border: 1rpx solid rgba(255, 255, 255, 0.11);
+  border-radius: 50%;
+  box-shadow: 0 0 0 58rpx rgba(255, 255, 255, 0.025);
+}
+
+.top-bar__glow {
+  position: absolute;
+  left: 48%;
+  bottom: -170rpx;
+  width: 420rpx;
+  height: 260rpx;
+  border-radius: 50%;
+  background: rgba(82, 146, 255, 0.2);
+  filter: blur(72rpx);
+  pointer-events: none;
+}
+
 .top-bar__copy {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -93,6 +122,8 @@ function back() {
 
 .top-bar__icon,
 .top-bar__spacer {
+  position: relative;
+  z-index: 1;
   width: 64rpx;
   height: 64rpx;
 }
@@ -100,7 +131,8 @@ function back() {
 .top-bar__icon {
   padding: 0;
   color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.13);
+  backdrop-filter: blur(16rpx);
   border: 1rpx solid rgba(255, 255, 255, 0.18);
   border-radius: 50%;
   display: flex;

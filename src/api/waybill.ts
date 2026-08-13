@@ -1,11 +1,24 @@
 import {
   keysToCamel,
   keysToSnake,
+  removeStorageObjects,
   request,
+  rpc,
   restPath,
   uploadFileToStorage
 } from './supabase'
-import type { ProofFile, Waybill, WaybillEvent, WaybillProof, WaybillStatus } from './types'
+import type {
+  CargoOperationCompletePayload,
+  CargoOperationContext,
+  CargoOperationLocation,
+  CargoOperationType,
+  ProofFile,
+  Waybill,
+  WaybillEvent,
+  WaybillExecutionContext,
+  WaybillProof,
+  WaybillStatus
+} from './types'
 
 const WAYBILL_SELECT =
   '*,driver:tms_driver(id,tenant_id,carrier_id,driver_name,phone,gender,id_card_no,license_type,driver_license_front_url,driver_license_back_url,enabled)'
@@ -56,8 +69,22 @@ interface OrderRouteSnapshot {
   plannedArrivalTime?: string
 }
 
-const activeStatuses: WaybillStatus[] = ['accepted', 'loading', 'transporting', 'unloading', 'signed']
-const driverActionEvents = ['accepted', 'loaded', 'departed', 'arrived', 'signed', 'completed', 'cancelled']
+const activeStatuses: WaybillStatus[] = [
+  'accepted',
+  'loading',
+  'transporting',
+  'unloading',
+  'signed'
+]
+const driverActionEvents = [
+  'accepted',
+  'loaded',
+  'departed',
+  'arrived',
+  'signed',
+  'completed',
+  'cancelled'
+]
 const driverActionPayloads = [
   'accept',
   'upload_pickup',
@@ -65,6 +92,8 @@ const driverActionPayloads = [
   'confirm_arrival',
   'complete_unload',
   'submit_signature',
+  'complete_unloading',
+  'sign',
   'complete',
   'cancel'
 ]
@@ -112,7 +141,10 @@ async function listWaybillsByDriverProfile(token: string, options: ListWaybillOp
     const rows = await request<unknown[]>(
       restPath(
         'tms_waybill',
-        buildWaybillDriverQuery(options, `driver.phone=eq.${encodeURIComponent(options.driverPhone)}`)
+        buildWaybillDriverQuery(
+          options,
+          `driver.phone=eq.${encodeURIComponent(options.driverPhone)}`
+        )
       ),
       { token }
     )
@@ -405,7 +437,13 @@ async function listDriverProgressPatches(token: string, ids: string[]) {
           arrivedAt: item.event_time
         })
       }
-      if (action === 'complete_unload' || action === 'submit_signature') {
+      if (action === 'complete_unloading') {
+        mergeProgressPatch(patches, item.waybill_id, {
+          status: 'unloading',
+          unloadedAt: item.event_time
+        })
+      }
+      if (action === 'complete_unload' || action === 'submit_signature' || action === 'sign') {
         mergeProgressPatch(patches, item.waybill_id, {
           status: 'signed',
           unloadedAt: item.event_time
@@ -435,12 +473,6 @@ async function listDriverProgressPatches(token: string, ids: string[]) {
           loadedAt: item.uploaded_at
         })
       }
-      if (item.proof_type === 'delivery_photo' || item.proof_type === 'receipt') {
-        mergeProgressPatch(patches, item.waybill_id, {
-          status: 'signed',
-          unloadedAt: item.uploaded_at
-        })
-      }
     }
   }
 
@@ -451,11 +483,18 @@ export async function normalizeAssignedWaybillStatuses(
   token: string,
   options: ListWaybillOptions = {}
 ) {
-  const waybills = await listWaybills(token, { ...options, group: 'all', limit: options.limit || 100 })
+  const waybills = await listWaybills(token, {
+    ...options,
+    group: 'all',
+    limit: options.limit || 100
+  })
   const candidates = waybills.filter((item) => activeStatuses.includes(item.status))
   if (!candidates.length) return []
 
-  const progressPatches = await listDriverProgressPatches(token, candidates.map((item) => item.id))
+  const progressPatches = await listDriverProgressPatches(
+    token,
+    candidates.map((item) => item.id)
+  )
   const progressedCandidates = candidates.filter((item) => {
     const patch = progressPatches.get(item.id)
     return Boolean(patch && getStatusRank(patch.status) > getStatusRank(item.status))
@@ -489,11 +528,7 @@ export async function getWaybill(token: string, id: string) {
   return enrichWaybillRouteFromOrder(token, waybill)
 }
 
-export async function updateWaybill(
-  token: string,
-  id: string,
-  patch: Partial<Waybill>
-) {
+export async function updateWaybill(token: string, id: string, patch: Partial<Waybill>) {
   const rows = await request<unknown[]>(
     restPath('tms_waybill', `?id=eq.${id}&select=${WAYBILL_SELECT}`),
     {
@@ -532,15 +567,12 @@ export async function createWaybillEvent(
     location_text: `${waybill.originCity} - ${waybill.destinationCity}`,
     payload: payload || {}
   }
-  const rows = await request<unknown[]>(
-    restPath('tms_waybill_event', `?select=${EVENT_SELECT}`),
-    {
-      method: 'POST',
-      token,
-      body,
-      headers: { Prefer: 'return=representation' }
-    }
-  )
+  const rows = await request<unknown[]>(restPath('tms_waybill_event', `?select=${EVENT_SELECT}`), {
+    method: 'POST',
+    token,
+    body,
+    headers: { Prefer: 'return=representation' }
+  })
   return keysToCamel<WaybillEvent[]>(rows)[0] || null
 }
 
@@ -572,10 +604,26 @@ function createObjectPath(waybillId: string, proofType: string, filePath: string
   return `waybill-proofs/${waybillId}/${proofType}-${Date.now()}-${nonce}.${ext}`
 }
 
-function toDbProofType(proofType: string) {
-  if (proofType === 'pickup') return 'pickup_photo'
-  if (proofType === 'delivery') return 'delivery_photo'
-  return proofType
+type DbWaybillProofType = 'pickup_photo' | 'delivery_photo' | 'receipt' | 'other'
+
+const DB_PROOF_TYPE_MAP: Record<string, DbWaybillProofType> = {
+  pickup: 'pickup_photo',
+  pickup_photo: 'pickup_photo',
+  loading_photo: 'pickup_photo',
+  departure: 'other',
+  delivery: 'delivery_photo',
+  delivery_photo: 'delivery_photo',
+  unloading_photo: 'delivery_photo',
+  return: 'other',
+  receipt: 'receipt',
+  loading_ticket: 'other',
+  unloading_ticket: 'other',
+  signature_confirmation: 'receipt',
+  other: 'other'
+}
+
+function toDbProofType(proofType: string): DbWaybillProofType {
+  return DB_PROOF_TYPE_MAP[proofType] || 'other'
 }
 
 export async function createWaybillProof(
@@ -595,15 +643,12 @@ export async function createWaybillProof(
     uploaded_at: new Date().toISOString(),
     uploader_name: uploaderName
   }
-  const rows = await request<unknown[]>(
-    restPath('tms_waybill_proof', `?select=${PROOF_SELECT}`),
-    {
-      method: 'POST',
-      token,
-      body,
-      headers: { Prefer: 'return=representation' }
-    }
-  )
+  const rows = await request<unknown[]>(restPath('tms_waybill_proof', `?select=${PROOF_SELECT}`), {
+    method: 'POST',
+    token,
+    body,
+    headers: { Prefer: 'return=representation' }
+  })
   return keysToCamel<WaybillProof[]>(rows)[0] || null
 }
 
@@ -629,10 +674,15 @@ export async function uploadWaybillProofFiles(
       url: uploaded.publicUrl,
       fileType: `image/${getExt(filePath).replace('jpg', 'jpeg')}`
     }
-    files.push(file)
     try {
       await createWaybillProof(token, waybill, proofType, file, uploaderName)
+      files.push(file)
     } catch (error) {
+      try {
+        await removeStorageObjects('attachments', [uploaded.path], token)
+      } catch (cleanupError) {
+        console.warn('failed to clean up untracked waybill proof', cleanupError)
+      }
       throw new Error(
         error instanceof Error ? `保存照片记录失败：${error.message}` : '保存照片记录失败'
       )
@@ -640,4 +690,123 @@ export async function uploadWaybillProofFiles(
   }
 
   return files
+}
+
+export async function getCargoOperationContext(
+  token: string,
+  waybillId: string,
+  operationType: CargoOperationType
+) {
+  return rpc<CargoOperationContext>(token, 'tms_get_waybill_cargo_operation_context', {
+    p_waybill_id: waybillId,
+    p_operation_type: operationType
+  })
+}
+
+export async function checkInCargoOperation(
+  token: string,
+  waybillId: string,
+  operationType: CargoOperationType,
+  location: CargoOperationLocation,
+  outsideReason?: string | null,
+  automatic = false
+) {
+  return rpc<CargoOperationContext>(token, 'tms_check_in_waybill_cargo_operation', {
+    p_waybill_id: waybillId,
+    p_operation_type: operationType,
+    p_longitude: location.longitude,
+    p_latitude: location.latitude,
+    p_accuracy_m: location.accuracyM ?? null,
+    p_location_text: location.locationText || null,
+    p_outside_reason: outsideReason || null,
+    p_automatic: automatic
+  })
+}
+
+export async function completeCargoOperation(
+  token: string,
+  waybillId: string,
+  operationType: CargoOperationType,
+  payload: CargoOperationCompletePayload
+) {
+  return rpc<CargoOperationContext>(token, 'tms_complete_waybill_cargo_operation', {
+    p_waybill_id: waybillId,
+    p_operation_type: operationType,
+    p_weight_ton: payload.weightTon,
+    p_photo_urls: payload.photoUrls,
+    p_weighbridge_ticket_urls: payload.weighbridgeTicketUrls,
+    p_remark: payload.remark || null
+  })
+}
+
+export async function getWaybillExecutionContext(token: string, waybillId: string) {
+  return rpc<WaybillExecutionContext>(token, 'tms_get_waybill_execution_context', {
+    p_waybill_id: waybillId
+  })
+}
+
+export async function acceptAssignedWaybill(token: string, waybillId: string) {
+  return rpc<WaybillExecutionContext>(token, 'tms_accept_assigned_waybill', {
+    p_waybill_id: waybillId
+  })
+}
+
+export async function recordWaybillDeparture(
+  token: string,
+  waybillId: string,
+  departureTime: string,
+  odometerKm: number,
+  photoUrls: string[],
+  remark?: string | null
+) {
+  return rpc<WaybillExecutionContext>(token, 'tms_record_waybill_departure', {
+    p_waybill_id: waybillId,
+    p_departure_time: departureTime,
+    p_odometer_km: odometerKm,
+    p_photo_urls: photoUrls,
+    p_remark: remark || null
+  })
+}
+
+export async function signWaybill(
+  token: string,
+  waybillId: string,
+  signedAt: string,
+  signerName: string,
+  receiptUrls: string[],
+  signatureUrls: string[],
+  remark?: string | null
+) {
+  return rpc<WaybillExecutionContext>(token, 'tms_sign_waybill', {
+    p_waybill_id: waybillId,
+    p_signed_at: signedAt,
+    p_signer_name: signerName,
+    p_receipt_urls: receiptUrls,
+    p_signature_urls: signatureUrls,
+    p_remark: remark || null
+  })
+}
+
+export async function completeWaybillExecution(
+  token: string,
+  waybillId: string,
+  returnTime: string,
+  returnOdometerKm: number,
+  photoUrls: string[],
+  remark?: string | null
+) {
+  return rpc<WaybillExecutionContext>(token, 'tms_complete_waybill_execution', {
+    p_waybill_id: waybillId,
+    p_return_time: returnTime,
+    p_return_odometer_km: returnOdometerKm,
+    p_photo_urls: photoUrls,
+    p_remark: remark || null
+  })
+}
+
+export async function cancelAssignedWaybill(token: string, waybillId: string, reason: string) {
+  return rpc<WaybillExecutionContext>(token, 'tms_cancel_assigned_waybill', {
+    p_waybill_id: waybillId,
+    p_reason: reason
+  })
 }

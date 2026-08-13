@@ -29,6 +29,12 @@
   },
   "mp-weixin": {
     "appid": "",
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于司机到达装卸货地点时进行定位打卡"
+      }
+    },
+    "requiredPrivateInfos": ["getLocation"],
     "setting": {
       "urlCheck": false,
       "es6": true,

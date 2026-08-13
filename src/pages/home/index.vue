@@ -4,12 +4,12 @@ import { onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
 import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
+import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
 import { useProfileStore } from '@/stores/profile'
 import { useWaybillStore } from '@/stores/waybill'
 import { useDictionaryStore } from '@/stores/dictionary'
 import { FALLBACK_TRUCK_IMAGE } from '@/utils/assets'
-import { chooseImages } from '@/utils/file'
 import { getRouteDistanceKm } from '@/utils/route'
 import { openWaybillNavigation } from '@/utils/navigation'
 import { formatVehicleLoad } from '@/utils/format'
@@ -19,6 +19,8 @@ const profile = useProfileStore()
 const waybill = useWaybillStore()
 const dictionary = useDictionaryStore()
 const refreshing = ref(false)
+const initialized = ref(false)
+const loadError = ref('')
 
 const driver = computed(() => profile.driver)
 const vehicle = computed(() => profile.vehicle)
@@ -45,18 +47,22 @@ const vehicleMetrics = computed(() => [
     value: routeDistanceKm.value === undefined ? '--' : Number(routeDistanceKm.value).toFixed(1),
     unit: routeDistanceKm.value === undefined ? '' : 'km'
   },
-  { label: '运输次数', value: profile.summary?.completedCount ?? 0, unit: '次' },
+  {
+    label: '运输次数',
+    value: profile.summary?.completedCount ?? 0,
+    unit: '次'
+  },
   { label: '燃料', value: fuelTypeLabel.value, unit: '' }
 ])
 
 const taskButtonText = computed(() => {
   const status = task.value?.status
   if (status === 'pending') return '接受任务'
-  if (status === 'accepted') return '上传提货照片'
-  if (status === 'loading') return '确认发车'
-  if (status === 'transporting') return '确认到达'
-  if (status === 'unloading') return '提交回单并确认签收'
-  if (status === 'signed') return '确认完成运单'
+  if (status === 'accepted') return '装货打卡'
+  if (status === 'loading') return '录入发车信息'
+  if (status === 'transporting') return '到达打卡'
+  if (status === 'unloading') return '卸货 / 签收'
+  if (status === 'signed') return '确认完成'
   return '查看详情'
 })
 const taskButtonIcon = computed(() => {
@@ -97,18 +103,21 @@ onShow(() => {
 })
 
 async function refresh() {
+  loadError.value = ''
   refreshing.value = true
   try {
     await profile.load(true)
     await waybill.loadHomeTask()
     await waybill.loadList('all')
   } catch (error) {
+    loadError.value = error instanceof Error ? error.message : '数据加载失败'
     uni.showToast({
       title: error instanceof Error ? error.message : '数据加载失败',
       icon: 'none'
     })
   } finally {
     refreshing.value = false
+    initialized.value = true
   }
 }
 
@@ -131,40 +140,7 @@ function navigate(item?: Waybill) {
 
 async function handleTaskAction() {
   if (!task.value) return
-  try {
-    await waybill.loadDetail(task.value.id)
-    if (task.value.status === 'pending') {
-      await waybill.acceptCurrent()
-    } else if (task.value.status === 'accepted') {
-      const hasPickupProof = waybill.proofs.some((proof) => proof.proofType === 'pickup_photo')
-      const files = hasPickupProof ? [] : await chooseImages(3)
-      if (!hasPickupProof && files.length === 0) return
-      await waybill.uploadPickup(files)
-    } else if (task.value.status === 'loading') {
-      await waybill.confirmDeparture()
-    } else if (task.value.status === 'transporting') {
-      await waybill.confirmArrival()
-    } else if (task.value.status === 'unloading') {
-      const hasDeliveryProof = waybill.proofs.some(
-        (proof) => proof.proofType === 'delivery_photo' || proof.proofType === 'receipt'
-      )
-      const files = hasDeliveryProof ? [] : await chooseImages(3)
-      if (!hasDeliveryProof && files.length === 0) return
-      await waybill.submitSignature(files)
-    } else if (task.value.status === 'signed') {
-      await waybill.completeCurrent()
-    } else {
-      openDetail(task.value.id)
-      return
-    }
-    uni.showToast({ title: '操作成功', icon: 'success' })
-    await refresh()
-  } catch (error) {
-    uni.showToast({
-      title: error instanceof Error ? error.message : '操作失败',
-      icon: 'none'
-    })
-  }
+  openDetail(task.value.id)
 }
 </script>
 
@@ -172,6 +148,7 @@ async function handleTaskAction() {
   <view class="home-page page">
     <view class="home-page__hero">
       <view class="home-page__mesh" />
+      <view class="home-page__ambient" />
       <view class="home-page__top">
         <view class="home-page__identity">
           <view class="home-page__eyebrow">
@@ -184,6 +161,7 @@ async function handleTaskAction() {
         <wd-button
           class="home-page__settings"
           type="icon"
+          aria-label="打开我的页面"
           custom-style="width: 62rpx; min-width: 62rpx; height: 62rpx; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); border: 2rpx solid rgba(255,255,255,0.22); color: #fff;"
           :disabled="refreshing"
           @click="openMine"
@@ -201,7 +179,13 @@ async function handleTaskAction() {
     </view>
 
     <scroll-view scroll-y class="home-page__scroll">
-      <view class="home-page__content">
+      <TmsPageSkeleton
+        v-if="!initialized || (loadError && !profile.summary)"
+        label="正在同步车辆与运输任务…"
+        :error="loadError"
+        @retry="refresh"
+      />
+      <view v-else class="home-page__content">
         <view class="vehicle-card card">
           <view class="vehicle-card__title-row">
             <view>
@@ -243,6 +227,7 @@ async function handleTaskAction() {
             <view class="task-card__button-wrap" @tap.stop>
               <wd-button
                 class="task-card__button"
+                :custom-class="task.status === 'completed' ? 'tms-secondary-action' : 'tms-primary-action'"
                 type="primary"
                 size="large"
                 block
@@ -305,7 +290,7 @@ async function handleTaskAction() {
   position: relative;
   height: 100vh;
   overflow: hidden;
-  background: #f4f6fa;
+  background: var(--tms-bg);
 }
 
 .home-page__hero {
@@ -318,7 +303,7 @@ async function handleTaskAction() {
   padding: calc(54rpx + env(safe-area-inset-top)) 34rpx 104rpx;
   overflow: hidden;
   color: #fff;
-  background: linear-gradient(135deg, #292266 0%, #4f46e5 56%, #2563eb 118%);
+  background: var(--tms-hero-gradient);
   border-bottom-left-radius: 46rpx;
   border-bottom-right-radius: 46rpx;
 }
@@ -345,6 +330,18 @@ async function handleTaskAction() {
     linear-gradient(rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx),
     linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx);
   background-size: 72rpx 72rpx;
+  pointer-events: none;
+}
+
+.home-page__ambient {
+  position: absolute;
+  left: 36%;
+  bottom: -180rpx;
+  width: 520rpx;
+  height: 300rpx;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.22);
+  filter: blur(82rpx);
   pointer-events: none;
 }
 
@@ -474,7 +471,7 @@ async function handleTaskAction() {
 .empty-card {
   padding: 30rpx;
   border-radius: 28rpx;
-  box-shadow: 0 18rpx 46rpx rgba(34, 39, 91, 0.12);
+  box-shadow: var(--tms-shadow-md);
 }
 
 .vehicle-card__title-row {
@@ -538,6 +535,7 @@ async function handleTaskAction() {
   height: 90rpx;
   border-radius: 16rpx;
   background: #f7f9fc;
+  box-shadow: 0 10rpx 24rpx rgba(40, 52, 80, 0.1);
 }
 
 .vehicle-card__info {
@@ -568,14 +566,6 @@ async function handleTaskAction() {
 
 .task-card__button {
   width: 100%;
-  height: 88rpx;
-  padding: 0;
-  border-radius: 16rpx;
-  color: #fff;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
-  box-shadow: 0 14rpx 24rpx rgba(79, 70, 229, 0.2);
-  font-size: 30rpx;
-  font-weight: 800;
 }
 
 .task-card__button-content {
@@ -631,6 +621,17 @@ async function handleTaskAction() {
   margin: 24rpx 0 34rpx;
   padding: 30rpx;
   border-radius: 24rpx;
+}
+
+.todo-card::before {
+  position: absolute;
+  left: 30rpx;
+  top: 0;
+  width: 76rpx;
+  height: 4rpx;
+  content: '';
+  border-radius: 0 0 999rpx 999rpx;
+  background: linear-gradient(90deg, #4f46e5, #3b82f6);
 }
 
 .todo-card__title-row {

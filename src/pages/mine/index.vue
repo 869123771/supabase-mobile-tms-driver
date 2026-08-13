@@ -61,6 +61,7 @@ function logout() {
   <view class="mine-page page safe-bottom">
     <view class="mine-page__hero">
       <view class="mine-page__mesh" />
+      <view class="mine-page__ambient" />
       <view class="mine-page__eyebrow"><text /> 司机档案</view>
       <view class="mine-page__user">
         <image v-if="user?.avatar" class="mine-page__avatar" :src="user.avatar" mode="aspectFill" />
@@ -154,7 +155,7 @@ function logout() {
 .mine-page {
   min-height: 100vh;
   padding-bottom: 190rpx;
-  background: #f4f6fa;
+  background: var(--tms-bg);
 }
 
 .mine-page__hero {
@@ -163,7 +164,7 @@ function logout() {
   padding: calc(46rpx + env(safe-area-inset-top)) 32rpx 100rpx;
   overflow: hidden;
   color: #fff;
-  background: linear-gradient(135deg, #292266 0%, #4f46e5 56%, #2563eb 118%);
+  background: var(--tms-hero-gradient);
 }
 
 .mine-page__mesh {
@@ -174,6 +175,17 @@ function logout() {
     linear-gradient(rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx),
     linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx);
   background-size: 72rpx 72rpx;
+}
+
+.mine-page__ambient {
+  position: absolute;
+  right: -20rpx;
+  bottom: -170rpx;
+  width: 480rpx;
+  height: 300rpx;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.2);
+  filter: blur(78rpx);
 }
 
 .mine-page__eyebrow {
@@ -282,7 +294,7 @@ function logout() {
 }
 
 .mine-card:first-child {
-  box-shadow: 0 18rpx 46rpx rgba(34, 39, 91, 0.12);
+  box-shadow: var(--tms-shadow-md);
 }
 
 .mine-card__metrics {
@@ -355,6 +367,11 @@ function logout() {
   gap: 14rpx;
   font-size: 22rpx;
   font-weight: 600;
+  transition: transform 160ms ease;
+}
+
+.feature-grid__item:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .feature-grid__icon {
@@ -385,17 +402,21 @@ function logout() {
 
 .mine-page__logout {
   width: 100%;
-  height: 88rpx;
+  height: var(--tms-control-height);
   margin-top: 6rpx;
   padding: 0;
   border: 1rpx solid rgba(239, 68, 68, 0.2);
-  border-radius: 16rpx;
+  border-radius: var(--tms-control-radius);
   color: #dc2626;
   background: #fef2f2;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30rpx;
+  font-size: var(--tms-control-font-size);
   font-weight: 800;
+}
+
+.mine-page__logout:active {
+  opacity: 0.82;
 }
 </style>

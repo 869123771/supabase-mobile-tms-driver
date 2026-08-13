@@ -35,9 +35,9 @@ defineProps<{
   min-height: 132rpx;
   padding: 22rpx 14rpx;
   overflow: hidden;
-  border: 1rpx solid #e8ecf3;
-  border-radius: 18rpx;
-  background: linear-gradient(145deg, #ffffff, #fafbff);
+  border: 1rpx solid #e5eaf2;
+  border-radius: 20rpx;
+  background: linear-gradient(150deg, #ffffff 0%, #f6f8ff 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -50,15 +50,15 @@ defineProps<{
   top: 0;
   left: 22rpx;
   right: 22rpx;
-  height: 4rpx;
+  height: 5rpx;
   content: '';
   border-radius: 0 0 999rpx 999rpx;
-  background: #4f46e5;
-  opacity: 0.64;
+  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  opacity: 0.72;
 }
 
 .metric-grid__label {
-  color: #748096;
+  color: #6c7890;
   font-size: 22rpx;
   font-weight: 600;
   line-height: 1.2;

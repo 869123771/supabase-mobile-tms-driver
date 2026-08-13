@@ -32,6 +32,18 @@
       }
     },
     {
+      "path": "pages/waybill/cargo-operation",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/waybill/execution-operation",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/vehicle/index",
       "style": {
         "navigationStyle": "custom"

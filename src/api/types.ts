@@ -168,6 +168,111 @@ export interface WaybillProof {
   remark?: string
 }
 
+export type CargoOperationType = 'loading' | 'unloading'
+export type CargoOperationStatus = 'checked_in' | 'completed'
+export type CargoOperationCheckinMode = 'manual' | 'automatic' | 'admin'
+
+export interface CargoOperationRecord {
+  id: string
+  tenantId: string
+  waybillId: string
+  operationType: CargoOperationType
+  operationStatus: CargoOperationStatus
+  checkinTime: string
+  checkinMode: CargoOperationCheckinMode
+  operatorName?: string | null
+  longitude: number
+  latitude: number
+  locationAccuracyM?: number | null
+  locationText?: string | null
+  geofenceCenterLongitude: number
+  geofenceCenterLatitude: number
+  geofenceRadiusM: number
+  distanceM: number
+  insideGeofence: boolean
+  outsideReason?: string | null
+  weightTon?: number | null
+  photoUrls: string[]
+  weighbridgeTicketUrls: string[]
+  completedAt?: string | null
+  remark?: string | null
+}
+
+export interface CargoOperationContext {
+  waybillId: string
+  operationType: CargoOperationType
+  waybillStatus: WaybillStatus
+  centerLongitude?: number | null
+  centerLatitude?: number | null
+  radiusM: number
+  allowOutsideCheckIn: boolean
+  autoCheckIn: boolean
+  geofenceEnabled: boolean
+  canManage: boolean
+  operation?: CargoOperationRecord | null
+}
+
+export type ExecutionAction = 'departure' | 'signature' | 'completion'
+
+export interface WaybillExecutionRecord {
+  id: string
+  tenantId: string
+  waybillId: string
+  departureTime?: string | null
+  departureOdometerKm?: number | null
+  departurePhotoUrls: string[]
+  departureRemark?: string | null
+  departureOperatorName?: string | null
+  departureRecordedAt?: string | null
+  signedAt?: string | null
+  signerName?: string | null
+  receiptUrls: string[]
+  signatureUrls: string[]
+  signatureRemark?: string | null
+  signatureOperatorName?: string | null
+  signatureRecordedAt?: string | null
+  returnTime?: string | null
+  returnOdometerKm?: number | null
+  returnPhotoUrls: string[]
+  completionRemark?: string | null
+  completionOperatorName?: string | null
+  completionRecordedAt?: string | null
+}
+
+export interface WaybillExecutionContext {
+  waybillId: string
+  waybillStatus: WaybillStatus
+  loadingStatus?: CargoOperationStatus | null
+  unloadingStatus?: CargoOperationStatus | null
+  arrivalTime?: string | null
+  arrivalAddress?: string | null
+  arrivalLongitude?: number | null
+  arrivalLatitude?: number | null
+  canAccept: boolean
+  canDepart: boolean
+  canArrive: boolean
+  canUnload: boolean
+  canSign: boolean
+  canComplete: boolean
+  canCancel: boolean
+  needsReturnCompletion: boolean
+  record?: WaybillExecutionRecord | null
+}
+
+export interface CargoOperationLocation {
+  longitude: number
+  latitude: number
+  accuracyM?: number | null
+  locationText?: string | null
+}
+
+export interface CargoOperationCompletePayload {
+  weightTon: number
+  photoUrls: string[]
+  weighbridgeTicketUrls: string[]
+  remark?: string | null
+}
+
 export interface SysUser {
   id: string
   authUserId?: string

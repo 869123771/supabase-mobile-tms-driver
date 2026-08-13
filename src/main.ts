@@ -1,5 +1,6 @@
 import { createSSRApp } from 'vue'
 import { createPinia } from 'pinia'
+import './styles/fonts.scss'
 import App from './App.vue'
 
 export function createApp() {

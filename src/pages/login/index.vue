@@ -90,6 +90,7 @@ function forgotPassword() {
   <view class="login-page">
     <view class="login-page__orb login-page__orb--one" />
     <view class="login-page__orb login-page__orb--two" />
+    <view class="login-page__grid" />
 
     <view class="login-page__hero">
       <view class="login-page__brand">
@@ -159,6 +160,7 @@ function forgotPassword() {
 
       <wd-button
         class="login-form__button"
+        custom-class="tms-primary-action"
         type="primary"
         size="large"
         block
@@ -242,6 +244,19 @@ function forgotPassword() {
   height: 260rpx;
   background: rgba(56, 189, 248, 0.05);
   filter: blur(8rpx);
+}
+
+.login-page__grid {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 620rpx;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(79, 70, 229, 0.08) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(79, 70, 229, 0.08) 1rpx, transparent 1rpx);
+  background-size: 82rpx 82rpx;
+  mask-image: linear-gradient(to bottom, #000, transparent);
+  pointer-events: none;
 }
 
 .login-page__hero,
@@ -389,7 +404,8 @@ function forgotPassword() {
   background: rgba(255, 255, 255, 0.94);
   border: 1rpx solid #e7ebf2;
   border-radius: 28rpx;
-  box-shadow: 0 18rpx 46rpx rgba(34, 39, 91, 0.12);
+  box-shadow: 0 24rpx 64rpx rgba(34, 39, 91, 0.14);
+  backdrop-filter: blur(24rpx);
 }
 
 .login-form__head {
@@ -432,7 +448,7 @@ function forgotPassword() {
   padding: 0 28rpx;
   border: 1rpx solid #e8ecf3;
   border-radius: 16rpx;
-  background: #f7f9fc;
+  background: linear-gradient(145deg, #f8fafc, #f5f7fb);
   color: #9aa5b7;
 }
 
@@ -502,13 +518,20 @@ function forgotPassword() {
 
 .login-form__button {
   margin-top: 34rpx;
-  height: 88rpx;
-  border-radius: 16rpx;
-  color: #fff;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
-  box-shadow: 0 14rpx 24rpx rgba(79, 70, 229, 0.24);
-  font-size: 30rpx;
-  font-weight: 800;
+}
+
+@media screen and (max-height: 700px) {
+  .login-page {
+    padding-top: calc(38rpx + env(safe-area-inset-top));
+  }
+
+  .login-page__eyebrow {
+    margin-top: 34rpx;
+  }
+
+  .login-form {
+    margin-top: 38rpx;
+  }
 }
 
 .login-form__button.is-disabled {

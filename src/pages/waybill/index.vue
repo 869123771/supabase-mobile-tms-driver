@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
 import TmsIcon from '@/components/business/TmsIcon.vue'
+import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
 import type { WaybillStatusGroup } from '@/api/waybill'
 import type { Waybill } from '@/api/types'
@@ -13,6 +14,8 @@ const waybill = useWaybillStore()
 const active = ref<WaybillStatusGroup>('all')
 const refreshing = ref(false)
 const loadingGroup = ref<WaybillStatusGroup | ''>('')
+const initialized = ref(false)
+const loadError = ref('')
 const isBusy = computed(() => waybill.loading || refreshing.value || Boolean(loadingGroup.value))
 const showListLoading = computed(() => waybill.loading && waybill.list.length > 0)
 const activeLabel = computed(() => tabs.find((item) => item.value === active.value)?.label || '全部')
@@ -34,13 +37,17 @@ onPullDownRefresh(async () => {
 })
 
 async function load(group: WaybillStatusGroup = active.value) {
+  loadError.value = ''
   try {
     await waybill.loadList(group)
   } catch (error) {
+    loadError.value = error instanceof Error ? error.message : '运单加载失败'
     uni.showToast({
       title: error instanceof Error ? error.message : '运单加载失败',
       icon: 'none'
     })
+  } finally {
+    initialized.value = true
   }
 }
 
@@ -78,6 +85,7 @@ function navigate(item: Waybill) {
   <view class="waybill-page page safe-bottom">
     <view class="waybill-page__header">
       <view class="waybill-page__title-row">
+        <view class="waybill-page__header-glow" />
         <view class="waybill-page__title-main">
           <text class="waybill-page__eyebrow">任务中心</text>
           <text class="waybill-page__title">运输任务</text>
@@ -86,6 +94,7 @@ function navigate(item: Waybill) {
         <wd-button
           class="waybill-page__refresh"
           type="icon"
+          aria-label="刷新运单列表"
           custom-style="width: 62rpx; min-width: 62rpx; height: 62rpx; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.16); color: #fff;"
           :disabled="isBusy"
           @click="refreshList"
@@ -112,7 +121,14 @@ function navigate(item: Waybill) {
     </view>
 
     <scroll-view scroll-y class="waybill-page__list">
-      <view v-if="waybill.list.length" class="waybill-page__stack">
+      <TmsPageSkeleton
+        v-if="!initialized || (loadError && !waybill.list.length)"
+        compact
+        label="正在同步运输任务…"
+        :error="loadError"
+        @retry="load(active)"
+      />
+      <view v-else-if="waybill.list.length" class="waybill-page__stack">
         <view class="waybill-page__list-head">
           <view>
             <text>{{ activeLabel }}任务</text>
@@ -157,6 +173,7 @@ function navigate(item: Waybill) {
 <style scoped lang="scss">
 .waybill-page {
   height: 100vh;
+  height: 100dvh;
   padding-bottom: 0;
   overflow: hidden;
 }
@@ -166,21 +183,48 @@ function navigate(item: Waybill) {
   top: 0;
   z-index: 10;
   background: #fff;
-  box-shadow: 0 10rpx 30rpx rgba(32, 40, 66, 0.08);
+  box-shadow: 0 12rpx 34rpx rgba(32, 40, 66, 0.09);
 }
 
 .waybill-page__title-row {
+  position: relative;
   min-height: 190rpx;
   padding: calc(42rpx + env(safe-area-inset-top)) 32rpx 30rpx;
   color: #fff;
-  background: linear-gradient(135deg, #292266 0%, #4f46e5 56%, #2563eb 118%);
+  overflow: hidden;
+  background: var(--tms-hero-gradient);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
 }
 
+.waybill-page__title-row::after {
+  position: absolute;
+  right: -120rpx;
+  top: -170rpx;
+  width: 400rpx;
+  height: 400rpx;
+  content: '';
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  box-shadow: 0 0 0 66rpx rgba(255, 255, 255, 0.025);
+}
+
+.waybill-page__header-glow {
+  position: absolute;
+  left: 42%;
+  bottom: -160rpx;
+  width: 440rpx;
+  height: 260rpx;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.2);
+  filter: blur(72rpx);
+}
+
 .waybill-page__title-main {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -212,6 +256,8 @@ function navigate(item: Waybill) {
 }
 
 .waybill-page__refresh {
+  position: relative;
+  z-index: 1;
   flex: 0 0 62rpx;
   width: 62rpx;
   height: 62rpx;
@@ -234,7 +280,7 @@ function navigate(item: Waybill) {
 
 .waybill-page__tabs {
   padding: 18rpx 28rpx 20rpx;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.96);
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12rpx;
@@ -244,7 +290,8 @@ function navigate(item: Waybill) {
   height: 62rpx;
   border-radius: 999rpx;
   color: #505867;
-  background: #f4f6fa;
+  border: 1rpx solid #edf0f5;
+  background: #f5f7fb;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -255,8 +302,9 @@ function navigate(item: Waybill) {
 
 .waybill-page__tab--active {
   color: #fff;
-  background: #4f46e5;
-  box-shadow: 0 10rpx 20rpx rgba(79, 70, 229, 0.18);
+  border-color: transparent;
+  background: linear-gradient(135deg, #4f46e5, #3b67df);
+  box-shadow: 0 10rpx 22rpx rgba(79, 70, 229, 0.2);
 }
 
 .waybill-page__tab--loading {

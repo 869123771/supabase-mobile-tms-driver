@@ -1,5 +1,7 @@
 # Project Instructions
 
+- Before creating, modifying, refactoring, or reviewing source code, first read and apply the local `project-code-quality` skill.
+- Before creating, modifying, refactoring, reviewing, or visually auditing any user-facing page or component, first read and apply both the local `professional-ui-quality` and `web-design-guidelines` skills. Treat responsive layout, touch targets, complete UI states, overflow checks, accessibility, and real-browser visual verification as part of completion.
 - Before any Supabase, database, schema, RLS, Storage, Auth, or API-provider task, first read the local `supabase` skill and verify that the Supabase MCP server is available for this project.
 - This repository is scoped to Supabase project `ckbftoopuyophiebamwy` through `.mcp.json`.
 - Expected MCP URL: `https://mcp.supabase.com/mcp?project_ref=ckbftoopuyophiebamwy&features=database,debugging,development,docs`.

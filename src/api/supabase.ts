@@ -13,6 +13,70 @@ interface RequestOptions {
   raw?: boolean
 }
 
+interface ApiErrorDetails {
+  code?: string
+  message: string
+}
+
+const TECHNICAL_ERROR_PATTERN =
+  /(?:function|operator|column|relation|record|type).*?(?:does not exist|has no field)|schema cache|postgrest|pgrst\d+|sqlstate|duplicate key value|violates .* constraint|invalid input syntax|failed to run sql query|unexpected token/i
+const NETWORK_ERROR_PATTERN = /request:fail|failed to fetch|network error|network request failed/i
+
+export class ApiRequestError extends Error {
+  readonly code?: string
+  readonly technicalMessage: string
+  readonly isTechnical: boolean
+
+  constructor(data: unknown, fallback = '请求失败，请稍后重试') {
+    const details = getApiErrorDetails(data)
+    const isTechnical = TECHNICAL_ERROR_PATTERN.test(`${details.code || ''} ${details.message}`)
+    super(isTechnical ? fallback : normalizeKnownError(details.message, fallback))
+    this.name = 'ApiRequestError'
+    this.code = details.code
+    this.technicalMessage = details.message
+    this.isTechnical = isTechnical
+  }
+}
+
+function getApiErrorDetails(data: unknown): ApiErrorDetails {
+  if (data instanceof ApiRequestError) {
+    return { code: data.code, message: data.technicalMessage }
+  }
+  if (data instanceof Error) return { message: data.message }
+  if (typeof data === 'string') return { message: data }
+  if (data && typeof data === 'object') {
+    const payload = data as Record<string, unknown>
+    const message = [payload.message, payload.msg, payload.error, payload.details].find(
+      (value): value is string => typeof value === 'string' && Boolean(value.trim())
+    )
+    return {
+      code: typeof payload.code === 'string' ? payload.code : undefined,
+      message: message || ''
+    }
+  }
+  return { message: '' }
+}
+
+function normalizeKnownError(message: string, fallback: string) {
+  if (!message) return fallback
+  if (/invalid login credentials|invalid email or password/i.test(message)) return '账号或密码错误'
+  if (/jwt expired|token.*expired|invalid jwt/i.test(message)) return '登录已过期，请重新登录'
+  if (/permission denied|row-level security|not authorized|unauthorized/i.test(message)) {
+    return '暂无权限执行此操作'
+  }
+  if (/too many requests|rate limit/i.test(message)) return '操作过于频繁，请稍后重试'
+  if (/timeout|timed out/i.test(message)) return '请求超时，请稍后重试'
+  if (NETWORK_ERROR_PATTERN.test(message)) return '网络连接异常，请检查网络后重试'
+  return message
+}
+
+export function getUserFacingErrorMessage(error: unknown, fallback = '请求失败，请稍后重试') {
+  if (error instanceof ApiRequestError) return error.isTechnical ? fallback : error.message
+  const details = getApiErrorDetails(error)
+  if (TECHNICAL_ERROR_PATTERN.test(`${details.code || ''} ${details.message}`)) return fallback
+  return normalizeKnownError(details.message, fallback)
+}
+
 function trimSlash(value: string) {
   return value.replace(/\/$/, '')
 }
@@ -84,22 +148,20 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
           resolve(response.data as T)
           return
         }
-        reject(new Error(getErrorMessage(response.data)))
+        const requestError = new ApiRequestError(response.data)
+        console.warn('[api] request failed', {
+          path,
+          statusCode,
+          code: requestError.code,
+          message: requestError.technicalMessage
+        })
+        reject(requestError)
       },
       fail(error) {
-        reject(new Error(error.errMsg || '网络请求失败'))
+        reject(new ApiRequestError(error.errMsg, '网络请求失败'))
       }
     })
   })
-}
-
-function getErrorMessage(data: unknown) {
-  if (typeof data === 'string') return data
-  if (data && typeof data === 'object') {
-    const payload = data as Record<string, unknown>
-    return String(payload.message || payload.msg || payload.error || '请求失败')
-  }
-  return '请求失败'
 }
 
 export async function authPasswordLogin(email: string, password: string) {
@@ -157,6 +219,16 @@ export function restPath(table: string, query = '') {
   return `/rest/v1/${table}${query}`
 }
 
+export async function rpc<T>(token: string, functionName: string, params: unknown) {
+  return keysToCamel<T>(
+    await request<unknown>(`/rest/v1/rpc/${functionName}`, {
+      method: 'POST',
+      token,
+      body: params
+    })
+  )
+}
+
 export function getStoragePublicUrl(bucket: string, objectPath: string) {
   const encodedPath = objectPath
     .split('/')
@@ -193,15 +265,31 @@ export async function uploadFileToStorage(
           return
         }
 
+        let errorData: unknown = response.data
         try {
-          reject(new Error(getErrorMessage(JSON.parse(response.data))))
+          errorData = JSON.parse(response.data)
         } catch {
-          reject(new Error(response.data || '文件上传失败'))
+          // Storage may return plain text instead of a JSON error payload.
         }
+        reject(new ApiRequestError(errorData, '文件上传失败，请稍后重试'))
       },
       fail(error) {
-        reject(new Error(error.errMsg || '文件上传失败'))
+        reject(new ApiRequestError(error.errMsg, '文件上传失败，请稍后重试'))
       }
     })
+  })
+}
+
+export async function removeStorageObjects(
+  bucket: string,
+  objectPaths: string[],
+  token: string
+) {
+  if (!objectPaths.length) return
+
+  await request(`/storage/v1/object/${encodeURIComponent(bucket)}`, {
+    method: 'DELETE',
+    token,
+    body: { prefixes: objectPaths }
   })
 }

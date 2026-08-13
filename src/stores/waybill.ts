@@ -1,15 +1,14 @@
 import { defineStore } from 'pinia'
 import {
-  createWaybillEvent,
+  acceptAssignedWaybill,
+  cancelAssignedWaybill,
   getWaybill,
   listWaybillEvents,
   listWaybillProofs,
   listWaybills,
-  updateWaybill,
-  uploadWaybillProofFiles,
   type WaybillStatusGroup
 } from '@/api/waybill'
-import type { ProofFile, Waybill, WaybillEvent, WaybillProof, WaybillStatus } from '@/api/types'
+import type { Waybill, WaybillEvent, WaybillProof, WaybillStatus } from '@/api/types'
 import { syncDriverWaybills } from '@/api/supabase'
 import { useAuthStore } from './auth'
 import { useDictionaryStore } from './dictionary'
@@ -26,10 +25,16 @@ interface WaybillState {
   activeGroup: WaybillStatusGroup
 }
 
-const activeStatuses: WaybillStatus[] = ['accepted', 'loading', 'transporting', 'unloading', 'signed']
+const activeStatuses: WaybillStatus[] = [
+  'accepted',
+  'loading',
+  'transporting',
+  'unloading',
+  'signed'
+]
 
 function isJwtExpiredError(error: unknown) {
-  return error instanceof Error && /jwt expired/i.test(error.message)
+  return error instanceof Error && /jwt expired|登录已过期/i.test(error.message)
 }
 
 export const useWaybillStore = defineStore('waybill', {
@@ -45,7 +50,8 @@ export const useWaybillStore = defineStore('waybill', {
   }),
   getters: {
     pendingCount: (state) => state.list.filter((item) => item.status === 'pending').length,
-    activeCount: (state) => state.list.filter((item) => activeStatuses.includes(item.status)).length,
+    activeCount: (state) =>
+      state.list.filter((item) => activeStatuses.includes(item.status)).length,
     completedCount: (state) => state.list.filter((item) => item.status === 'completed').length
   },
   actions: {
@@ -133,16 +139,17 @@ export const useWaybillStore = defineStore('waybill', {
             vehicleId,
             limit: 1
           })
-      const latest = active.length || pending.length
-        ? []
-        : await listWaybills(auth.token, {
-            group: 'all',
-            driverId,
-            driverPhone,
-            driverName,
-            vehicleId,
-            limit: 1
-          })
+      const latest =
+        active.length || pending.length
+          ? []
+          : await listWaybills(auth.token, {
+              group: 'all',
+              driverId,
+              driverPhone,
+              driverName,
+              vehicleId,
+              limit: 1
+            })
       this.currentTask = active[0] || pending[0] || latest[0] || null
       return this.currentTask
     },
@@ -170,24 +177,12 @@ export const useWaybillStore = defineStore('waybill', {
         this.loading = false
       }
     },
-    async applyStatus(
-      status: WaybillStatus,
-      patch: Partial<Waybill>,
-      eventType: string,
-      payload?: Record<string, unknown>
-    ) {
+    async acceptCurrent() {
       if (!this.current) throw new Error('运单不存在')
       const auth = await this.ensureSession()
-      const profile = useProfileStore()
-      const operatorName = profile.driver?.driverName || profile.user?.nickName || profile.user?.userName
       this.actionLoading = true
       try {
-        const updated = await updateWaybill(auth.token, this.current.id, {
-          ...patch,
-          status
-        })
-        if (updated) this.current = updated
-        await createWaybillEvent(auth.token, this.current, eventType, operatorName, payload)
+        await acceptAssignedWaybill(auth.token, this.current.id)
         await this.loadDetail(this.current.id)
         await this.loadHomeTask()
         return this.current
@@ -195,222 +190,15 @@ export const useWaybillStore = defineStore('waybill', {
         this.actionLoading = false
       }
     },
-    async acceptCurrent() {
-      return this.applyStatus(
-        'accepted',
-        { acceptedAt: new Date().toISOString() },
-        'accepted',
-        { action: 'accept' }
-      )
-    },
-    async cancelCurrent() {
-      return this.applyStatus(
-        'cancelled',
-        { cancelledAt: new Date().toISOString() },
-        'cancelled',
-        { action: 'cancel' }
-      )
-    },
-    async uploadPickup(filePaths: string[]) {
+    async cancelCurrent(reason: string) {
       if (!this.current) throw new Error('运单不存在')
-      if (!['accepted', 'loading'].includes(this.current.status)) {
-        throw new Error('当前运单已进入下一运输节点')
-      }
       const auth = await this.ensureSession()
-      const profile = useProfileStore()
-      const operatorName = profile.driver?.driverName || profile.user?.nickName || profile.user?.userName
       this.actionLoading = true
-      const waybillId = this.current.id
       try {
-        if (this.current.status === 'accepted') {
-          const loadingWaybill = await updateWaybill(auth.token, waybillId, { status: 'loading' })
-          if (!loadingWaybill) throw new Error('进入装货节点失败')
-          this.current = loadingWaybill
-        }
-
-        const savedProofFiles: ProofFile[] = this.proofs
-          .filter((proof) => proof.proofType === 'pickup_photo')
-          .map((proof) => ({
-            name: proof.fileName,
-            url: proof.fileUrl,
-            fileType: proof.mimeType,
-            fileSize: proof.fileSize
-          }))
-        if (filePaths.length === 0 && savedProofFiles.length === 0) {
-          throw new Error('请先选择提货照片')
-        }
-
-        const files = await uploadWaybillProofFiles(
-          auth.token,
-          this.current,
-          'pickup',
-          filePaths,
-          operatorName
-        )
-        const pickupPhotos = Array.from(
-          new Map(
-            [...(this.current.pickupPhotos || []), ...savedProofFiles, ...files].map((file) => [
-              file.url,
-              file
-            ])
-          ).values()
-        )
-        const now = new Date().toISOString()
-        const updated = await updateWaybill(auth.token, waybillId, {
-          status: 'loading',
-          loadedAt: this.current.loadedAt || now,
-          pickupPhotos
-        })
-        if (!updated) throw new Error('更新运输状态失败')
-        this.current = updated
-        await createWaybillEvent(auth.token, this.current, 'loaded', operatorName, {
-          action: 'upload_pickup',
-          fileCount: pickupPhotos.length
-        })
-        await this.loadDetail(waybillId)
-        await this.loadHomeTask()
-        return files
-      } catch (error) {
-        try {
-          await this.loadDetail(waybillId)
-        } catch {
-          // Preserve the original action error.
-        }
-        throw error
-      } finally {
-        this.actionLoading = false
-      }
-    },
-    async confirmDeparture() {
-      return this.applyStatus(
-        'transporting',
-        { departedAt: new Date().toISOString() },
-        'departed',
-        { action: 'confirm_departure' }
-      )
-    },
-    async confirmArrival() {
-      return this.applyStatus(
-        'unloading',
-        { arrivedAt: new Date().toISOString() },
-        'arrived',
-        { action: 'confirm_arrival' }
-      )
-    },
-    async submitSignature(filePaths: string[] = []) {
-      if (!this.current) throw new Error('运单不存在')
-      if (this.current.status !== 'unloading') {
-        throw new Error('当前运单尚未进入卸货节点')
-      }
-      const auth = await this.ensureSession()
-      const profile = useProfileStore()
-      const operatorName = profile.driver?.driverName || profile.user?.nickName || profile.user?.userName
-      this.actionLoading = true
-      const waybillId = this.current.id
-      try {
-        const savedProofFiles: ProofFile[] = this.proofs
-          .filter((proof) => proof.proofType === 'delivery_photo' || proof.proofType === 'receipt')
-          .map((proof) => ({
-            name: proof.fileName,
-            url: proof.fileUrl,
-            fileType: proof.mimeType,
-            fileSize: proof.fileSize
-          }))
-        const files = filePaths.length > 0
-          ? await uploadWaybillProofFiles(
-            auth.token,
-            this.current,
-            'delivery',
-            filePaths,
-            operatorName
-          )
-          : []
-        if (files.length === 0 && savedProofFiles.length === 0) {
-          throw new Error('请先选择签收回单照片')
-        }
-        const deliveryPhotos = Array.from(
-          new Map(
-            [...(this.current.deliveryPhotos || []), ...savedProofFiles, ...files].map((file) => [
-              file.url,
-              file
-            ])
-          ).values()
-        )
-        const receiptAttachments = Array.from(
-          new Map(
-            [...(this.current.receiptAttachments || []), ...savedProofFiles, ...files].map((file) => [
-              file.url,
-              file
-            ])
-          ).values()
-        )
-        const now = new Date().toISOString()
-        const signedWaybill = await updateWaybill(auth.token, waybillId, {
-          status: 'signed',
-          unloadedAt: this.current.unloadedAt || now,
-          deliveryPhotos,
-          receiptAttachments
-        })
-        if (!signedWaybill) throw new Error('确认签收状态失败')
-        this.current = signedWaybill
-        await createWaybillEvent(auth.token, this.current, 'signed', operatorName, {
-          action: 'submit_signature',
-          fileCount: deliveryPhotos.length
-        })
-        await this.loadDetail(waybillId)
+        await cancelAssignedWaybill(auth.token, this.current.id, reason)
+        await this.loadDetail(this.current.id)
         await this.loadHomeTask()
         return this.current
-      } catch (error) {
-        try {
-          await this.loadDetail(waybillId)
-        } catch {
-          // Preserve the original action error.
-        }
-        throw error
-      } finally {
-        this.actionLoading = false
-      }
-    },
-    async completeCurrent() {
-      if (!this.current) throw new Error('运单不存在')
-      if (this.current.status !== 'signed') {
-        throw new Error('请先提交签收资料，再确认完成运单')
-      }
-      const auth = await this.ensureSession()
-      const profile = useProfileStore()
-      const operatorName = profile.driver?.driverName || profile.user?.nickName || profile.user?.userName
-      this.actionLoading = true
-      const waybillId = this.current.id
-      try {
-        if (!this.events.some((event) => event.eventType === 'signed')) {
-          await createWaybillEvent(auth.token, this.current, 'signed', operatorName, {
-            action: 'submit_signature',
-            fileCount: this.proofs.filter(
-              (proof) => proof.proofType === 'delivery_photo' || proof.proofType === 'receipt'
-            ).length,
-            recovered: true
-          })
-        }
-        const now = new Date().toISOString()
-        const updated = await updateWaybill(auth.token, waybillId, {
-          status: 'completed',
-          completedAt: now
-        })
-        if (!updated) throw new Error('完成运单失败')
-        this.current = updated
-        await createWaybillEvent(auth.token, this.current, 'completed', operatorName, {
-          action: 'complete'
-        })
-        await this.loadDetail(waybillId)
-        await this.loadHomeTask()
-        return this.current
-      } catch (error) {
-        try {
-          await this.loadDetail(waybillId)
-        } catch {
-          // Preserve the original action error.
-        }
-        throw error
       } finally {
         this.actionLoading = false
       }
