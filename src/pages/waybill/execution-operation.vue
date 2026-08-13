@@ -1,147 +1,193 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { getUserFacingErrorMessage } from '@/api/supabase'
+import { computed, reactive, ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
+import { getUserFacingErrorMessage } from "@/api/supabase";
 import {
   completeWaybillExecution,
   getWaybillExecutionContext,
   recordWaybillDeparture,
-  uploadWaybillProofFiles
-} from '@/api/waybill'
-import type { ExecutionAction } from '@/api/types'
-import TmsIcon from '@/components/business/TmsIcon.vue'
-import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
-import TmsTopBar from '@/components/business/TmsTopBar.vue'
-import { useAuthStore } from '@/stores/auth'
-import { useProfileStore } from '@/stores/profile'
-import { useWaybillStore } from '@/stores/waybill'
-import { chooseImages } from '@/utils/file'
+  uploadWaybillProofFiles,
+} from "@/api/waybill";
+import type { ExecutionAction } from "@/api/types";
+import TmsIcon from "@/components/business/TmsIcon.vue";
+import TmsPageSkeleton from "@/components/business/TmsPageSkeleton.vue";
+import TmsTopBar from "@/components/business/TmsTopBar.vue";
+import { useAuthStore } from "@/stores/auth";
+import { useProfileStore } from "@/stores/profile";
+import { useWaybillStore } from "@/stores/waybill";
+import { chooseImages } from "@/utils/file";
 
-const auth = useAuthStore()
-const profile = useProfileStore()
-const waybill = useWaybillStore()
-const id = ref('')
-const action = ref<Exclude<ExecutionAction, 'signature'>>('departure')
-const state = reactive({ loading: false, uploading: false, submitting: false, error: '' })
+const auth = useAuthStore();
+const profile = useProfileStore();
+const waybill = useWaybillStore();
+const id = ref("");
+const action = ref<Exclude<ExecutionAction, "signature">>("departure");
+const state = reactive({
+  loading: false,
+  uploading: false,
+  submitting: false,
+  error: "",
+});
 const form = reactive({
   occurredAt: Date.now(),
-  odometerKm: '',
+  odometerKm: "",
   photoUrls: [] as string[],
-  remark: ''
-})
-const current = computed(() => waybill.current)
-const executionContext = ref<Awaited<ReturnType<typeof getWaybillExecutionContext>>>()
-const isDeparture = computed(() => action.value === 'departure')
+  remark: "",
+});
+const current = computed(() => waybill.current);
+const executionContext =
+  ref<Awaited<ReturnType<typeof getWaybillExecutionContext>>>();
+const isDeparture = computed(() => action.value === "departure");
 const isRepairingReturnArchive = computed(
-  () => !isDeparture.value && Boolean(executionContext.value?.needsReturnCompletion && current.value?.status === 'completed')
-)
+  () =>
+    !isDeparture.value &&
+    Boolean(
+      executionContext.value?.needsReturnCompletion &&
+      current.value?.status === "completed",
+    ),
+);
 const title = computed(() =>
-  isDeparture.value ? '确认发车' : isRepairingReturnArchive.value ? '补录回场' : '确认回场'
-)
-const kicker = computed(() => (isDeparture.value ? 'DEPARTURE RECORD' : 'RETURN & CLOSE'))
-const fieldTitle = computed(() => (isDeparture.value ? '出车里程（公里）' : '收车里程（公里）'))
+  isDeparture.value
+    ? "确认发车"
+    : isRepairingReturnArchive.value
+      ? "补录回场"
+      : "确认回场",
+);
+const kicker = computed(() =>
+  isDeparture.value ? "DEPARTURE RECORD" : "RETURN & CLOSE",
+);
+const fieldTitle = computed(() =>
+  isDeparture.value ? "出车里程（公里）" : "收车里程（公里）",
+);
 const submitMissing = computed(() => {
-  const missing: string[] = []
-  const odometer = Number(form.odometerKm)
-  if (form.odometerKm === '' || !Number.isFinite(odometer) || odometer < 0) missing.push('里程')
-  if (!form.photoUrls.length) missing.push('车辆照片')
-  return missing
-})
+  const missing: string[] = [];
+  const odometer = Number(form.odometerKm);
+  if (form.odometerKm === "" || !Number.isFinite(odometer) || odometer < 0)
+    missing.push("里程");
+  if (!form.photoUrls.length) missing.push("车辆照片");
+  return missing;
+});
 const canSubmit = computed(
-  () => submitMissing.value.length === 0 && !state.loading && !state.submitting && !state.uploading
-)
+  () =>
+    submitMissing.value.length === 0 &&
+    !state.loading &&
+    !state.submitting &&
+    !state.uploading,
+);
 
 onLoad((query) => {
-  id.value = String(query?.id || '')
-  action.value = query?.action === 'completion' ? 'completion' : 'departure'
-  void load()
-})
+  id.value = String(query?.id || "");
+  action.value = query?.action === "completion" ? "completion" : "departure";
+  void load();
+});
 
 async function load() {
-  state.error = ''
+  state.error = "";
   if (!id.value) {
-    state.error = '缺少运单参数，请返回任务详情后重新进入'
-    return
+    state.error = "缺少运单参数，请返回任务详情后重新进入";
+    return;
   }
-  state.loading = true
+  state.loading = true;
   try {
-    await Promise.all([waybill.loadDetail(id.value), profile.load(true)])
-    const context = await getWaybillExecutionContext(auth.token, id.value)
-    executionContext.value = context
-    const record = context.record
-    const time = isDeparture.value ? record?.departureTime : record?.returnTime
-    const odometer = isDeparture.value ? record?.departureOdometerKm : record?.returnOdometerKm
-    form.occurredAt = time ? new Date(time).getTime() : Date.now()
-    form.odometerKm = odometer === null || odometer === undefined ? '' : String(odometer)
+    await Promise.all([waybill.loadDetail(id.value), profile.load(true)]);
+    const context = await getWaybillExecutionContext(auth.token, id.value);
+    executionContext.value = context;
+    const record = context.record;
+    const time = isDeparture.value ? record?.departureTime : record?.returnTime;
+    const odometer = isDeparture.value
+      ? record?.departureOdometerKm
+      : record?.returnOdometerKm;
+    form.occurredAt = time ? new Date(time).getTime() : Date.now();
+    form.odometerKm =
+      odometer === null || odometer === undefined ? "" : String(odometer);
     form.photoUrls = [
-      ...(isDeparture.value ? record?.departurePhotoUrls || [] : record?.returnPhotoUrls || [])
-    ]
-    form.remark = (isDeparture.value ? record?.departureRemark : record?.completionRemark) || ''
+      ...(isDeparture.value
+        ? record?.departurePhotoUrls || []
+        : record?.returnPhotoUrls || []),
+    ];
+    form.remark =
+      (isDeparture.value
+        ? record?.departureRemark
+        : record?.completionRemark) || "";
   } catch (error) {
-    state.error = getUserFacingErrorMessage(error, '执行信息加载失败，请稍后重试')
-    showError(error, '执行信息加载失败')
+    state.error = getUserFacingErrorMessage(
+      error,
+      "执行信息加载失败，请稍后重试",
+    );
+    showError(error, "执行信息加载失败");
   } finally {
-    state.loading = false
+    state.loading = false;
   }
 }
 
 async function uploadPhotos() {
-  if (!current.value || state.uploading) return
+  if (!current.value || state.uploading) return;
   try {
-    const paths = await chooseImages(5 - form.photoUrls.length)
-    if (!paths.length) return
-    state.uploading = true
-    const operator = profile.driver?.driverName || profile.user?.nickName || profile.user?.userName
+    const paths = await chooseImages(5 - form.photoUrls.length);
+    if (!paths.length) return;
+    state.uploading = true;
+    const operator =
+      profile.driver?.driverName ||
+      profile.user?.nickName ||
+      profile.user?.userName;
     const files = await uploadWaybillProofFiles(
       auth.token,
       current.value,
-      isDeparture.value ? 'departure' : 'return',
+      isDeparture.value ? "departure" : "return",
       paths,
-      operator
-    )
-    form.photoUrls = [...form.photoUrls, ...files.map((item) => item.url)].slice(0, 5)
+      operator,
+    );
+    form.photoUrls = [
+      ...form.photoUrls,
+      ...files.map((item) => item.url),
+    ].slice(0, 5);
   } catch (error) {
-    showError(error, '照片上传失败')
+    showError(error, "照片上传失败");
   } finally {
-    state.uploading = false
+    state.uploading = false;
   }
 }
 
 function removePhoto(index: number) {
-  form.photoUrls.splice(index, 1)
+  form.photoUrls.splice(index, 1);
 }
 
 function preview(url: string) {
-  uni.previewImage({ current: url, urls: form.photoUrls })
+  uni.previewImage({ current: url, urls: form.photoUrls });
 }
 
 async function submit() {
-  const odometer = Number(form.odometerKm)
+  const odometer = Number(form.odometerKm);
   if (!Number.isFinite(odometer) || odometer < 0)
     return void uni.showToast({
       title: `请输入正确的${fieldTitle.value}`,
-      icon: 'none'
-    })
+      icon: "none",
+    });
   if (!form.photoUrls.length)
     return void uni.showToast({
-      title: `请上传${isDeparture.value ? '发车' : '收车'}照片`,
-      icon: 'none'
-    })
+      title: `请上传${isDeparture.value ? "发车" : "收车"}照片`,
+      icon: "none",
+    });
   if (!isDeparture.value) {
-    const departureOdometer = Number(executionContext.value?.record?.departureOdometerKm ?? 0)
+    const departureOdometer = Number(
+      executionContext.value?.record?.departureOdometerKm ?? 0,
+    );
     if (odometer < departureOdometer) {
       return void uni.showToast({
         title: `收车里程不能小于出车里程 ${departureOdometer} 公里`,
-        icon: 'none',
-        duration: 3000
-      })
+        icon: "none",
+        duration: 3000,
+      });
     }
-    const signedAt = executionContext.value?.record?.signedAt
+    const signedAt = executionContext.value?.record?.signedAt;
     if (signedAt && form.occurredAt < new Date(signedAt).getTime()) {
-      return void uni.showToast({ title: '收车时间不能早于签收时间', icon: 'none' })
+      return void uni.showToast({
+        title: "收车时间不能早于签收时间",
+        icon: "none",
+      });
     }
   }
-  state.submitting = true
+  state.submitting = true;
   try {
     if (isDeparture.value) {
       await recordWaybillDeparture(
@@ -150,8 +196,8 @@ async function submit() {
         new Date(form.occurredAt).toISOString(),
         odometer,
         [...form.photoUrls],
-        form.remark.trim() || null
-      )
+        form.remark.trim() || null,
+      );
     } else {
       await completeWaybillExecution(
         auth.token,
@@ -159,24 +205,24 @@ async function submit() {
         new Date(form.occurredAt).toISOString(),
         odometer,
         [...form.photoUrls],
-        form.remark.trim() || null
-      )
+        form.remark.trim() || null,
+      );
     }
-    uni.showToast({ title: `${title.value}成功`, icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 450)
+    uni.showToast({ title: `${title.value}成功`, icon: "success" });
+    setTimeout(() => uni.navigateBack(), 450);
   } catch (error) {
-    showError(error, '提交失败')
+    showError(error, "提交失败");
   } finally {
-    state.submitting = false
+    state.submitting = false;
   }
 }
 
 function showError(error: unknown, fallback: string) {
   uni.showToast({
     title: getUserFacingErrorMessage(error, fallback),
-    icon: 'none',
-    duration: 3000
-  })
+    icon: "none",
+    duration: 3000,
+  });
 }
 </script>
 
@@ -190,14 +236,16 @@ function showError(error: unknown, fallback: string) {
         /></view>
         <view>
           <text class="execution-page__kicker">{{ kicker }}</text>
-          <text class="execution-page__title">{{ current?.waybillNo || '运输运单' }}</text>
+          <text class="execution-page__title">{{
+            current?.waybillNo || "运输运单"
+          }}</text>
           <text class="execution-page__subtitle">
             {{
               isDeparture
-                ? '记录发车时间、出车里程和车辆照片'
+                ? "记录发车时间、出车里程和车辆照片"
                 : isRepairingReturnArchive
-                  ? '补齐历史缺失的收车时间、里程和车辆照片'
-                  : '记录收车时间、收车里程并完成运输闭环'
+                  ? "补齐历史缺失的收车时间、里程和车辆照片"
+                  : "记录收车时间、收车里程并完成运输闭环"
             }}
           </text>
         </view>
@@ -214,25 +262,31 @@ function showError(error: unknown, fallback: string) {
       <view v-else class="execution-page__content">
         <view
           class="execution-page__notice"
-          :class="{ 'execution-page__notice--warning': isRepairingReturnArchive }"
+          :class="{
+            'execution-page__notice--warning': isRepairingReturnArchive,
+          }"
         >
           <wd-icon name="info-circle" size="32rpx" />
           <text>{{
             isDeparture
-              ? '出车里程会和收车里程配对，自动计算本次行驶公里数。'
+              ? "出车里程会和收车里程配对，自动计算本次行驶公里数。"
               : isRepairingReturnArchive
-                ? '系统检测到历史完成状态缺少回场档案。本次提交会补齐回场记录和车辆里程台账。'
+                ? "系统检测到历史完成状态缺少回场档案。本次提交会补齐回场记录和车辆里程台账。"
                 : `收车里程不得小于出车里程 ${executionContext?.record?.departureOdometerKm ?? 0} 公里，提交后同步车辆里程台账。`
           }}</text>
         </view>
         <view class="form-card card">
           <view class="form-card__heading">
             <view class="form-card__step">1</view>
-            <view><strong>记录车辆状态</strong><text>请以现场实际信息为准</text></view>
+            <view
+              ><strong>记录车辆状态</strong
+              ><text>请以现场实际信息为准</text></view
+            >
           </view>
           <view class="field-block">
             <text class="field-block__label"
-              >{{ isDeparture ? '实际发车时间' : '收车时间' }}<text class="required-mark">*</text></text
+              >{{ isDeparture ? "实际发车时间" : "收车时间"
+              }}<text class="required-mark">*</text></text
             >
             <wd-datetime-picker
               v-model="form.occurredAt"
@@ -242,7 +296,9 @@ function showError(error: unknown, fallback: string) {
             />
           </view>
           <view class="field-block">
-            <text class="field-block__label">{{ fieldTitle }}<text class="required-mark">*</text></text>
+            <text class="field-block__label"
+              >{{ fieldTitle }}<text class="required-mark">*</text></text
+            >
             <view class="mileage-input"
               ><input
                 v-model="form.odometerKm"
@@ -253,13 +309,25 @@ function showError(error: unknown, fallback: string) {
           </view>
           <view class="field-block">
             <text class="field-block__label"
-              >{{ isDeparture ? '发车照片' : '收车照片' }}<text class="required-mark">*</text></text
+              >{{ isDeparture ? "发车照片" : "收车照片"
+              }}<text class="required-mark">*</text></text
             >
-            <text class="field-block__help">拍摄车辆外观和仪表盘，确保车牌及里程清晰</text>
+            <text class="field-block__help"
+              >拍摄车辆外观和仪表盘，确保车牌及里程清晰</text
+            >
             <view class="evidence-grid">
-              <view v-for="(url, index) in form.photoUrls" :key="url" class="evidence-grid__item">
+              <view
+                v-for="(url, index) in form.photoUrls"
+                :key="url"
+                class="evidence-grid__item"
+              >
                 <image :src="url" mode="aspectFill" @click="preview(url)" />
-                <button class="evidence-grid__remove" @click="removePhoto(index)">×</button>
+                <button
+                  class="evidence-grid__remove"
+                  @click="removePhoto(index)"
+                >
+                  ×
+                </button>
               </view>
               <button
                 v-if="form.photoUrls.length < 5"
@@ -267,27 +335,48 @@ function showError(error: unknown, fallback: string) {
                 :disabled="state.uploading"
                 @click="uploadPhotos"
               >
-                <wd-loading v-if="state.uploading" type="ring" color="#3763f4" size="30rpx" />
+                <wd-loading
+                  v-if="state.uploading"
+                  type="ring"
+                  color="#3763f4"
+                  size="30rpx"
+                />
                 <view v-else class="evidence-grid__add-content">
                   <wd-icon name="camera" size="42rpx" />
                   <text>拍照上传</text>
                 </view>
               </button>
             </view>
-            <text class="field-block__quota">已上传 {{ form.photoUrls.length }}/5 张</text>
+            <text class="field-block__quota"
+              >已上传 {{ form.photoUrls.length }}/5 张</text
+            >
           </view>
           <view class="field-block field-block--remark">
             <text class="field-block__label">备注</text>
-            <textarea v-model="form.remark" maxlength="300" placeholder="可填写现场说明" />
+            <textarea
+              v-model="form.remark"
+              maxlength="300"
+              placeholder="可填写现场说明"
+            />
             <text class="field-block__count">{{ form.remark.length }}/300</text>
           </view>
         </view>
       </view>
     </scroll-view>
 
-    <view v-if="!state.loading && !state.error" class="execution-footer safe-bottom">
+    <view
+      v-if="!state.loading && !state.error"
+      class="execution-footer safe-bottom"
+    >
       <view
-        ><text>{{ submitMissing.length ? `还需补充：${submitMissing.join('、')}` : '信息已完整，请核对后提交' }}</text><strong>{{ submitMissing.length ? '请完成必填项' : title }}</strong></view
+        ><text>{{
+          submitMissing.length
+            ? `还需补充：${submitMissing.join("、")}`
+            : "信息已完整，请核对后提交"
+        }}</text
+        ><strong>{{
+          submitMissing.length ? "请完成必填项" : title
+        }}</strong></view
       >
       <wd-button
         custom-class="tms-primary-action"

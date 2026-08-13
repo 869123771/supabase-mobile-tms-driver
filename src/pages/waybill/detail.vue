@@ -1,288 +1,335 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
-import { getUserFacingErrorMessage } from '@/api/supabase'
-import { checkInCargoOperation, getCargoOperationContext, getWaybillExecutionContext } from '@/api/waybill'
-import type { CargoOperationType, WaybillExecutionContext } from '@/api/types'
-import TmsIcon from '@/components/business/TmsIcon.vue'
-import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
-import TmsRouteMap from '@/components/business/TmsRouteMap.vue'
-import TmsTopBar from '@/components/business/TmsTopBar.vue'
-import WaybillSignatureSheet from '@/components/business/WaybillSignatureSheet.vue'
-import { useDictionaryStore } from '@/stores/dictionary'
-import { useAuthStore } from '@/stores/auth'
-import { useWaybillStore } from '@/stores/waybill'
-import { formatDateTime, formatMoney, formatTon, maskPhone } from '@/utils/format'
-import { openWaybillNavigation } from '@/utils/navigation'
-import { getWaybillRoutePoints } from '@/utils/route'
-import { calculateDistanceMeters, getCurrentGcj02Location } from '@/utils/location'
+import { computed, ref } from "vue";
+import { onLoad, onShow } from "@dcloudio/uni-app";
+import { getUserFacingErrorMessage } from "@/api/supabase";
+import {
+  checkInCargoOperation,
+  getCargoOperationContext,
+  getWaybillExecutionContext,
+} from "@/api/waybill";
+import type { CargoOperationType, WaybillExecutionContext } from "@/api/types";
+import TmsIcon from "@/components/business/TmsIcon.vue";
+import TmsRouteCard from "@/components/business/TmsRouteCard.vue";
+import TmsRouteMap from "@/components/business/TmsRouteMap.vue";
+import TmsTopBar from "@/components/business/TmsTopBar.vue";
+import WaybillSignatureSheet from "@/components/business/WaybillSignatureSheet.vue";
+import { useDictionaryStore } from "@/stores/dictionary";
+import { useAuthStore } from "@/stores/auth";
+import { useWaybillStore } from "@/stores/waybill";
+import {
+  formatDateTime,
+  formatMoney,
+  formatTon,
+  maskPhone,
+} from "@/utils/format";
+import { openWaybillNavigation } from "@/utils/navigation";
+import { getWaybillRoutePoints } from "@/utils/route";
+import {
+  calculateDistanceMeters,
+  getCurrentGcj02Location,
+} from "@/utils/location";
 
-const waybill = useWaybillStore()
-const auth = useAuthStore()
-const dictionary = useDictionaryStore()
-const id = ref('')
-type DetailAction = 'accept' | 'cancel'
-const activeAction = ref<DetailAction | ''>('')
-const executionContext = ref<WaybillExecutionContext>()
-const signatureVisible = ref(false)
+const waybill = useWaybillStore();
+const auth = useAuthStore();
+const dictionary = useDictionaryStore();
+const id = ref("");
+type DetailAction = "accept" | "cancel";
+const activeAction = ref<DetailAction | "">("");
+const executionContext = ref<WaybillExecutionContext>();
+const signatureVisible = ref(false);
 
-const current = computed(() => waybill.current)
-const isPending = computed(() => current.value?.status === 'pending')
-const isCompleted = computed(() => current.value?.status === 'completed')
-const isAccepted = computed(() => current.value?.status === 'accepted')
-const isLoading = computed(() => current.value?.status === 'loading')
-const isTransporting = computed(() => current.value?.status === 'transporting')
-const isUnloading = computed(() => current.value?.status === 'unloading')
-const isSigned = computed(() => current.value?.status === 'signed')
-const needsReturnCompletion = computed(
-  () => Boolean(executionContext.value?.needsReturnCompletion && executionContext.value?.canComplete)
-)
-const hasRouteCoordinates = computed(() => getWaybillRoutePoints(current.value).length >= 2)
-const actionBusy = computed(() => Boolean(activeAction.value) || waybill.actionLoading)
+const current = computed(() => waybill.current);
+const isPending = computed(() => current.value?.status === "pending");
+const isCompleted = computed(() => current.value?.status === "completed");
+const isAccepted = computed(() => current.value?.status === "accepted");
+const isLoading = computed(() => current.value?.status === "loading");
+const isTransporting = computed(() => current.value?.status === "transporting");
+const isUnloading = computed(() => current.value?.status === "unloading");
+const isSigned = computed(() => current.value?.status === "signed");
+const needsReturnCompletion = computed(() =>
+  Boolean(
+    executionContext.value?.needsReturnCompletion &&
+    executionContext.value?.canComplete,
+  ),
+);
+const hasRouteCoordinates = computed(
+  () => getWaybillRoutePoints(current.value).length >= 2,
+);
+const actionBusy = computed(
+  () => Boolean(activeAction.value) || waybill.actionLoading,
+);
 const deliveryProofCount = computed(
   () =>
     waybill.proofs.filter(
-      (proof) => proof.proofType === 'delivery_photo' || proof.proofType === 'receipt'
-    ).length
-)
+      (proof) =>
+        proof.proofType === "delivery_photo" || proof.proofType === "receipt",
+    ).length,
+);
 
 const statusTitle = computed(() => {
-  const status = current.value?.status
-  if (status === 'accepted') return '待提货'
-  if (status === 'loading') return '待发车'
-  if (status === 'transporting') return '运输中'
-  if (status === 'unloading') return '待卸货'
-  if (status === 'signed') return '已签收'
-  if (status === 'completed') return '已完成'
-  if (status === 'cancelled') return '已取消'
-  return dictionary.label('tmsWaybillStatus', status, '待处理')
-})
+  const status = current.value?.status;
+  if (status === "accepted") return "待提货";
+  if (status === "loading") return "待发车";
+  if (status === "transporting") return "运输中";
+  if (status === "unloading") return "待卸货";
+  if (status === "signed") return "已签收";
+  if (status === "completed") return "已完成";
+  if (status === "cancelled") return "已取消";
+  return dictionary.label("tmsWaybillStatus", status, "待处理");
+});
 
 const statusHint = computed(() => {
-  const item = current.value
-  if (!item) return ''
-  if (item.status === 'accepted') {
-    return '到达装货地后请完成定位打卡和装货资料'
+  const item = current.value;
+  if (!item) return "";
+  if (item.status === "accepted") {
+    return "到达装货地后请完成定位打卡和装货资料";
   }
-  if (item.status === 'loading') return '提货凭证已上传，请确认发车'
-  if (item.status === 'transporting') return '到达目的地后请确认到达'
-  if (item.status === 'unloading')
-    return executionContext.value?.unloadingStatus === 'completed'
-      ? '卸货资料已完成，请办理签收'
-      : '已到达目的地，请填写卸货信息'
-  if (item.status === 'signed') return '签收已完成，请录入收车时间和收车里程'
-  if (item.status === 'completed') {
+  if (item.status === "loading") return "提货凭证已上传，请确认发车";
+  if (item.status === "transporting") return "到达目的地后请确认到达";
+  if (item.status === "unloading")
+    return executionContext.value?.unloadingStatus === "completed"
+      ? "卸货资料已完成，请办理签收"
+      : "已到达目的地，请填写卸货信息";
+  if (item.status === "signed") return "签收已完成，请录入收车时间和收车里程";
+  if (item.status === "completed") {
     return needsReturnCompletion.value
-      ? '历史完成状态缺少回场档案，请补录收车时间、里程和照片'
-      : `已于${formatDateTime(item.completedAt || item.unloadedAt)}送达!`
+      ? "历史完成状态缺少回场档案，请补录收车时间、里程和照片"
+      : `已于${formatDateTime(item.completedAt || item.unloadedAt)}送达!`;
   }
-  if (item.status === 'cancelled') return '该运单已取消'
-  return '请核对订单信息后接受任务'
-})
+  if (item.status === "cancelled") return "该运单已取消";
+  return "请核对订单信息后接受任务";
+});
 
-const proofUrls = computed(() => waybill.proofs.map((item) => item.fileUrl).filter(Boolean))
+const proofUrls = computed(() =>
+  waybill.proofs.map((item) => item.fileUrl).filter(Boolean),
+);
 const cargoTypeLabel = computed(() => {
-  const item = current.value
-  if (!item) return '--'
+  const item = current.value;
+  if (!item) return "--";
   return dictionary.labelAny(
-    ['tmsCustomerPriceCargoType', 'tmsCargoUnit'],
+    ["tmsCustomerPriceCargoType", "tmsCargoUnit"],
     item.cargoType,
-    item.cargoName || '--'
-  )
-})
+    item.cargoName || "--",
+  );
+});
 const cargoRows = computed(() => {
-  const item = current.value
-  if (!item) return []
+  const item = current.value;
+  if (!item) return [];
   return [
-    { label: '货物类型', value: cargoTypeLabel.value },
-    { label: '货物重量', value: formatTon(item.cargoWeightTon) },
-    { label: '货物体积', value: item.cargoVolumeM3 ? `${item.cargoVolumeM3}m³` : '--' },
-    { label: '数量', value: item.cargoQuantity || '--' }
-  ]
-})
+    { label: "货物类型", value: cargoTypeLabel.value },
+    { label: "货物重量", value: formatTon(item.cargoWeightTon) },
+    {
+      label: "货物体积",
+      value: item.cargoVolumeM3 ? `${item.cargoVolumeM3}m³` : "--",
+    },
+    { label: "数量", value: item.cargoQuantity || "--" },
+  ];
+});
 const stationRows = computed(() => {
-  const item = current.value
-  if (!item) return []
+  const item = current.value;
+  if (!item) return [];
   return [
     {
-      label: '发货站',
-      station: item.fromStationName || item.originCity || '--',
-      name: item.senderName || item.shipperName || '--',
-      phone: item.senderPhone || item.shipperPhone || '',
-      address: item.senderAddress || item.shipperAddress || '--'
+      label: "发货站",
+      station: item.fromStationName || item.originCity || "--",
+      name: item.senderName || item.shipperName || "--",
+      phone: item.senderPhone || item.shipperPhone || "",
+      address: item.senderAddress || item.shipperAddress || "--",
     },
     {
-      label: '到货站',
-      station: item.toStationName || item.destinationCity || '--',
-      name: item.receiverName || '--',
-      phone: item.receiverPhone || '',
-      address: item.receiverAddress || '--'
-    }
-  ]
-})
+      label: "到货站",
+      station: item.toStationName || item.destinationCity || "--",
+      name: item.receiverName || "--",
+      phone: item.receiverPhone || "",
+      address: item.receiverAddress || "--",
+    },
+  ];
+});
 
 onLoad((query) => {
-  id.value = String(query?.id || '')
-})
+  id.value = String(query?.id || "");
+});
 
-onShow(() => void load())
+onShow(() => void load());
 
 async function load() {
-  if (!id.value) return
+  if (!id.value) return;
   try {
-    const loaded = await waybill.loadDetail(id.value)
+    const loaded = await waybill.loadDetail(id.value);
     try {
-      executionContext.value = await getWaybillExecutionContext(auth.token, id.value)
+      executionContext.value = await getWaybillExecutionContext(
+        auth.token,
+        id.value,
+      );
     } catch (error) {
-      executionContext.value = undefined
+      executionContext.value = undefined;
       uni.showToast({
-        title: getUserFacingErrorMessage(error, '任务节点同步失败，请稍后重试'),
-        icon: 'none',
-        duration: 3000
-      })
+        title: getUserFacingErrorMessage(error, "任务节点同步失败，请稍后重试"),
+        icon: "none",
+        duration: 3000,
+      });
     }
-    await tryAutomaticCargoCheckIn(loaded)
+    await tryAutomaticCargoCheckIn(loaded);
   } catch (error) {
     uni.showToast({
-      title: getUserFacingErrorMessage(error, '任务详情加载失败，请稍后重试'),
-      icon: 'none'
-    })
+      title: getUserFacingErrorMessage(error, "任务详情加载失败，请稍后重试"),
+      icon: "none",
+    });
   }
 }
 
 async function tryAutomaticCargoCheckIn(item: typeof current.value) {
-  if (!item) return
+  if (!item) return;
   const operationType: CargoOperationType | null =
-    item.status === 'accepted' ? 'loading' : item.status === 'transporting' ? 'unloading' : null
-  if (!operationType) return
+    item.status === "accepted"
+      ? "loading"
+      : item.status === "transporting"
+        ? "unloading"
+        : null;
+  if (!operationType) return;
 
   try {
-    const context = await getCargoOperationContext(auth.token, item.id, operationType)
-    if (!context.geofenceEnabled || !context.autoCheckIn || context.operation) return
+    const context = await getCargoOperationContext(
+      auth.token,
+      item.id,
+      operationType,
+    );
+    if (!context.geofenceEnabled || !context.autoCheckIn || context.operation)
+      return;
     const operationAddress =
-      operationType === 'loading' ? item.shipperAddress : item.receiverAddress
-    const location = await getCurrentGcj02Location(operationAddress)
+      operationType === "loading" ? item.shipperAddress : item.receiverAddress;
+    const location = await getCurrentGcj02Location(operationAddress);
     const distance = calculateDistanceMeters(
       location,
       context.centerLongitude,
-      context.centerLatitude
-    )
-    if (distance === null || distance > context.radiusM) return
-    await checkInCargoOperation(auth.token, item.id, operationType, location, null, true)
-    await waybill.loadDetail(item.id)
-    executionContext.value = await getWaybillExecutionContext(auth.token, item.id)
+      context.centerLatitude,
+    );
+    if (distance === null || distance > context.radiusM) return;
+    await checkInCargoOperation(
+      auth.token,
+      item.id,
+      operationType,
+      location,
+      null,
+      true,
+    );
+    await waybill.loadDetail(item.id);
+    executionContext.value = await getWaybillExecutionContext(
+      auth.token,
+      item.id,
+    );
     uni.showToast({
-      title: `已自动${operationType === 'loading' ? '装货' : '卸货'}打卡`,
-      icon: 'success'
-    })
+      title: `已自动${operationType === "loading" ? "装货" : "卸货"}打卡`,
+      icon: "success",
+    });
   } catch {
     // 自动定位不阻断详情页，司机仍可进入作业页手动重试。
   }
 }
 
 function back() {
-  const pages = getCurrentPages()
+  const pages = getCurrentPages();
   if (pages.length > 1) {
-    uni.navigateBack()
-    return
+    uni.navigateBack();
+    return;
   }
-  uni.reLaunch({ url: '/pages/waybill/index' })
+  uni.reLaunch({ url: "/pages/waybill/index" });
 }
 
 function navigate() {
-  openWaybillNavigation(current.value)
+  openWaybillNavigation(current.value);
 }
 
 function callPhone(phone?: string) {
   if (!phone) {
-    uni.showToast({ title: '暂无联系电话', icon: 'none' })
-    return
+    uni.showToast({ title: "暂无联系电话", icon: "none" });
+    return;
   }
-  uni.makePhoneCall({ phoneNumber: phone })
+  uni.makePhoneCall({ phoneNumber: phone });
 }
 
 async function accept() {
-  if (actionBusy.value) return
-  activeAction.value = 'accept'
+  if (actionBusy.value) return;
+  activeAction.value = "accept";
   try {
-    await waybill.acceptCurrent()
-    uni.showToast({ title: '已接受任务', icon: 'success' })
+    await waybill.acceptCurrent();
+    uni.showToast({ title: "已接受任务", icon: "success" });
   } catch (error) {
-    showActionError(error, '接受任务失败，请稍后重试')
+    showActionError(error, "接受任务失败，请稍后重试");
   } finally {
-    activeAction.value = ''
+    activeAction.value = "";
   }
 }
 
-function openCargoOperation(type: 'loading' | 'unloading', mode?: 'arrival') {
-  if (!current.value) return
+function openCargoOperation(type: "loading" | "unloading", mode?: "arrival") {
+  if (!current.value) return;
   uni.navigateTo({
-    url: `/pages/waybill/cargo-operation?id=${encodeURIComponent(current.value.id)}&type=${type}${mode ? `&mode=${mode}` : ''}`
-  })
+    url: `/pages/waybill/cargo-operation?id=${encodeURIComponent(current.value.id)}&type=${type}${mode ? `&mode=${mode}` : ""}`,
+  });
 }
 
-function openExecutionOperation(action: 'departure' | 'completion') {
-  if (!current.value) return
+function openExecutionOperation(action: "departure" | "completion") {
+  if (!current.value) return;
   uni.navigateTo({
-    url: `/pages/waybill/execution-operation?id=${encodeURIComponent(current.value.id)}&action=${action}`
-  })
+    url: `/pages/waybill/execution-operation?id=${encodeURIComponent(current.value.id)}&action=${action}`,
+  });
 }
 
 function showActionError(error: unknown, fallback: string) {
-  const message = getUserFacingErrorMessage(error, fallback)
+  const message = getUserFacingErrorMessage(error, fallback);
   const title = /状态不允许|运输节点|已进入下一/.test(message)
-    ? '运单状态已变化，请刷新后重试'
-    : message
-  uni.showToast({ title, icon: 'none', duration: 2600 })
+    ? "运单状态已变化，请刷新后重试"
+    : message;
+  uni.showToast({ title, icon: "none", duration: 2600 });
 }
 
 function cancel() {
   uni.showModal({
-    title: '取消运单',
+    title: "取消运单",
     editable: true,
-    placeholderText: '请填写取消原因（至少 4 个字）',
-    confirmColor: '#f05252',
+    placeholderText: "请填写取消原因（至少 4 个字）",
+    confirmColor: "#f05252",
     success: async (result) => {
-      if (!result.confirm) return
-      const reason = String(result.content || '').trim()
+      if (!result.confirm) return;
+      const reason = String(result.content || "").trim();
       if (reason.length < 4) {
-        uni.showToast({ title: '取消原因至少填写 4 个字', icon: 'none' })
-        return
+        uni.showToast({ title: "取消原因至少填写 4 个字", icon: "none" });
+        return;
       }
-      activeAction.value = 'cancel'
+      activeAction.value = "cancel";
       try {
-        await waybill.cancelCurrent(reason)
-        uni.showToast({ title: '已取消', icon: 'success' })
+        await waybill.cancelCurrent(reason);
+        uni.showToast({ title: "已取消", icon: "success" });
       } catch (error) {
-        showActionError(error, '取消失败，请稍后重试')
+        showActionError(error, "取消失败，请稍后重试");
       } finally {
-        activeAction.value = ''
+        activeAction.value = "";
       }
-    }
-  })
+    },
+  });
 }
 
 async function handleSignatureSuccess() {
-  signatureVisible.value = false
-  await load()
-  if (!executionContext.value?.canComplete) return
+  signatureVisible.value = false;
+  await load();
+  if (!executionContext.value?.canComplete) return;
   uni.showModal({
-    title: '签收已完成',
-    content: '是否现在录入收车时间、里程和车辆照片，完成本次运输闭环？',
-    confirmText: '去录入',
-    cancelText: '稍后处理',
+    title: "签收已完成",
+    content: "是否现在录入收车时间、里程和车辆照片，完成本次运输闭环？",
+    confirmText: "去录入",
+    cancelText: "稍后处理",
     success: (result) => {
-      if (result.confirm) openExecutionOperation('completion')
-    }
-  })
+      if (result.confirm) openExecutionOperation("completion");
+    },
+  });
 }
 
 function viewReceipt() {
   if (proofUrls.value.length === 0) {
-    uni.showToast({ title: '暂无回单文件', icon: 'none' })
-    return
+    uni.showToast({ title: "暂无回单文件", icon: "none" });
+    return;
   }
-  uni.previewImage({ urls: proofUrls.value })
+  uni.previewImage({ urls: proofUrls.value });
 }
 </script>
 
@@ -291,14 +338,21 @@ function viewReceipt() {
     class="detail-page page"
     :class="{
       'detail-page--pending': isPending,
-      'detail-page--route-empty': isPending && !hasRouteCoordinates
+      'detail-page--route-empty': isPending && !hasRouteCoordinates,
     }"
   >
     <TmsRouteMap v-if="isPending" :waybill="current" @back="back" />
     <view v-else class="detail-page__blue">
-      <TmsTopBar title="任务详情" eyebrow="运单进度" subtitle="按当前运输节点完成操作" show-back />
+      <TmsTopBar
+        title="任务详情"
+        eyebrow="运单进度"
+        subtitle="按当前运输节点完成操作"
+        show-back
+      />
       <view v-if="current" class="detail-page__status">
-        <view class="detail-page__status-icon"><TmsIcon name="document" size="38rpx" /></view>
+        <view class="detail-page__status-icon"
+          ><TmsIcon name="document" size="38rpx"
+        /></view>
         <view>
           <text class="detail-page__status-title">{{ statusTitle }}</text>
           <text class="detail-page__hint">{{ statusHint }}</text>
@@ -323,21 +377,37 @@ function viewReceipt() {
               <wd-icon name="info-circle" size="28rpx" />
               <text>到达装货地后先定位打卡，再补齐重量、现场照片和磅单</text>
             </view>
-            <view v-else-if="isLoading" class="detail-actions__helper detail-actions__helper--success">
+            <view
+              v-else-if="isLoading"
+              class="detail-actions__helper detail-actions__helper--success"
+            >
               <wd-icon name="check-circle" size="28rpx" />
               <text>提货凭证已保存，请确认车辆已发车</text>
             </view>
             <view v-else-if="isUnloading" class="detail-actions__helper">
               <wd-icon name="info-circle" size="28rpx" />
-              <text>{{ executionContext?.unloadingStatus === 'completed' ? '卸货资料已完成，可以办理签收' : '请补齐卸货重量、现场照片和磅单' }}</text>
+              <text>{{
+                executionContext?.unloadingStatus === "completed"
+                  ? "卸货资料已完成，可以办理签收"
+                  : "请补齐卸货重量、现场照片和磅单"
+              }}</text>
             </view>
             <view
               v-else-if="isSigned || needsReturnCompletion"
               class="detail-actions__helper"
-              :class="{ 'detail-actions__helper--success': isSigned && !isCompleted }"
+              :class="{
+                'detail-actions__helper--success': isSigned && !isCompleted,
+              }"
             >
-              <wd-icon :name="isCompleted ? 'warning' : 'check-circle'" size="28rpx" />
-              <text>{{ isCompleted ? '检测到历史完成状态缺少回场档案，请补录' : `签收已确认，${deliveryProofCount} 张回单已归档` }}</text>
+              <wd-icon
+                :name="isCompleted ? 'warning' : 'check-circle'"
+                size="28rpx"
+              />
+              <text>{{
+                isCompleted
+                  ? "检测到历史完成状态缺少回场档案，请补录"
+                  : `签收已确认，${deliveryProofCount} 张回单已归档`
+              }}</text>
             </view>
 
             <view class="detail-actions__controls">
@@ -352,9 +422,16 @@ function viewReceipt() {
                 @click.stop="cancel"
               >
                 <view class="detail-actions__button-content">
-                  <wd-loading v-if="activeAction === 'cancel'" type="ring" color="#dc2626" size="28rpx" />
+                  <wd-loading
+                    v-if="activeAction === 'cancel'"
+                    type="ring"
+                    color="#dc2626"
+                    size="28rpx"
+                  />
                   <wd-icon v-else name="close" size="28rpx" />
-                  <text>{{ activeAction === 'cancel' ? '正在取消' : '取消运单' }}</text>
+                  <text>{{
+                    activeAction === "cancel" ? "正在取消" : "取消运单"
+                  }}</text>
                 </view>
               </wd-button>
               <wd-button
@@ -406,11 +483,26 @@ function viewReceipt() {
                 type="primary"
                 :round="false"
                 :disabled="actionBusy"
-                @click.stop="executionContext?.unloadingStatus === 'completed' ? (signatureVisible = true) : openCargoOperation('unloading')"
+                @click.stop="
+                  executionContext?.unloadingStatus === 'completed'
+                    ? (signatureVisible = true)
+                    : openCargoOperation('unloading')
+                "
               >
                 <view class="detail-actions__button-content">
-                  <wd-icon :name="executionContext?.unloadingStatus === 'completed' ? 'check-circle' : 'upload'" size="30rpx" />
-                  <text>{{ executionContext?.unloadingStatus === 'completed' ? '办理签收' : '填写卸货信息' }}</text>
+                  <wd-icon
+                    :name="
+                      executionContext?.unloadingStatus === 'completed'
+                        ? 'check-circle'
+                        : 'upload'
+                    "
+                    size="30rpx"
+                  />
+                  <text>{{
+                    executionContext?.unloadingStatus === "completed"
+                      ? "办理签收"
+                      : "填写卸货信息"
+                  }}</text>
                 </view>
               </wd-button>
               <wd-button
@@ -424,7 +516,9 @@ function viewReceipt() {
               >
                 <view class="detail-actions__button-content">
                   <wd-icon name="check" size="30rpx" />
-                  <text>{{ isCompleted ? '补录收车信息' : '录入收车信息' }}</text>
+                  <text>{{
+                    isCompleted ? "补录收车信息" : "录入收车信息"
+                  }}</text>
                 </view>
               </wd-button>
               <wd-button
@@ -451,10 +545,16 @@ function viewReceipt() {
               <text class="section-eyebrow">货物档案</text>
               <text class="section-title">货物信息</text>
             </view>
-            <text class="section-head__hint">{{ current.cargoName || '运输货物' }}</text>
+            <text class="section-head__hint">{{
+              current.cargoName || "运输货物"
+            }}</text>
           </view>
           <view class="info-list">
-            <view v-for="row in cargoRows" :key="row.label" class="info-list__row">
+            <view
+              v-for="row in cargoRows"
+              :key="row.label"
+              class="info-list__row"
+            >
               <text>{{ row.label }}</text>
               <text>{{ row.value }}</text>
             </view>
@@ -470,14 +570,20 @@ function viewReceipt() {
             <text class="section-head__hint">可快捷拨号</text>
           </view>
           <view class="station-list">
-            <view v-for="row in stationRows" :key="row.label" class="station-list__row">
+            <view
+              v-for="row in stationRows"
+              :key="row.label"
+              class="station-list__row"
+            >
               <text class="station-list__label">{{ row.label }}</text>
               <view class="station-list__main">
                 <view class="station-list__head">
                   <text class="station-list__station">{{ row.station }}</text>
                   <text class="station-list__name">{{ row.name }}</text>
                 </view>
-                <text class="station-list__phone">{{ maskPhone(row.phone) }}</text>
+                <text class="station-list__phone">{{
+                  maskPhone(row.phone)
+                }}</text>
                 <text class="station-list__address">{{ row.address }}</text>
               </view>
               <wd-button
@@ -499,7 +605,9 @@ function viewReceipt() {
               <text class="section-eyebrow">凭证资料</text>
               <text class="section-title">运输单据</text>
             </view>
-            <text class="section-head__hint">{{ waybill.proofs.length }} 份</text>
+            <text class="section-head__hint"
+              >{{ waybill.proofs.length }} 份</text
+            >
           </view>
           <view class="proof-card__grid">
             <image
@@ -515,14 +623,23 @@ function viewReceipt() {
       </view>
       <view v-else class="detail-page__state card">
         <view class="detail-page__state-icon">
-          <wd-loading v-if="waybill.loading" type="ring" color="#4f46e5" size="58rpx" />
+          <wd-loading
+            v-if="waybill.loading"
+            type="ring"
+            color="#4f46e5"
+            size="58rpx"
+          />
           <TmsIcon v-else name="document" size="62rpx" />
         </view>
         <text class="detail-page__state-title">
-          {{ waybill.loading ? '正在加载任务详情' : '暂时无法显示任务' }}
+          {{ waybill.loading ? "正在加载任务详情" : "暂时无法显示任务" }}
         </text>
         <text class="detail-page__state-hint">
-          {{ waybill.loading ? '正在同步运输节点、货物与站点信息' : '请返回运单列表后重新进入' }}
+          {{
+            waybill.loading
+              ? "正在同步运输节点、货物与站点信息"
+              : "请返回运单列表后重新进入"
+          }}
         </text>
       </view>
     </scroll-view>
@@ -530,7 +647,9 @@ function viewReceipt() {
     <view v-if="current && isPending" class="pending-footer">
       <view>
         <text class="pending-footer__label">运费：</text>
-        <text class="pending-footer__money">{{ formatMoney(current.freightAmount) }}</text>
+        <text class="pending-footer__money">{{
+          formatMoney(current.freightAmount)
+        }}</text>
       </view>
       <wd-button
         class="pending-footer__button"
@@ -541,9 +660,16 @@ function viewReceipt() {
         @click="accept"
       >
         <view class="detail-actions__button-content">
-          <wd-loading v-if="activeAction === 'accept'" type="ring" color="#ffffff" size="30rpx" />
+          <wd-loading
+            v-if="activeAction === 'accept'"
+            type="ring"
+            color="#ffffff"
+            size="30rpx"
+          />
           <wd-icon v-else name="check-circle" size="32rpx" />
-          <text>{{ activeAction === 'accept' ? '正在接受任务' : '确认接受任务' }}</text>
+          <text>{{
+            activeAction === "accept" ? "正在接受任务" : "确认接受任务"
+          }}</text>
         </view>
       </wd-button>
     </view>
