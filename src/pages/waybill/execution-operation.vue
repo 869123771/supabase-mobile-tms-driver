@@ -30,8 +30,14 @@ const form = reactive({
   remark: ''
 })
 const current = computed(() => waybill.current)
+const executionContext = ref<Awaited<ReturnType<typeof getWaybillExecutionContext>>>()
 const isDeparture = computed(() => action.value === 'departure')
-const title = computed(() => (isDeparture.value ? '确认发车' : '确认完成运单'))
+const isRepairingReturnArchive = computed(
+  () => !isDeparture.value && Boolean(executionContext.value?.needsReturnCompletion && current.value?.status === 'completed')
+)
+const title = computed(() =>
+  isDeparture.value ? '确认发车' : isRepairingReturnArchive.value ? '补录回场' : '确认回场'
+)
 const kicker = computed(() => (isDeparture.value ? 'DEPARTURE RECORD' : 'RETURN & CLOSE'))
 const fieldTitle = computed(() => (isDeparture.value ? '出车里程（公里）' : '收车里程（公里）'))
 const submitMissing = computed(() => {
@@ -61,6 +67,7 @@ async function load() {
   try {
     await Promise.all([waybill.loadDetail(id.value), profile.load(true)])
     const context = await getWaybillExecutionContext(auth.token, id.value)
+    executionContext.value = context
     const record = context.record
     const time = isDeparture.value ? record?.departureTime : record?.returnTime
     const odometer = isDeparture.value ? record?.departureOdometerKm : record?.returnOdometerKm
@@ -120,6 +127,20 @@ async function submit() {
       title: `请上传${isDeparture.value ? '发车' : '收车'}照片`,
       icon: 'none'
     })
+  if (!isDeparture.value) {
+    const departureOdometer = Number(executionContext.value?.record?.departureOdometerKm ?? 0)
+    if (odometer < departureOdometer) {
+      return void uni.showToast({
+        title: `收车里程不能小于出车里程 ${departureOdometer} 公里`,
+        icon: 'none',
+        duration: 3000
+      })
+    }
+    const signedAt = executionContext.value?.record?.signedAt
+    if (signedAt && form.occurredAt < new Date(signedAt).getTime()) {
+      return void uni.showToast({ title: '收车时间不能早于签收时间', icon: 'none' })
+    }
+  }
   state.submitting = true
   try {
     if (isDeparture.value) {
@@ -174,7 +195,9 @@ function showError(error: unknown, fallback: string) {
             {{
               isDeparture
                 ? '记录发车时间、出车里程和车辆照片'
-                : '记录收车时间、收车里程并完成运输闭环'
+                : isRepairingReturnArchive
+                  ? '补齐历史缺失的收车时间、里程和车辆照片'
+                  : '记录收车时间、收车里程并完成运输闭环'
             }}
           </text>
         </view>
@@ -189,12 +212,17 @@ function showError(error: unknown, fallback: string) {
         @retry="load"
       />
       <view v-else class="execution-page__content">
-        <view class="execution-page__notice">
+        <view
+          class="execution-page__notice"
+          :class="{ 'execution-page__notice--warning': isRepairingReturnArchive }"
+        >
           <wd-icon name="info-circle" size="32rpx" />
           <text>{{
             isDeparture
               ? '出车里程会和收车里程配对，自动计算本次行驶公里数。'
-              : '收车里程不得小于出车里程，提交后同步车辆里程台账。'
+              : isRepairingReturnArchive
+                ? '系统检测到历史完成状态缺少回场档案。本次提交会补齐回场记录和车辆里程台账。'
+                : `收车里程不得小于出车里程 ${executionContext?.record?.departureOdometerKm ?? 0} 公里，提交后同步车辆里程台账。`
           }}</text>
         </view>
         <view class="form-card card">
@@ -343,6 +371,10 @@ function showError(error: unknown, fallback: string) {
   gap: 12rpx;
   font-size: 24rpx;
   line-height: 1.5;
+}
+.execution-page__notice--warning {
+  color: #9a5b08;
+  background: #fff7e8;
 }
 .form-card {
   margin-top: 20rpx;

@@ -3,6 +3,7 @@ import {
   acceptAssignedWaybill,
   cancelAssignedWaybill,
   getWaybill,
+  getWaybillExecutionContext,
   listWaybillEvents,
   listWaybillProofs,
   listWaybills,
@@ -150,7 +151,19 @@ export const useWaybillStore = defineStore('waybill', {
               vehicleId,
               limit: 1
             })
-      this.currentTask = active[0] || pending[0] || latest[0] || null
+      const latestTask = latest[0]
+      let recoverableCompletedTask: Waybill | null = null
+      if (latestTask?.status === 'completed') {
+        try {
+          const context = await getWaybillExecutionContext(auth.token, latestTask.id)
+          if (context.needsReturnCompletion && context.canComplete) {
+            recoverableCompletedTask = latestTask
+          }
+        } catch {
+          // 首页降级展示最近任务；详情页会再次读取执行上下文并给出准确提示。
+        }
+      }
+      this.currentTask = active[0] || pending[0] || recoverableCompletedTask || latestTask || null
       return this.currentTask
     },
     async loadDetail(id: string) {

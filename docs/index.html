@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <link rel="stylesheet" href="./assets/uni.e2ea6296.css">
+
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#3763f4" />
+    <title>TMS司机端</title>
+    <style>
+      html,
+      body,
+      #app {
+        min-height: 100%;
+        margin: 0;
+        background: #f4f6fb;
+      }
+      .app-boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        color: #667085;
+        background: linear-gradient(180deg, #f7f9ff 0%, #eef3ff 100%);
+        font: 14px/1.5 "HarmonyOS Sans", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      .app-boot__mark {
+        position: relative;
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, #315bef, #5b83ff);
+        box-shadow: 0 14px 32px rgba(55, 99, 244, 0.28);
+      }
+      .app-boot__mark::before,
+      .app-boot__mark::after {
+        position: absolute;
+        top: 25px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #fff;
+        content: "";
+        animation: app-boot-pulse 1.2s ease-in-out infinite;
+      }
+      .app-boot__mark::before {
+        left: 17px;
+      }
+      .app-boot__mark::after {
+        right: 17px;
+        animation-delay: 0.2s;
+      }
+      .app-boot strong {
+        color: #26324a;
+        font-size: 18px;
+        letter-spacing: 0.04em;
+      }
+      .app-boot span {
+        margin-top: -12px;
+      }
+      @keyframes app-boot-pulse {
+        0%,
+        100% {
+          opacity: 0.45;
+          transform: translateY(0);
+        }
+        50% {
+          opacity: 1;
+          transform: translateY(-5px);
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-Bl9SVjdi.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DXXDfI9t.css">
+  </head>
+  <body>
+    <div id="app">
+      <div class="app-boot" aria-live="polite">
+        <div class="app-boot__mark"></div>
+        <strong>TMS 司机端</strong>
+        <span>正在加载工作台…</span>
+      </div>
+    </div>
+  </body>
+</html>

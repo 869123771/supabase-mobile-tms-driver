@@ -34,6 +34,9 @@ const isLoading = computed(() => current.value?.status === 'loading')
 const isTransporting = computed(() => current.value?.status === 'transporting')
 const isUnloading = computed(() => current.value?.status === 'unloading')
 const isSigned = computed(() => current.value?.status === 'signed')
+const needsReturnCompletion = computed(
+  () => Boolean(executionContext.value?.needsReturnCompletion && executionContext.value?.canComplete)
+)
 const hasRouteCoordinates = computed(() => getWaybillRoutePoints(current.value).length >= 2)
 const actionBusy = computed(() => Boolean(activeAction.value) || waybill.actionLoading)
 const deliveryProofCount = computed(
@@ -68,7 +71,11 @@ const statusHint = computed(() => {
       ? '卸货资料已完成，请办理签收'
       : '已到达目的地，请填写卸货信息'
   if (item.status === 'signed') return '签收已完成，请录入收车时间和收车里程'
-  if (item.status === 'completed') return `已于${formatDateTime(item.completedAt || item.unloadedAt)}送达!`
+  if (item.status === 'completed') {
+    return needsReturnCompletion.value
+      ? '历史完成状态缺少回场档案，请补录收车时间、里程和照片'
+      : `已于${formatDateTime(item.completedAt || item.unloadedAt)}送达!`
+  }
   if (item.status === 'cancelled') return '该运单已取消'
   return '请核对订单信息后接受任务'
 })
@@ -258,6 +265,16 @@ function cancel() {
 async function handleSignatureSuccess() {
   signatureVisible.value = false
   await load()
+  if (!executionContext.value?.canComplete) return
+  uni.showModal({
+    title: '签收已完成',
+    content: '是否现在录入收车时间、里程和车辆照片，完成本次运输闭环？',
+    confirmText: '去录入',
+    cancelText: '稍后处理',
+    success: (result) => {
+      if (result.confirm) openExecutionOperation('completion')
+    }
+  })
 }
 
 function viewReceipt() {
@@ -314,9 +331,13 @@ function viewReceipt() {
               <wd-icon name="info-circle" size="28rpx" />
               <text>{{ executionContext?.unloadingStatus === 'completed' ? '卸货资料已完成，可以办理签收' : '请补齐卸货重量、现场照片和磅单' }}</text>
             </view>
-            <view v-else-if="isSigned" class="detail-actions__helper detail-actions__helper--success">
-              <wd-icon name="check-circle" size="28rpx" />
-              <text>签收已确认，{{ deliveryProofCount }} 张回单已归档</text>
+            <view
+              v-else-if="isSigned || needsReturnCompletion"
+              class="detail-actions__helper"
+              :class="{ 'detail-actions__helper--success': isSigned && !isCompleted }"
+            >
+              <wd-icon :name="isCompleted ? 'warning' : 'check-circle'" size="28rpx" />
+              <text>{{ isCompleted ? '检测到历史完成状态缺少回场档案，请补录' : `签收已确认，${deliveryProofCount} 张回单已归档` }}</text>
             </view>
 
             <view class="detail-actions__controls">
@@ -393,7 +414,7 @@ function viewReceipt() {
                 </view>
               </wd-button>
               <wd-button
-                v-else-if="isSigned"
+                v-else-if="isSigned || needsReturnCompletion"
                 class="detail-actions__primary detail-actions__primary--wide"
                 custom-class="tms-primary-action"
                 type="primary"
@@ -403,7 +424,7 @@ function viewReceipt() {
               >
                 <view class="detail-actions__button-content">
                   <wd-icon name="check" size="30rpx" />
-                  <text>录入收车信息</text>
+                  <text>{{ isCompleted ? '补录收车信息' : '录入收车信息' }}</text>
                 </view>
               </wd-button>
               <wd-button

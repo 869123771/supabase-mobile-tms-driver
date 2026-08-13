@@ -1,0 +1,1 @@
+var a="https://ckbftoopuyophiebamwy.supabase.co/storage/v1/object/public/attachments/2026/06/18/dba8b78de5f07a318c83129b09df47dd338dcb2056de599cec89da1f12425016.jpg";export{a as t};
