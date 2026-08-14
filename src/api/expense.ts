@@ -1,9 +1,12 @@
 import type {
+  DriverExpenseAiFeatureConfig,
   DriverExpenseContext,
+  DriverExpenseOcrAnalyzeResponse,
   DriverExpenseSubmitPayload,
 } from "./types";
 import {
   removeStorageObjects,
+  request,
   rpc,
   uploadFileToStorage,
 } from "./supabase";
@@ -41,6 +44,50 @@ export function getDriverExpenseContext(token: string, waybillId: string) {
     token,
     "tms_get_driver_waybill_expense_context",
     { p_waybill_id: waybillId },
+  );
+}
+
+export async function getDriverExpenseOcrEnabled(token: string) {
+  const configs = await rpc<DriverExpenseAiFeatureConfig[]>(
+    token,
+    "get_effective_ai_feature_configs",
+    {},
+  );
+  return configs.find((item) => item.feature === "waybill_expense_ocr")?.enabled ?? true;
+}
+
+export function analyzeDriverExpenseByAi(token: string, imageUrls: string[]) {
+  return request<DriverExpenseOcrAnalyzeResponse>(
+    "/functions/v1/ai-waybill-expense-ocr",
+    {
+      method: "POST",
+      token,
+      body: { action: "analyze", imageUrls },
+    },
+  );
+}
+
+export function reviewDriverExpenseOcrArtifact(
+  token: string,
+  params: {
+    artifactId: string;
+    costId: string;
+    finalPayload: Record<string, unknown>;
+  },
+) {
+  return request<{ success?: boolean }>(
+    "/functions/v1/ai-waybill-expense-ocr",
+    {
+      method: "POST",
+      token,
+      body: {
+        action: "review",
+        artifactId: params.artifactId,
+        entityId: params.costId,
+        outcome: "applied",
+        finalPayload: params.finalPayload,
+      },
+    },
   );
 }
 

@@ -1,18 +1,23 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import {
+  analyzeDriverExpenseByAi,
+  getDriverExpenseOcrEnabled,
   getDriverExpenseObjectPath,
   removeDriverExpenseFiles,
+  reviewDriverExpenseOcrArtifact,
   submitDriverExpense,
   uploadDriverExpenseFiles,
 } from "@/api/expense";
 import { getUserFacingErrorMessage } from "@/api/supabase";
 import type {
   DriverExpenseItem,
+  DriverExpenseOcrAnalyzeResponse,
   DriverExpenseRecord,
   DriverExpenseWaybill,
 } from "@/api/types";
 import { useAuthStore } from "@/stores/auth";
+import { useDictionaryStore } from "@/stores/dictionary";
 import { chooseImages } from "@/utils/file";
 import { getCurrentGcj02Location } from "@/utils/location";
 
@@ -21,6 +26,8 @@ interface ExpenseAttachmentDraft {
   src: string;
   remoteUrl?: string;
   localPath?: string;
+  objectPath?: string;
+  disposable?: boolean;
 }
 
 const props = defineProps<{
@@ -36,10 +43,13 @@ const emit = defineEmits<{
 }>();
 
 const auth = useAuthStore();
+const dictionary = useDictionaryStore();
 const state = reactive({
   choosing: false,
   locating: false,
   uploading: false,
+  analyzing: false,
+  loadingAiConfig: false,
   submitting: false,
 });
 const form = reactive({
@@ -57,6 +67,9 @@ const form = reactive({
 const attachments = ref<ExpenseAttachmentDraft[]>([]);
 const initialRemoteUrls = ref<string[]>([]);
 const idempotencyKey = ref("");
+const ocrEnabled = ref(true);
+const ocrResult = ref<DriverExpenseOcrAnalyzeResponse>();
+const appliedOcrResult = ref<DriverExpenseOcrAnalyzeResponse>();
 
 const visible = computed({
   get: () => props.modelValue,
@@ -77,6 +90,29 @@ const expenseItemIndex = computed(() =>
 const selectedExpenseItem = computed(() =>
   props.expenseItems.find((item) => item.id === form.expenseItemId),
 );
+const paymentMethods = computed(() =>
+  Object.values(
+    dictionary.entriesByTypeCode.tmsCashPaymentMethod || {},
+  ).sort((left, right) => (left.sort || 0) - (right.sort || 0)),
+);
+const selectedPaymentMethod = computed(() =>
+  paymentMethods.value.find((item) => item.value === form.paymentChannel),
+);
+const paymentMethodIndex = computed(() =>
+  Math.max(
+    0,
+    paymentMethods.value.findIndex((item) => item.value === form.paymentChannel),
+  ),
+);
+const ocrConfidencePercent = computed(() =>
+  Math.round((ocrResult.value?.confidence || 0) * 100),
+);
+const ocrActionLabel = computed(() => {
+  if (state.loadingAiConfig) return "检测中";
+  if (state.uploading) return "上传中";
+  if (state.analyzing) return "识别中";
+  return ocrResult.value ? "重新识别" : "开始识别";
+});
 const missingFields = computed(() => {
   const missing: string[] = [];
   const amount = Number(form.amount);
@@ -90,6 +126,7 @@ const busy = computed(
     state.choosing ||
     state.locating ||
     state.uploading ||
+    state.analyzing ||
     state.submitting,
 );
 const canSubmit = computed(
@@ -98,8 +135,13 @@ const canSubmit = computed(
 
 watch(
   () => props.modelValue,
-  (value) => {
-    if (value) resetForm();
+  (value, previous) => {
+    if (value) {
+      resetForm();
+      void prepareSheet();
+    } else if (previous) {
+      void cleanupDraftUploads();
+    }
   },
 );
 
@@ -118,8 +160,8 @@ function resetForm() {
   form.paymentChannel = record?.paymentChannel || "";
   form.invoiceNo = record?.invoiceNo || "";
   form.expenseLocation = record?.expenseLocation || "";
-  form.longitude = null;
-  form.latitude = null;
+  form.longitude = record?.expenseLongitude ?? null;
+  form.latitude = record?.expenseLatitude ?? null;
   form.remark = record?.remark || "";
   initialRemoteUrls.value = [...(record?.attachments || [])];
   attachments.value = initialRemoteUrls.value.map((url, index) => ({
@@ -128,11 +170,48 @@ function resetForm() {
     remoteUrl: url,
   }));
   idempotencyKey.value = createIdempotencyKey();
+  ocrResult.value = undefined;
+  appliedOcrResult.value = undefined;
+}
+
+async function prepareSheet() {
+  state.loadingAiConfig = true;
+  try {
+    await dictionary.load(auth.token);
+    form.paymentChannel = normalizePaymentMethod(form.paymentChannel) || form.paymentChannel;
+    ocrEnabled.value = await getDriverExpenseOcrEnabled(auth.token);
+  } catch (error) {
+    console.warn("failed to prepare expense dictionaries or AI config", error);
+    ocrEnabled.value = true;
+  } finally {
+    state.loadingAiConfig = false;
+  }
 }
 
 function changeExpenseItem(event: { detail: { value: string | number } }) {
   const index = Number(event.detail.value);
   form.expenseItemId = props.expenseItems[index]?.id || "";
+}
+
+function changePaymentMethod(event: { detail: { value: string | number } }) {
+  const index = Number(event.detail.value);
+  form.paymentChannel = paymentMethods.value[index]?.value || "";
+}
+
+function normalizePaymentMethod(value?: string | null) {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return "";
+  const exact = paymentMethods.value.find(
+    (item) =>
+      item.value.toLowerCase() === normalized ||
+      item.label.trim().toLowerCase() === normalized,
+  );
+  if (exact) return exact.value;
+  const fuzzy = paymentMethods.value.find((item) => {
+    const label = item.label.trim().toLowerCase();
+    return label.includes(normalized) || normalized.includes(label);
+  });
+  return fuzzy?.value || "";
 }
 
 async function addAttachments() {
@@ -146,6 +225,8 @@ async function addAttachments() {
       localPath: path,
     }));
     attachments.value = [...attachments.value, ...next].slice(0, 5);
+    ocrResult.value = undefined;
+    appliedOcrResult.value = undefined;
   } catch (error) {
     showError(error, "选择费用凭证失败");
   } finally {
@@ -153,14 +234,108 @@ async function addAttachments() {
   }
 }
 
-function removeAttachment(index: number) {
+async function removeAttachment(index: number) {
   if (busy.value) return;
-  attachments.value.splice(index, 1);
+  const [removed] = attachments.value.splice(index, 1);
+  ocrResult.value = undefined;
+  appliedOcrResult.value = undefined;
+  if (removed?.disposable && removed.objectPath) {
+    try {
+      await removeDriverExpenseFiles(auth.token, [removed.objectPath]);
+    } catch (error) {
+      console.warn("failed to remove draft expense attachment", error);
+    }
+  }
 }
 
 function previewAttachment(index: number) {
   const urls = attachments.value.map((item) => item.src);
   uni.previewImage({ current: urls[index], urls });
+}
+
+async function uploadPendingAttachments() {
+  if (!props.waybill || !auth.user?.id) {
+    throw new Error("登录信息不完整，请重新登录后重试");
+  }
+  const pending = attachments.value.filter(
+    (item): item is ExpenseAttachmentDraft & { localPath: string } =>
+      Boolean(item.localPath),
+  );
+  if (!pending.length) return;
+
+  state.uploading = true;
+  try {
+    const uploaded = await uploadDriverExpenseFiles(
+      auth.token,
+      auth.user.id,
+      props.waybill.id,
+      pending.map((item) => item.localPath),
+    );
+    pending.forEach((item, index) => {
+      const remote = uploaded[index];
+      if (!remote) return;
+      const draft = attachments.value.find((candidate) => candidate.id === item.id);
+      if (!draft) return;
+      draft.remoteUrl = remote.url;
+      draft.objectPath = remote.objectPath;
+      draft.disposable = true;
+      draft.localPath = undefined;
+    });
+  } finally {
+    state.uploading = false;
+  }
+}
+
+async function analyzeAttachments() {
+  if (busy.value || !ocrEnabled.value) return;
+  if (!attachments.value.length) {
+    uni.showToast({ title: "请先拍照上传费用票据", icon: "none" });
+    return;
+  }
+
+  state.analyzing = true;
+  try {
+    await uploadPendingAttachments();
+    const imageUrls = attachments.value
+      .map((item) => item.remoteUrl)
+      .filter((url): url is string => Boolean(url));
+    if (!imageUrls.length) throw new Error("票据尚未上传完成，请重试");
+    ocrResult.value = await analyzeDriverExpenseByAi(auth.token, imageUrls);
+    appliedOcrResult.value = undefined;
+    uni.showToast({ title: "票据识别完成，请核对结果", icon: "success" });
+  } catch (error) {
+    showError(error, "票据识别失败，请稍后重试或手工填写");
+  } finally {
+    state.analyzing = false;
+  }
+}
+
+function applyOcrResult() {
+  const result = ocrResult.value;
+  if (!result) return;
+  const value = result.expense;
+  if (value.amount !== null && value.amount > 0) form.amount = String(value.amount);
+  if (value.occurredOn && /^\d{4}-\d{2}-\d{2}$/.test(value.occurredOn)) {
+    const timestamp = new Date(`${value.occurredOn}T00:00:00`).getTime();
+    if (Number.isFinite(timestamp)) form.occurredAt = timestamp;
+  }
+  form.providerName = value.providerName || value.payeeName || form.providerName;
+  form.invoiceNo = value.invoiceNo || form.invoiceNo;
+  if (value.expenseLocation && form.longitude === null && form.latitude === null) {
+    form.expenseLocation = value.expenseLocation;
+  }
+  form.remark = value.remark || form.remark;
+
+  const paymentMethod = normalizePaymentMethod(value.paymentChannel);
+  if (paymentMethod) form.paymentChannel = paymentMethod;
+  appliedOcrResult.value = result;
+  uni.showToast({
+    title: paymentMethod || !value.paymentChannel
+      ? "识别结果已填入，请核对"
+      : "已填入票据信息，请手动选择支付方式",
+    icon: "none",
+    duration: 3000,
+  });
 }
 
 async function locateExpense() {
@@ -172,7 +347,11 @@ async function locateExpense() {
     );
     form.longitude = location.longitude;
     form.latitude = location.latitude;
-    uni.showToast({ title: "位置已记录", icon: "success" });
+    form.expenseLocation = location.locationText || form.expenseLocation;
+    uni.showToast({
+      title: location.locationText ? "当前位置已记录" : "坐标已记录，请补充地点名称",
+      icon: location.locationText ? "success" : "none",
+    });
   } catch (error) {
     showError(error, "定位失败，请手动填写地点");
   } finally {
@@ -184,6 +363,43 @@ function formatLocalDate(timestamp: number) {
   const date = new Date(timestamp);
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function buildOcrFinalPayload() {
+  return {
+    expenseItemId: form.expenseItemId,
+    amount: Number(form.amount),
+    occurredOn: formatLocalDate(form.occurredAt),
+    providerName: form.providerName.trim() || null,
+    payeeName: form.providerName.trim() || null,
+    paymentChannel: form.paymentChannel || null,
+    invoiceNo: form.invoiceNo.trim() || null,
+    expenseLocation: form.expenseLocation.trim() || null,
+    expenseLongitude: form.longitude,
+    expenseLatitude: form.latitude,
+    expenseCoordinateSystem:
+      form.longitude === null || form.latitude === null ? null : "gcj02",
+    remark: form.remark.trim() || null,
+  };
+}
+
+async function cleanupDraftUploads() {
+  const disposable = attachments.value.filter(
+    (item): item is ExpenseAttachmentDraft & { objectPath: string } =>
+      Boolean(item.disposable && item.objectPath),
+  );
+  if (!disposable.length || !auth.token) return;
+  disposable.forEach((item) => {
+    item.disposable = false;
+  });
+  try {
+    await removeDriverExpenseFiles(
+      auth.token,
+      disposable.map((item) => item.objectPath),
+    );
+  } catch (error) {
+    console.warn("failed to clean up draft expense OCR uploads", error);
+  }
 }
 
 async function submit() {
@@ -249,6 +465,22 @@ async function submit() {
         throw firstError;
       }
     }
+
+    if (appliedOcrResult.value) {
+      try {
+        await reviewDriverExpenseOcrArtifact(auth.token, {
+          artifactId: appliedOcrResult.value.artifactId,
+          costId,
+          finalPayload: buildOcrFinalPayload(),
+        });
+      } catch (reviewError) {
+        console.warn("failed to associate expense OCR review", reviewError);
+      }
+    }
+
+    attachments.value.forEach((item) => {
+      item.disposable = false;
+    });
 
     const retained = new Set(retainedRemoteUrls);
     const removedPaths = initialRemoteUrls.value
@@ -405,6 +637,69 @@ function showError(error: unknown, fallback: string) {
             费用凭证 <text class="required-mark">*</text>
           </text>
           <text class="expense-field__help">支持票据、付款截图或现场凭证，最多 5 张</text>
+          <view
+            class="expense-ocr"
+            :class="{ 'expense-ocr--disabled': !ocrEnabled }"
+          >
+            <view class="expense-ocr__head">
+              <view class="expense-ocr__identity">
+                <view class="expense-ocr__icon">
+                  <wd-icon name="camera" size="30rpx" />
+                </view>
+                <view>
+                  <strong>AI 智能识别票据</strong>
+                  <text>
+                    {{
+                      ocrEnabled
+                        ? "自动提取金额、日期、商户和支付方式"
+                        : "智能识别已由平台管理员停用"
+                    }}
+                  </text>
+                </view>
+              </view>
+              <button
+                class="expense-ocr__analyze"
+                :disabled="
+                  busy ||
+                  state.loadingAiConfig ||
+                  !ocrEnabled ||
+                  !attachments.length
+                "
+                @click="analyzeAttachments"
+              >
+                <wd-loading
+                  v-if="
+                    state.loadingAiConfig || state.analyzing || state.uploading
+                  "
+                  type="ring"
+                  color="#4f46e5"
+                  size="24rpx"
+                />
+                <wd-icon v-else name="camera" size="24rpx" />
+                <text>{{ ocrActionLabel }}</text>
+              </button>
+            </view>
+            <view v-if="ocrResult" class="expense-ocr__result">
+              <view class="expense-ocr__result-head">
+                <text>识别完成 · 可信度 {{ ocrConfidencePercent }}%</text>
+                <text v-if="appliedOcrResult" class="expense-ocr__applied">已应用</text>
+              </view>
+              <text class="expense-ocr__summary">{{ ocrResult.summary }}</text>
+              <text v-if="ocrResult.warnings.length" class="expense-ocr__warning">
+                {{ ocrResult.warnings.slice(0, 2).join("；") }}
+              </text>
+              <button
+                class="expense-ocr__apply"
+                :disabled="busy"
+                @click="applyOcrResult"
+              >
+                {{ appliedOcrResult ? "重新应用识别结果" : "应用到费用表单" }}
+              </button>
+            </view>
+            <text v-else-if="!attachments.length" class="expense-ocr__empty">
+              拍照上传票据后即可识别，结果应用前可先核对。
+            </text>
+          </view>
           <view class="expense-evidence">
             <view
               v-for="(attachment, index) in attachments"
@@ -461,11 +756,28 @@ function showError(error: unknown, fallback: string) {
             </label>
             <label>
               <text>支付方式</text>
-              <input
-                v-model="form.paymentChannel"
-                maxlength="50"
-                placeholder="如微信、现金、ETC"
-              />
+              <picker
+                mode="selector"
+                range-key="label"
+                :range="paymentMethods"
+                :value="paymentMethodIndex"
+                :disabled="busy || !paymentMethods.length"
+                @change="changePaymentMethod"
+              >
+                <view
+                  class="expense-field__compact-picker"
+                  :class="{
+                    'expense-field__compact-picker--placeholder': !selectedPaymentMethod,
+                  }"
+                >
+                  <text>{{
+                    selectedPaymentMethod?.label ||
+                    form.paymentChannel ||
+                    (paymentMethods.length ? "请选择支付方式" : "支付方式字典未配置")
+                  }}</text>
+                  <wd-icon name="arrow-down" size="24rpx" />
+                </view>
+              </picker>
             </label>
             <label>
               <text>发票号码</text>
@@ -614,6 +926,7 @@ function showError(error: unknown, fallback: string) {
 
 .expense-sheet__close::after,
 .expense-evidence button::after,
+.expense-ocr button::after,
 .expense-field__location-row button::after {
   border: 0;
 }
@@ -627,6 +940,7 @@ function showError(error: unknown, fallback: string) {
 
 .expense-sheet__close:focus-visible,
 .expense-evidence button:focus-visible,
+.expense-ocr button:focus-visible,
 .expense-field__location-row button:focus-visible {
   outline: 4rpx solid rgba(79, 70, 229, 0.24);
   outline-offset: 3rpx;
@@ -710,9 +1024,163 @@ function showError(error: unknown, fallback: string) {
   font-size: 22rpx;
 }
 
+.expense-ocr {
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border: 1rpx solid #d9e2ff;
+  border-radius: 18rpx;
+  background: linear-gradient(135deg, #f6f8ff 0%, #eef2ff 100%);
+}
+
+.expense-ocr--disabled {
+  border-color: #e5e8ee;
+  background: #f6f7f9;
+}
+
+.expense-ocr__head,
+.expense-ocr__identity,
+.expense-ocr__identity > view:last-child,
+.expense-ocr__analyze,
+.expense-ocr__result,
+.expense-ocr__result-head {
+  min-width: 0;
+  display: flex;
+}
+
+.expense-ocr__head,
+.expense-ocr__result-head {
+  align-items: center;
+  justify-content: space-between;
+  gap: 14rpx;
+}
+
+.expense-ocr__identity {
+  flex: 1;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.expense-ocr__identity > view:last-child,
+.expense-ocr__result {
+  flex-direction: column;
+}
+
+.expense-ocr__identity strong,
+.expense-ocr__identity text,
+.expense-ocr__result text {
+  min-width: 0;
+  display: block;
+}
+
+.expense-ocr__identity strong {
+  color: #28375f;
+  font-size: 23rpx;
+  font-weight: 800;
+}
+
+.expense-ocr__identity text,
+.expense-ocr__empty {
+  margin-top: 3rpx;
+  color: #6f7b92;
+  font-size: 20rpx;
+  line-height: 1.45;
+}
+
+.expense-ocr__icon {
+  flex: 0 0 54rpx;
+  width: 54rpx;
+  height: 54rpx;
+  border-radius: 16rpx;
+  color: var(--tms-primary);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.1);
+}
+
+.expense-ocr__analyze,
+.expense-ocr__apply {
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  color: var(--tms-primary);
+  background: #fff;
+  font-weight: 800;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.expense-ocr__analyze {
+  flex: 0 0 auto;
+  min-width: 136rpx;
+  height: 64rpx;
+  padding: 0 16rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7rpx;
+  font-size: 20rpx;
+}
+
+.expense-ocr__analyze[disabled],
+.expense-ocr__apply[disabled] {
+  color: #9ca6b7;
+  background: #f0f2f5;
+  opacity: 1;
+}
+
+.expense-ocr__result {
+  margin-top: 16rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(79, 70, 229, 0.14);
+  gap: 8rpx;
+}
+
+.expense-ocr__result-head {
+  color: #354577;
+  font-size: 21rpx;
+  font-weight: 800;
+}
+
+.expense-ocr__applied {
+  padding: 5rpx 10rpx;
+  border-radius: 999rpx;
+  color: #087c5a;
+  background: #dcf8ed;
+  font-size: 18rpx;
+}
+
+.expense-ocr__summary,
+.expense-ocr__warning {
+  color: #5e6a82;
+  font-size: 20rpx;
+  line-height: 1.5;
+}
+
+.expense-ocr__warning {
+  color: #a05a16;
+}
+
+.expense-ocr__apply {
+  width: 100%;
+  height: 88rpx;
+  margin-top: 4rpx;
+  border: 1rpx solid #cbd7ff;
+  border-radius: 14rpx;
+  font-size: 21rpx;
+}
+
+.expense-ocr__empty {
+  display: block;
+  margin-top: 14rpx;
+}
+
 .expense-field__picker,
 .expense-field__money,
 .expense-field__input-grid input,
+.expense-field__compact-picker,
 .expense-field__location-row,
 .expense-field textarea {
   box-sizing: border-box;
@@ -875,6 +1343,30 @@ function showError(error: unknown, fallback: string) {
   font-size: 24rpx;
 }
 
+.expense-field__compact-picker {
+  height: 76rpx;
+  padding: 0 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10rpx;
+  color: var(--tms-text);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.expense-field__compact-picker text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expense-field__compact-picker--placeholder {
+  color: #9aa5b7;
+  font-weight: 500;
+}
+
 .expense-field__location-row {
   height: 78rpx;
   margin-top: 16rpx;
@@ -950,6 +1442,16 @@ function showError(error: unknown, fallback: string) {
 
   .expense-field__input-grid label:last-child {
     grid-column: auto;
+  }
+
+  .expense-ocr__head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .expense-ocr__analyze {
+    width: 100%;
+    min-height: 72rpx;
   }
 }
 </style>

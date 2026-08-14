@@ -15,6 +15,7 @@ function getUniGcj02Location(locationText?: string): Promise<CargoOperationLocat
     const locate = () => {
       uni.getLocation({
         type: 'gcj02',
+        geocode: true,
         isHighAccuracy: true,
         highAccuracyExpireTime: 12000,
         success(result) {
@@ -22,7 +23,7 @@ function getUniGcj02Location(locationText?: string): Promise<CargoOperationLocat
             longitude: result.longitude,
             latitude: result.latitude,
             accuracyM: result.accuracy,
-            locationText
+            locationText: locationText?.trim() || formatLocationAddress(result.address)
           })
         },
         fail(error) {
@@ -63,16 +64,17 @@ function getBrowserGcj02Location(locationText?: string): Promise<CargoOperationL
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const [longitude, latitude] = wgs84ToGcj02(
           position.coords.longitude,
           position.coords.latitude
         )
+        const resolvedText = locationText?.trim() || (await reverseGeocodeAmap(longitude, latitude))
         resolve({
           longitude,
           latitude,
           accuracyM: position.coords.accuracy,
-          locationText
+          locationText: resolvedText
         })
       },
       (error) => {
@@ -90,6 +92,49 @@ function getBrowserGcj02Location(locationText?: string): Promise<CargoOperationL
       }
     )
   })
+}
+
+function formatLocationAddress(address: unknown) {
+  if (typeof address === 'string') return address.trim() || undefined
+  if (!address || typeof address !== 'object') return undefined
+  const value = address as Record<string, unknown>
+  const formatted = [value.formattedAddress, value.formatted_address, value.address]
+    .find((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+  if (formatted) return formatted.trim()
+  const parts = [
+    value.province,
+    value.city,
+    value.district,
+    value.street,
+    value.streetNum,
+    value.poiName
+  ].filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+  return parts.join('') || undefined
+}
+
+async function reverseGeocodeAmap(longitude: number, latitude: number) {
+  const key = import.meta.env.VITE_AMAP_KEY
+  if (!key) return undefined
+  try {
+    const params = new URLSearchParams({
+      key,
+      location: `${longitude},${latitude}`,
+      extensions: 'base',
+      roadlevel: '0'
+    })
+    const response = await fetch(`https://restapi.amap.com/v3/geocode/regeo?${params}`)
+    if (!response.ok) return undefined
+    const payload: unknown = await response.json()
+    if (!payload || typeof payload !== 'object') return undefined
+    const data = payload as Record<string, unknown>
+    if (data.status !== '1' || !data.regeocode || typeof data.regeocode !== 'object') {
+      return undefined
+    }
+    return formatLocationAddress(data.regeocode)
+  } catch (error) {
+    console.warn('reverse geocoding failed', error)
+    return undefined
+  }
 }
 
 function wgs84ToGcj02(longitude: number, latitude: number): [number, number] {

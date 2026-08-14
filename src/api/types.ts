@@ -300,6 +300,9 @@ export interface DriverExpenseRecord {
   paymentChannel?: string | null;
   invoiceNo?: string | null;
   expenseLocation?: string | null;
+  expenseLongitude?: number | null;
+  expenseLatitude?: number | null;
+  expenseCoordinateSystem?: "gcj02" | "wgs84" | "bd09" | null;
   remark?: string | null;
   sourceId?: string | null;
   createTime: string;
@@ -348,6 +351,51 @@ export interface DriverExpenseSubmitPayload {
   expenseLatitude?: number | null;
   expenseCoordinateSystem?: "gcj02" | "wgs84" | "bd09" | null;
   remark?: string | null;
+}
+
+export type DriverExpenseOcrField =
+  | "amount"
+  | "occurredOn"
+  | "quantity"
+  | "unitPrice"
+  | "providerName"
+  | "payeeName"
+  | "paymentChannel"
+  | "invoiceNo"
+  | "meterNo"
+  | "expenseLocation"
+  | "remark";
+
+export interface DriverExpenseOcrDraft {
+  amount: number | null;
+  occurredOn: string | null;
+  quantity: number | null;
+  unitPrice: number | null;
+  providerName: string | null;
+  payeeName: string | null;
+  paymentChannel: string | null;
+  invoiceNo: string | null;
+  meterNo: string | null;
+  expenseLocation: string | null;
+  remark: string | null;
+}
+
+export interface DriverExpenseOcrAnalyzeResponse {
+  artifactId: string;
+  runId: string;
+  generatedAt: string;
+  summary: string;
+  confidence: number;
+  fieldConfidence: Partial<Record<DriverExpenseOcrField, number>>;
+  missingFields: string[];
+  warnings: string[];
+  expense: DriverExpenseOcrDraft;
+  reviewConfidenceThreshold: number;
+}
+
+export interface DriverExpenseAiFeatureConfig {
+  feature: string;
+  enabled: boolean;
 }
 
 export interface CargoOperationLocation {
