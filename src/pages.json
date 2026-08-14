@@ -44,6 +44,12 @@
       }
     },
     {
+      "path": "pages/waybill/expense",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/vehicle/index",
       "style": {
         "navigationStyle": "custom"

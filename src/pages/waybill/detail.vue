@@ -46,6 +46,19 @@ const isLoading = computed(() => current.value?.status === "loading");
 const isTransporting = computed(() => current.value?.status === "transporting");
 const isUnloading = computed(() => current.value?.status === "unloading");
 const isSigned = computed(() => current.value?.status === "signed");
+const canReportExpense = computed(() =>
+  Boolean(
+    current.value &&
+      [
+        "accepted",
+        "loading",
+        "transporting",
+        "unloading",
+        "signed",
+        "completed",
+      ].includes(current.value.status),
+  ),
+);
 const needsReturnCompletion = computed(() =>
   Boolean(
     executionContext.value?.needsReturnCompletion &&
@@ -272,6 +285,13 @@ function openExecutionOperation(action: "departure" | "completion") {
   if (!current.value) return;
   uni.navigateTo({
     url: `/pages/waybill/execution-operation?id=${encodeURIComponent(current.value.id)}&action=${action}`,
+  });
+}
+
+function openExpense() {
+  if (!current.value || !canReportExpense.value) return;
+  uni.navigateTo({
+    url: `/pages/waybill/expense?id=${encodeURIComponent(current.value.id)}&create=1`,
   });
 }
 
@@ -536,6 +556,20 @@ function viewReceipt() {
                 </view>
               </wd-button>
             </view>
+            <wd-button
+              v-if="canReportExpense"
+              class="detail-actions__expense"
+              custom-class="tms-secondary-action"
+              type="primary"
+              plain
+              :round="false"
+              @click.stop="openExpense"
+            >
+              <view class="detail-actions__button-content">
+                <wd-icon name="add-circle" size="30rpx" />
+                <text>费用上报</text>
+              </view>
+            </wd-button>
           </view>
         </TmsRouteCard>
 
@@ -841,6 +875,10 @@ function viewReceipt() {
 }
 
 .detail-actions__receipt {
+  width: 100%;
+}
+
+.detail-actions__expense {
   width: 100%;
 }
 

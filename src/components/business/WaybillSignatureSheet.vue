@@ -164,10 +164,12 @@ function showError(error: unknown, fallback: string) {
         </view>
         <button
           class="signature-sheet__close"
+          aria-label="关闭签收确认"
+          hover-class="signature-sheet__close--pressed"
           :disabled="state.submitting"
           @click="visible = false"
         >
-          ×
+          <wd-icon name="close" size="28rpx" />
         </button>
       </view>
 
@@ -307,11 +309,9 @@ function showError(error: unknown, fallback: string) {
   flex-direction: column;
 }
 .signature-sheet__header {
-  padding: 30rpx 30rpx 24rpx;
+  position: relative;
+  padding: 30rpx 104rpx 24rpx 30rpx;
   background: #fff;
-  display: flex;
-  justify-content: space-between;
-  gap: 20rpx;
   border-bottom: 1rpx solid #edf0f5;
 }
 .signature-sheet__kicker,
@@ -337,15 +337,44 @@ function showError(error: unknown, fallback: string) {
   font-size: 23rpx;
 }
 .signature-sheet__close {
-  width: 58rpx;
-  height: 58rpx;
+  box-sizing: border-box;
+  position: absolute;
+  z-index: 2;
+  top: 24rpx;
+  right: 24rpx;
+  width: 56rpx;
+  height: 56rpx;
+  margin: 0;
   padding: 0;
-  border: 0;
+  border: 1rpx solid #e7eaf0;
   border-radius: 50%;
   color: #7e8798;
   background: #f1f3f7;
-  font-size: 38rpx;
-  line-height: 54rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  touch-action: manipulation;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+.signature-sheet__close::after {
+  border: 0;
+}
+.signature-sheet__close--pressed,
+.signature-sheet__close:active {
+  color: #4f46e5;
+  background: #e8ebf3;
+  transform: scale(0.94);
+}
+.signature-sheet__close:focus-visible {
+  outline: 4rpx solid rgba(79, 70, 229, 0.24);
+  outline-offset: 3rpx;
+}
+.signature-sheet__close[disabled] {
+  opacity: 0.5;
 }
 .signature-sheet__body {
   flex: 1;

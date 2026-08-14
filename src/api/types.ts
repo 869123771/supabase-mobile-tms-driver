@@ -259,6 +259,97 @@ export interface WaybillExecutionContext {
   record?: WaybillExecutionRecord | null;
 }
 
+export type DriverExpenseAuditStatus =
+  | "draft"
+  | "pending_review"
+  | "approved"
+  | "rejected"
+  | "voided";
+
+export type DriverExpenseSettlementStatus =
+  | "unsettled"
+  | "pending_payment"
+  | "paid";
+
+export interface DriverExpenseItem {
+  id: string;
+  itemCode: string;
+  itemName: string;
+  parentName?: string | null;
+  businessCategory?: string | null;
+}
+
+export interface DriverExpenseRecord {
+  id: string;
+  costNo: string;
+  expenseItemId: string;
+  expenseItemName: string;
+  expenseParentName?: string | null;
+  amount: number;
+  occurredOn: string;
+  attachments: string[];
+  auditStatus: DriverExpenseAuditStatus;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+  reviewRemark?: string | null;
+  settlementStatus: DriverExpenseSettlementStatus;
+  paidAt?: string | null;
+  providerName?: string | null;
+  payeeName?: string | null;
+  paymentChannel?: string | null;
+  invoiceNo?: string | null;
+  expenseLocation?: string | null;
+  remark?: string | null;
+  sourceId?: string | null;
+  createTime: string;
+  updateTime: string;
+}
+
+export interface DriverExpenseStats {
+  reportCount: number;
+  totalAmount: number;
+  pendingCount: number;
+  approvedAmount: number;
+}
+
+export interface DriverExpenseWaybill {
+  id: string;
+  waybillNo: string;
+  status: WaybillStatus;
+  originCity: string;
+  destinationCity: string;
+  shipperAddress: string;
+  receiverAddress: string;
+}
+
+export interface DriverExpenseContext {
+  waybill: DriverExpenseWaybill;
+  canReport: boolean;
+  expenseItems: DriverExpenseItem[];
+  records: DriverExpenseRecord[];
+  stats: DriverExpenseStats;
+}
+
+export interface DriverExpenseSubmitPayload {
+  waybillId: string;
+  expenseItemId: string;
+  amount: number;
+  occurredOn: string;
+  attachments: string[];
+  idempotencyKey: string;
+  costId?: string | null;
+  providerName?: string | null;
+  payeeName?: string | null;
+  paymentChannel?: string | null;
+  invoiceNo?: string | null;
+  expenseLocation?: string | null;
+  expenseLongitude?: number | null;
+  expenseLatitude?: number | null;
+  expenseCoordinateSystem?: "gcj02" | "wgs84" | "bd09" | null;
+  remark?: string | null;
+}
+
 export interface CargoOperationLocation {
   longitude: number;
   latitude: number;

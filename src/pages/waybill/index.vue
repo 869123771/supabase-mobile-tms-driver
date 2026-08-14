@@ -76,6 +76,16 @@ function openDetail(id: string) {
   uni.navigateTo({ url: `/pages/waybill/detail?id=${id}` })
 }
 
+function canReportExpense(item: Waybill) {
+  return ['accepted', 'loading', 'transporting', 'unloading', 'signed', 'completed'].includes(
+    item.status
+  )
+}
+
+function openExpense(id: string) {
+  uni.navigateTo({ url: `/pages/waybill/expense?id=${encodeURIComponent(id)}&create=1` })
+}
+
 function navigate(item: Waybill) {
   openWaybillNavigation(item)
 }
@@ -143,7 +153,26 @@ function navigate(item: Waybill) {
           variant="list"
           @open="openDetail(item.id)"
           @navigate="navigate"
-        />
+        >
+          <view
+            v-if="canReportExpense(item)"
+            class="waybill-expense-action"
+            @tap.stop
+          >
+            <view>
+              <text>途中产生垫付费用？</text>
+              <small>上传票据后同步财务审批</small>
+            </view>
+            <button
+              :aria-label="`上报运单 ${item.waybillNo} 的费用`"
+              hover-class="waybill-expense-action__button--pressed"
+              @tap.stop="openExpense(item.id)"
+            >
+              <wd-icon name="add-circle" size="26rpx" />
+              <text>费用上报</text>
+            </button>
+          </view>
+        </TmsRouteCard>
       </view>
       <view v-else class="waybill-page__empty card">
         <view class="waybill-page__empty-icon">
@@ -383,6 +412,80 @@ function navigate(item: Waybill) {
   color: #172033;
   font-size: 27rpx;
   font-weight: 800;
+}
+
+.waybill-expense-action {
+  min-height: 76rpx;
+  margin-top: 20rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid #edf0f5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.waybill-expense-action > view {
+  min-width: 0;
+  flex: 1;
+}
+
+.waybill-expense-action > view text,
+.waybill-expense-action > view small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waybill-expense-action > view text {
+  color: #344054;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.waybill-expense-action > view small {
+  margin-top: 3rpx;
+  color: #98a2b3;
+  font-size: 19rpx;
+}
+
+.waybill-expense-action button {
+  flex: 0 0 auto;
+  min-height: 64rpx;
+  margin: 0;
+  padding: 0 20rpx;
+  border: 1rpx solid rgba(79, 70, 229, 0.25);
+  border-radius: 999rpx;
+  color: var(--tms-primary);
+  background: #f6f7ff;
+  display: flex;
+  align-items: center;
+  gap: 7rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1;
+  touch-action: manipulation;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.waybill-expense-action button::after {
+  border: 0;
+}
+
+.waybill-expense-action__button--pressed,
+.waybill-expense-action button:active {
+  color: #3730a3;
+  background: #eceeff;
+  transform: scale(0.97);
+}
+
+.waybill-expense-action button:focus-visible {
+  outline: 4rpx solid rgba(79, 70, 229, 0.22);
+  outline-offset: 3rpx;
 }
 
 .waybill-page__empty {
