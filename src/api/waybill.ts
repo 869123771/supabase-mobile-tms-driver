@@ -11,6 +11,7 @@ import type {
   CargoOperationCompletePayload,
   CargoOperationContext,
   CargoOperationLocation,
+  CargoOperationOcrResponse,
   CargoOperationType,
   ProofFile,
   Waybill,
@@ -25,7 +26,7 @@ const WAYBILL_SELECT =
 const WAYBILL_DRIVER_INNER_SELECT =
   '*,driver:tms_driver!inner(id,tenant_id,carrier_id,driver_name,phone,gender,id_card_no,license_type,driver_license_front_url,driver_license_back_url,enabled)'
 const EVENT_SELECT =
-  'id,tenant_id,waybill_id,event_type,event_time,operator_name,location_text,payload,remark,create_time'
+  'id,tenant_id,waybill_id,event_type,event_time,operator_name,location_text,longitude,latitude,payload,remark,create_time'
 const PROOF_SELECT =
   'id,tenant_id,waybill_id,proof_type,file_url,file_name,mime_type,file_size,uploaded_at,uploader_name,remark,create_time'
 const ORDER_ROUTE_SELECT =
@@ -732,10 +733,27 @@ export async function completeCargoOperation(
   return rpc<CargoOperationContext>(token, 'tms_complete_waybill_cargo_operation', {
     p_waybill_id: waybillId,
     p_operation_type: operationType,
+    p_gross_weight_ton: payload.grossWeightTon ?? null,
+    p_tare_weight_ton: payload.tareWeightTon ?? null,
     p_weight_ton: payload.weightTon,
     p_photo_urls: payload.photoUrls,
     p_weighbridge_ticket_urls: payload.weighbridgeTicketUrls,
+    p_recognition_info: payload.recognitionInfo || null,
+    p_recognition_payload: payload.recognitionPayload || {},
     p_remark: payload.remark || null
+  })
+}
+
+export async function analyzeCargoWeighbridgeTicket(
+  token: string,
+  waybillId: string,
+  operationType: CargoOperationType,
+  imageUrls: string[]
+) {
+  return request<CargoOperationOcrResponse>('/functions/v1/ai-waybill-cargo-ocr', {
+    method: 'POST',
+    token,
+    body: { waybillId, operationType, imageUrls }
   })
 }
 

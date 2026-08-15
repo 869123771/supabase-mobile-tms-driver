@@ -2,16 +2,22 @@
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { getUserFacingErrorMessage } from "@/api/supabase";
+import { getDriverExpenseContext } from "@/api/expense";
 import {
   checkInCargoOperation,
   getCargoOperationContext,
   getWaybillExecutionContext,
 } from "@/api/waybill";
-import type { CargoOperationType, WaybillExecutionContext } from "@/api/types";
+import type {
+  CargoOperationType,
+  DriverExpenseRecord,
+  WaybillExecutionContext,
+} from "@/api/types";
 import TmsIcon from "@/components/business/TmsIcon.vue";
 import TmsRouteCard from "@/components/business/TmsRouteCard.vue";
-import TmsRouteMap from "@/components/business/TmsRouteMap.vue";
 import TmsTopBar from "@/components/business/TmsTopBar.vue";
+import WaybillTrackingTimeline from "@/components/business/WaybillTrackingTimeline.vue";
+import WaybillTrajectoryPanel from "@/components/business/WaybillTrajectoryPanel.vue";
 import WaybillSignatureSheet from "@/components/business/WaybillSignatureSheet.vue";
 import { useDictionaryStore } from "@/stores/dictionary";
 import { useAuthStore } from "@/stores/auth";
@@ -23,7 +29,6 @@ import {
   maskPhone,
 } from "@/utils/format";
 import { openWaybillNavigation } from "@/utils/navigation";
-import { getWaybillRoutePoints } from "@/utils/route";
 import {
   calculateDistanceMeters,
   getCurrentGcj02Location,
@@ -34,9 +39,13 @@ const auth = useAuthStore();
 const dictionary = useDictionaryStore();
 const id = ref("");
 type DetailAction = "accept" | "cancel";
+type DetailTab = "tracking" | "trajectory";
 const activeAction = ref<DetailAction | "">("");
+const activeDetailTab = ref<DetailTab>("tracking");
 const executionContext = ref<WaybillExecutionContext>();
 const signatureVisible = ref(false);
+const expenseRecords = ref<DriverExpenseRecord[]>([]);
+const trackingWarning = ref("");
 
 const current = computed(() => waybill.current);
 const isPending = computed(() => current.value?.status === "pending");
@@ -64,9 +73,6 @@ const needsReturnCompletion = computed(() =>
     executionContext.value?.needsReturnCompletion &&
     executionContext.value?.canComplete,
   ),
-);
-const hasRouteCoordinates = computed(
-  () => getWaybillRoutePoints(current.value).length >= 2,
 );
 const actionBusy = computed(
   () => Boolean(activeAction.value) || waybill.actionLoading,
@@ -168,19 +174,34 @@ onShow(() => void load());
 async function load() {
   if (!id.value) return;
   try {
+    trackingWarning.value = "";
     const loaded = await waybill.loadDetail(id.value);
-    try {
-      executionContext.value = await getWaybillExecutionContext(
-        auth.token,
-        id.value,
-      );
-    } catch (error) {
+    const [executionResult, expenseResult] = await Promise.allSettled([
+      getWaybillExecutionContext(auth.token, id.value),
+      getDriverExpenseContext(auth.token, id.value),
+    ]);
+    if (executionResult.status === "fulfilled") {
+      executionContext.value = executionResult.value;
+    } else {
       executionContext.value = undefined;
       uni.showToast({
-        title: getUserFacingErrorMessage(error, "任务节点同步失败，请稍后重试"),
+        title: getUserFacingErrorMessage(
+          executionResult.reason,
+          "任务节点同步失败，请稍后重试",
+        ),
         icon: "none",
         duration: 3000,
       });
+    }
+    if (expenseResult.status === "fulfilled") {
+      expenseRecords.value = expenseResult.value.records;
+    } else {
+      expenseRecords.value = [];
+      trackingWarning.value = "费用上报记录暂未同步，其他运输节点仍可正常查看，请稍后刷新。";
+      console.warn(
+        "failed to load expense records for waybill tracking",
+        expenseResult.reason,
+      );
     }
     await tryAutomaticCargoCheckIn(loaded);
   } catch (error) {
@@ -238,15 +259,6 @@ async function tryAutomaticCargoCheckIn(item: typeof current.value) {
   } catch {
     // 自动定位不阻断详情页，司机仍可进入作业页手动重试。
   }
-}
-
-function back() {
-  const pages = getCurrentPages();
-  if (pages.length > 1) {
-    uni.navigateBack();
-    return;
-  }
-  uni.reLaunch({ url: "/pages/waybill/index" });
 }
 
 function navigate() {
@@ -358,11 +370,9 @@ function viewReceipt() {
     class="detail-page page"
     :class="{
       'detail-page--pending': isPending,
-      'detail-page--route-empty': isPending && !hasRouteCoordinates,
     }"
   >
-    <TmsRouteMap v-if="isPending" :waybill="current" @back="back" />
-    <view v-else class="detail-page__blue">
+    <view class="detail-page__blue">
       <TmsTopBar
         title="任务详情"
         eyebrow="运单进度"
@@ -409,7 +419,7 @@ function viewReceipt() {
               <text>{{
                 executionContext?.unloadingStatus === "completed"
                   ? "卸货资料已完成，可以办理签收"
-                  : "请补齐卸货重量、现场照片和磅单"
+                  : "请补齐卸货净重、现场照片和磅单"
               }}</text>
             </view>
             <view
@@ -572,6 +582,45 @@ function viewReceipt() {
             </wd-button>
           </view>
         </TmsRouteCard>
+
+        <view class="detail-tabs card" role="tablist" aria-label="运单详情视图">
+          <button
+            class="detail-tabs__item"
+            :class="{ 'is-active': activeDetailTab === 'tracking' }"
+            role="tab"
+            :aria-selected="activeDetailTab === 'tracking'"
+            @click="activeDetailTab = 'tracking'"
+          >
+            <TmsIcon name="document" size="28rpx" />
+            <text>运单跟踪</text>
+            <i v-if="waybill.events.length" class="detail-tabs__count">
+              {{ waybill.events.length }}
+            </i>
+          </button>
+          <button
+            class="detail-tabs__item"
+            :class="{ 'is-active': activeDetailTab === 'trajectory' }"
+            role="tab"
+            :aria-selected="activeDetailTab === 'trajectory'"
+            @click="activeDetailTab = 'trajectory'"
+          >
+            <TmsIcon name="location" size="28rpx" />
+            <text>轨迹定位</text>
+          </button>
+        </view>
+
+        <WaybillTrackingTimeline
+          v-if="activeDetailTab === 'tracking'"
+          :waybill="current"
+          :events="waybill.events"
+          :expenses="expenseRecords"
+          :sync-warning="trackingWarning"
+        />
+        <WaybillTrajectoryPanel
+          v-else
+          :waybill="current"
+          :events="waybill.events"
+        />
 
         <view class="info-card card">
           <view class="section-head">
@@ -773,11 +822,7 @@ function viewReceipt() {
 }
 
 .detail-page--pending .detail-page__scroll {
-  height: calc(100vh - 520rpx - 128rpx - env(safe-area-inset-bottom));
-}
-
-.detail-page--pending.detail-page--route-empty .detail-page__scroll {
-  height: calc(100vh - 360rpx - 128rpx - env(safe-area-inset-bottom));
+  height: calc(100vh - 298rpx - 128rpx - env(safe-area-inset-bottom));
 }
 
 .detail-page__content {
@@ -790,6 +835,74 @@ function viewReceipt() {
 .detail-page--pending .detail-page__content {
   padding-top: 26rpx;
   padding-bottom: 34rpx;
+}
+
+.detail-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 8rpx;
+}
+
+.detail-tabs__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9rpx;
+  min-width: 0;
+  min-height: 92rpx;
+  margin: 0;
+  padding: 0 14rpx;
+  color: #657188;
+  background: transparent;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.detail-tabs__item > :deep(.tms-icon) {
+  flex: 0 0 28rpx;
+  width: 28rpx !important;
+  min-width: 28rpx;
+  height: 28rpx !important;
+  min-height: 28rpx;
+}
+
+.detail-tabs__item::after {
+  border: 0;
+}
+
+.detail-tabs__item.is-active {
+  color: #4338ca;
+  background: linear-gradient(135deg, #f0efff, #edf3ff);
+  box-shadow: inset 0 0 0 1rpx rgba(79, 70, 229, 0.12);
+}
+
+.detail-tabs__item.is-active::before {
+  position: absolute;
+  right: 26rpx;
+  bottom: 0;
+  left: 26rpx;
+  height: 5rpx;
+  content: "";
+  background: linear-gradient(90deg, #5b55f5, #2563eb);
+  border-radius: 999rpx;
+}
+
+.detail-tabs__count {
+  flex: 0 0 auto;
+  min-width: 34rpx;
+  height: 34rpx;
+  padding: 0 8rpx;
+  color: #fff;
+  background: #ef5350;
+  border-radius: 999rpx;
+  font-size: 18rpx;
+  font-style: normal;
+  line-height: 34rpx;
+  text-align: center;
 }
 
 .section-title {

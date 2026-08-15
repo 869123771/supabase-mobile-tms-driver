@@ -149,19 +149,21 @@ async function handleSuccess() {
             </view>
           </view>
           <view class="expense-waybill__route">
-            <view>
-              <text>起</text>
-              <strong>{{ context.waybill.originCity || "--" }}</strong>
+            <view class="expense-waybill__station">
+              <view class="expense-waybill__station-head">
+                <text class="expense-waybill__station-badge">起</text>
+                <strong>{{ context.waybill.originCity || "--" }}</strong>
+              </view>
               <small>{{ context.waybill.shipperAddress || "--" }}</small>
             </view>
             <view class="expense-waybill__line">
-              <view />
-              <TmsIcon name="route-arrow" size="48rpx" />
-              <view />
+              <TmsIcon name="arrow-right" size="24rpx" />
             </view>
-            <view>
-              <text>终</text>
-              <strong>{{ context.waybill.destinationCity || "--" }}</strong>
+            <view class="expense-waybill__station expense-waybill__station--end">
+              <view class="expense-waybill__station-head">
+                <text class="expense-waybill__station-badge">终</text>
+                <strong>{{ context.waybill.destinationCity || "--" }}</strong>
+              </view>
               <small>{{ context.waybill.receiverAddress || "--" }}</small>
             </view>
           </view>
@@ -199,7 +201,7 @@ async function handleSuccess() {
             <text>REPORT HISTORY</text>
             <strong>费用上报记录</strong>
           </view>
-          <small>{{ records.length }} 条</small>
+          <small class="expense-section-head__count">{{ records.length }} 条</small>
         </view>
 
         <view v-if="records.length" class="expense-records">
@@ -273,7 +275,6 @@ async function handleSuccess() {
           </view>
           <strong>暂无费用上报</strong>
           <text>途中产生垫付费用后，可在这里上传票据并提交财务审批。</text>
-          <button v-if="context.canReport" @click="openCreate">上报第一笔费用</button>
         </view>
       </view>
     </scroll-view>
@@ -322,11 +323,14 @@ async function handleSuccess() {
 }
 
 .expense-page__content {
-  padding: 24rpx 28rpx 54rpx;
+  padding: 24rpx 28rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
 }
 
 .expense-waybill {
-  padding: 26rpx;
+  padding: 26rpx 24rpx 24rpx;
 }
 
 .expense-waybill__top {
@@ -336,8 +340,13 @@ async function handleSuccess() {
 }
 
 .expense-waybill__icon {
+  box-sizing: border-box;
+  flex: 0 0 62rpx;
   width: 62rpx;
+  min-width: 62rpx;
   height: 62rpx;
+  min-height: 62rpx;
+  aspect-ratio: 1;
   border-radius: 18rpx;
   color: var(--tms-primary);
   background: #eef2ff;
@@ -390,41 +399,47 @@ async function handleSuccess() {
 
 .expense-waybill__route {
   margin-top: 22rpx;
-  padding: 22rpx;
+  padding: 20rpx;
   border: 1rpx solid #e8edf4;
   border-radius: 18rpx;
   background: linear-gradient(145deg, #fbfcff, #f5f7fb);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 94rpx minmax(0, 1fr);
-  align-items: center;
-  gap: 12rpx;
+  grid-template-columns: minmax(0, 1fr) 54rpx minmax(0, 1fr);
+  align-items: start;
+  gap: 10rpx;
 }
 
-.expense-waybill__route > view:not(.expense-waybill__line) {
+.expense-waybill__station {
   min-width: 0;
-  display: grid;
-  grid-template-columns: 38rpx minmax(0, 1fr);
-  gap: 4rpx 10rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
 }
 
-.expense-waybill__route > view:last-child {
+.expense-waybill__station-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.expense-waybill__station--end {
+  align-items: flex-end;
   text-align: right;
-  grid-template-columns: minmax(0, 1fr) 38rpx;
 }
 
-.expense-waybill__route > view:last-child > text {
-  grid-column: 2;
-  grid-row: 1;
+.expense-waybill__station--end .expense-waybill__station-head {
+  flex-direction: row-reverse;
 }
 
-.expense-waybill__route > view:last-child > strong,
-.expense-waybill__route > view:last-child > small {
-  grid-column: 1;
-}
-
-.expense-waybill__route text {
+.expense-waybill__station-badge {
+  box-sizing: border-box;
+  flex: 0 0 38rpx;
   width: 38rpx;
+  min-width: 38rpx;
   height: 38rpx;
+  min-height: 38rpx;
+  aspect-ratio: 1;
   border-radius: 12rpx;
   color: #fff;
   background: #10b981;
@@ -434,53 +449,92 @@ async function handleSuccess() {
   text-align: center;
 }
 
-.expense-waybill__route > view:last-child text {
+.expense-waybill__station--end .expense-waybill__station-badge {
   background: #f59e0b;
 }
 
-.expense-waybill__route strong,
-.expense-waybill__route small {
+.expense-waybill__station strong,
+.expense-waybill__station small {
   min-width: 0;
+  max-width: 100%;
+}
+
+.expense-waybill__station strong {
   overflow: hidden;
+  color: var(--tms-text);
+  font-size: 25rpx;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.expense-waybill__route strong {
-  color: var(--tms-text);
-  font-size: 25rpx;
-}
-
-.expense-waybill__route small {
+.expense-waybill__station small {
+  min-height: 58rpx;
+  overflow: hidden;
   color: var(--tms-muted);
   font-size: 20rpx;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .expense-waybill__line {
+  position: relative;
+  align-self: start;
+  height: 38rpx;
+  margin-top: 1rpx;
   color: var(--tms-primary);
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
-.expense-waybill__line > view {
-  height: 1rpx;
-  flex: 1;
-  background: #d8dfed;
+.expense-waybill__line::before {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2rpx;
+  content: "";
+  background: linear-gradient(90deg, #d8dfed, #9fb4f8, #d8dfed);
+  transform: translateY(-50%);
+}
+
+.expense-waybill__line :deep(.tms-icon) {
+  position: relative;
+  z-index: 1;
+  box-sizing: content-box;
+  padding: 5rpx;
+  border: 1rpx solid #dbe3ff;
+  border-radius: 50%;
+  background: #fff;
 }
 
 .expense-stats {
-  margin-top: 18rpx;
+  margin-top: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 12rpx;
 }
 
 .expense-stats__item {
   min-width: 0;
-  padding: 20rpx 16rpx;
+  padding: 17rpx 18rpx;
   border: 1rpx solid #e0e7ff;
   border-radius: 18rpx;
   background: #f4f6ff;
+}
+
+.expense-stats__item:first-child {
+  grid-row: 1 / span 2;
+  padding: 24rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: linear-gradient(145deg, #f4f4ff 0%, #eef4ff 100%);
 }
 
 .expense-stats__item--pending {
@@ -497,9 +551,6 @@ async function handleSuccess() {
 .expense-stats__item strong,
 .expense-stats__item small {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .expense-stats__item text,
@@ -510,13 +561,17 @@ async function handleSuccess() {
 
 .expense-stats__item strong {
   margin: 6rpx 0 4rpx;
+  overflow: hidden;
   color: var(--tms-text);
   font-size: 27rpx;
   font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .expense-page__notice {
-  margin-top: 18rpx;
+  margin-top: 0;
   padding: 18rpx 20rpx;
   border-radius: 16rpx;
   color: #3157bd;
@@ -534,7 +589,7 @@ async function handleSuccess() {
 }
 
 .expense-section-head {
-  margin: 34rpx 4rpx 16rpx;
+  margin: 12rpx 4rpx -4rpx;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -561,6 +616,14 @@ async function handleSuccess() {
 .expense-section-head small {
   color: var(--tms-muted);
   font-size: 21rpx;
+}
+
+.expense-section-head__count {
+  flex: 0 0 auto;
+  padding: 7rpx 14rpx;
+  border: 1rpx solid #e2e7ef;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.76);
 }
 
 .expense-records {
@@ -646,6 +709,7 @@ async function handleSuccess() {
 
 .expense-record__amount-row {
   margin-top: 22rpx;
+  flex-wrap: wrap;
 }
 
 .expense-record__amount-row strong {
@@ -703,8 +767,7 @@ async function handleSuccess() {
 }
 
 .expense-record__proofs button::after,
-.expense-record__footer button::after,
-.expense-empty button::after {
+.expense-record__footer button::after {
   border: 0;
 }
 
@@ -746,8 +809,8 @@ async function handleSuccess() {
 }
 
 .expense-empty {
-  min-height: 360rpx;
-  padding: 46rpx 38rpx;
+  min-height: 318rpx;
+  padding: 42rpx 34rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -778,19 +841,6 @@ async function handleSuccess() {
   color: var(--tms-muted);
   font-size: 23rpx;
   line-height: 1.55;
-}
-
-.expense-empty button {
-  min-height: 68rpx;
-  margin-top: 24rpx;
-  padding: 0 28rpx;
-  border: 0;
-  border-radius: 999rpx;
-  color: var(--tms-primary);
-  background: #eef2ff;
-  font-size: 23rpx;
-  font-weight: 800;
-  line-height: 68rpx;
 }
 
 .expense-footer {
@@ -841,13 +891,45 @@ async function handleSuccess() {
   gap: 8rpx;
 }
 
-@media screen and (max-width: 360px) {
-  .expense-stats {
-    grid-template-columns: 1fr;
+@media screen and (max-width: 420px) {
+  .expense-waybill__route {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
-  .expense-waybill__route {
-    grid-template-columns: minmax(0, 1fr) 64rpx minmax(0, 1fr);
+  .expense-waybill__station--end {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .expense-waybill__station--end .expense-waybill__station-head {
+    flex-direction: row;
+  }
+
+  .expense-waybill__station small {
+    min-height: 0;
+    padding-left: 48rpx;
+  }
+
+  .expense-waybill__line {
+    width: 38rpx;
+    height: 34rpx;
+    margin: 0;
+  }
+
+  .expense-waybill__line::before {
+    top: 0;
+    bottom: 0;
+    left: 18rpx;
+    right: auto;
+    width: 2rpx;
+    height: auto;
+    background: linear-gradient(#d8dfed, #9fb4f8, #d8dfed);
+    transform: none;
+  }
+
+  .expense-waybill__line :deep(.tms-icon) {
+    display: none;
   }
 
   .expense-footer > view:first-child {

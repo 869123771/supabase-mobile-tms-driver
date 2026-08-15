@@ -75,19 +75,53 @@ const imageSize = computed(() => {
 </script>
 
 <template>
-  <image
-    v-if="svgSrc"
-    class="tms-icon__svg"
-    :src="svgSrc"
+  <view
+    class="tms-icon"
     :style="{ width: imageSize, height: imageSize }"
-    mode="aspectFit"
-  />
-  <UniIcons v-else :type="iconType" :size="props.size" :color="props.color || 'currentColor'" />
+    aria-hidden="true"
+  >
+    <image
+      v-if="svgSrc"
+      class="tms-icon__svg"
+      :src="svgSrc"
+      mode="aspectFit"
+    />
+    <UniIcons
+      v-else
+      class="tms-icon__font"
+      :type="iconType"
+      :size="props.size"
+      :color="props.color || 'currentColor'"
+    />
+  </view>
 </template>
 
 <style scoped lang="scss">
+.tms-icon {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .tms-icon__svg {
+  width: 100%;
+  height: 100%;
   display: block;
   flex: 0 0 auto;
+}
+
+.tms-icon__font {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+:deep(.tms-icon__font .uni-icons) {
+  display: block;
+  line-height: 1 !important;
 }
 </style>

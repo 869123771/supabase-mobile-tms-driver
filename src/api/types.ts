@@ -145,6 +145,10 @@ export interface WaybillEvent {
   operatorName?: string;
   locationText?: string;
   payload?: Record<string, unknown>;
+  remark?: string;
+  longitude?: number | null;
+  latitude?: number | null;
+  createTime?: string;
 }
 
 export interface ProofFile {
@@ -191,7 +195,11 @@ export interface CargoOperationRecord {
   distanceM: number;
   insideGeofence: boolean;
   outsideReason?: string | null;
+  grossWeightTon?: number | null;
+  tareWeightTon?: number | null;
   weightTon?: number | null;
+  recognitionInfo?: string | null;
+  recognitionPayload?: CargoOperationRecognitionPayload | null;
   photoUrls: string[];
   weighbridgeTicketUrls: string[];
   completedAt?: string | null;
@@ -406,10 +414,40 @@ export interface CargoOperationLocation {
 }
 
 export interface CargoOperationCompletePayload {
+  grossWeightTon?: number | null;
+  tareWeightTon?: number | null;
   weightTon: number;
   photoUrls: string[];
   weighbridgeTicketUrls: string[];
+  recognitionInfo?: string | null;
+  recognitionPayload?: CargoOperationRecognitionPayload | null;
   remark?: string | null;
+}
+
+export interface CargoOperationRecognitionWeights {
+  grossWeightTon: number | null;
+  tareWeightTon: number | null;
+  netWeightTon: number | null;
+}
+
+export interface CargoOperationRecognitionPayload {
+  summary?: string;
+  confidence?: number;
+  rawText?: string;
+  weights?: CargoOperationRecognitionWeights;
+  warnings?: string[];
+  generatedAt?: string;
+  source?: "ai_ocr" | string;
+  ticketUrls?: string[];
+}
+
+export interface CargoOperationOcrResponse {
+  summary: string;
+  confidence: number;
+  rawText: string;
+  weights: CargoOperationRecognitionWeights;
+  warnings: string[];
+  generatedAt: string;
 }
 
 export interface SysUser {

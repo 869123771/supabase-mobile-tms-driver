@@ -16,6 +16,7 @@ import type {
   DriverExpenseRecord,
   DriverExpenseWaybill,
 } from "@/api/types";
+import TmsRecordTimeNotice from "@/components/business/TmsRecordTimeNotice.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useDictionaryStore } from "@/stores/dictionary";
 import { chooseImages } from "@/utils/file";
@@ -575,6 +576,7 @@ function showError(error: unknown, fallback: string) {
           <wd-icon name="info-circle" size="32rpx" />
           <text>请按实际发生金额填写，并上传清晰、完整的票据或付款凭证。</text>
         </view>
+        <TmsRecordTimeNotice class="expense-sheet__time-notice" subject="费用发生日期" />
 
         <view class="expense-field">
           <view class="expense-field__number">1</view>
@@ -626,7 +628,6 @@ function showError(error: unknown, fallback: string) {
               v-model="form.occurredAt"
               type="date"
               title="选择费用发生日期"
-              :max-date="Date.now()"
             />
           </view>
         </view>
@@ -966,6 +967,11 @@ function showError(error: unknown, fallback: string) {
 .expense-sheet__notice {
   color: #3157bd;
   background: #edf3ff;
+}
+
+.expense-sheet__time-notice {
+  margin-right: 26rpx;
+  margin-left: 26rpx;
 }
 
 .expense-sheet__reject-note {

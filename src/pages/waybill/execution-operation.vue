@@ -11,6 +11,7 @@ import {
 import type { ExecutionAction } from "@/api/types";
 import TmsIcon from "@/components/business/TmsIcon.vue";
 import TmsPageSkeleton from "@/components/business/TmsPageSkeleton.vue";
+import TmsRecordTimeNotice from "@/components/business/TmsRecordTimeNotice.vue";
 import TmsTopBar from "@/components/business/TmsTopBar.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useProfileStore } from "@/stores/profile";
@@ -179,13 +180,6 @@ async function submit() {
         duration: 3000,
       });
     }
-    const signedAt = executionContext.value?.record?.signedAt;
-    if (signedAt && form.occurredAt < new Date(signedAt).getTime()) {
-      return void uni.showToast({
-        title: "收车时间不能早于签收时间",
-        icon: "none",
-      });
-    }
   }
   state.submitting = true;
   try {
@@ -269,12 +263,13 @@ function showError(error: unknown, fallback: string) {
           <wd-icon name="info-circle" size="32rpx" />
           <text>{{
             isDeparture
-              ? "出车里程会和收车里程配对，自动计算本次行驶公里数。"
+              ? "出车里程会和收车里程配对，自动计算本次行驶公里数。发车时间支持按实际情况补录。"
               : isRepairingReturnArchive
                 ? "系统检测到历史完成状态缺少回场档案。本次提交会补齐回场记录和车辆里程台账。"
-                : `收车里程不得小于出车里程 ${executionContext?.record?.departureOdometerKm ?? 0} 公里，提交后同步车辆里程台账。`
+                : `收车里程不得小于出车里程 ${executionContext?.record?.departureOdometerKm ?? 0} 公里；时间可按实际情况补录。`
           }}</text>
         </view>
+        <TmsRecordTimeNotice :subject="isDeparture ? '发车时间' : '收车时间'" />
         <view class="form-card card">
           <view class="form-card__heading">
             <view class="form-card__step">1</view>
@@ -292,7 +287,6 @@ function showError(error: unknown, fallback: string) {
               v-model="form.occurredAt"
               type="datetime"
               :title="`选择${isDeparture ? '发车' : '收车'}时间`"
-              :max-date="Date.now() + 10 * 60 * 1000"
             />
           </view>
           <view class="field-block">

@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { getWaybillExecutionContext, signWaybill, uploadWaybillProofFiles } from '@/api/waybill'
 import type { Waybill } from '@/api/types'
+import TmsRecordTimeNotice from '@/components/business/TmsRecordTimeNotice.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { chooseImages } from '@/utils/file'
@@ -192,6 +193,7 @@ function showError(error: unknown, fallback: string) {
             <wd-icon name="info-circle" size="32rpx" />
             <text>签收后运单进入“已签收”，还需录入收车时间和里程才算完成。</text>
           </view>
+          <TmsRecordTimeNotice class="signature-sheet__time-notice" subject="签收时间" />
 
           <view class="sheet-field">
             <view class="sheet-field__number">1</view>
@@ -200,7 +202,6 @@ function showError(error: unknown, fallback: string) {
               v-model="form.signedAt"
               type="datetime"
               title="选择签收时间"
-              :max-date="Date.now() + 10 * 60 * 1000"
             />
           </view>
           <view class="sheet-field">
@@ -462,6 +463,10 @@ function showError(error: unknown, fallback: string) {
   gap: 12rpx;
   font-size: 24rpx;
   line-height: 1.5;
+}
+.signature-sheet__time-notice {
+  margin-right: 26rpx;
+  margin-left: 26rpx;
 }
 .sheet-field {
   position: relative;

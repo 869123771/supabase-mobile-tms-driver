@@ -6,6 +6,7 @@ import TmsTopBar from "@/components/business/TmsTopBar.vue";
 import TmsIcon from "@/components/business/TmsIcon.vue";
 import TmsPageSkeleton from "@/components/business/TmsPageSkeleton.vue";
 import {
+  analyzeCargoWeighbridgeTicket,
   checkInCargoOperation,
   completeCargoOperation,
   getCargoOperationContext,
@@ -14,6 +15,7 @@ import {
 import type {
   CargoOperationContext,
   CargoOperationLocation,
+  CargoOperationRecognitionPayload,
   CargoOperationType,
   Waybill,
 } from "@/api/types";
@@ -28,9 +30,13 @@ import {
 } from "@/utils/location";
 
 interface OperationForm {
+  grossWeightTon: string;
+  tareWeightTon: string;
   weightTon: string;
   photoUrls: string[];
   weighbridgeTicketUrls: string[];
+  recognitionInfo: string;
+  recognitionPayload: CargoOperationRecognitionPayload | null;
   remark: string;
 }
 
@@ -46,13 +52,18 @@ const state = reactive({
   loading: false,
   locating: false,
   submitting: false,
+  analyzing: false,
   uploading: "",
   error: "",
 });
 const form = reactive<OperationForm>({
+  grossWeightTon: "",
+  tareWeightTon: "",
   weightTon: "",
   photoUrls: [],
   weighbridgeTicketUrls: [],
+  recognitionInfo: "",
+  recognitionPayload: null,
   remark: "",
 });
 
@@ -73,7 +84,16 @@ const isCompleted = computed(
 );
 const submitMissing = computed(() => {
   const missing: string[] = [];
-  if (!form.weightTon || Number(form.weightTon) <= 0) missing.push("重量");
+  if (!form.weightTon || Number(form.weightTon) <= 0) missing.push(`${title.value}净重`);
+  if (form.grossWeightTon && Number(form.grossWeightTon) <= 0) missing.push("毛重格式");
+  if (form.tareWeightTon && Number(form.tareWeightTon) <= 0) missing.push("皮重格式");
+  if (
+    Number(form.grossWeightTon) > 0 &&
+    Number(form.tareWeightTon) > 0 &&
+    Number(form.grossWeightTon) < Number(form.tareWeightTon)
+  ) {
+    missing.push("毛重应不小于皮重");
+  }
   if (!form.photoUrls.length) missing.push(`${title.value}照片`);
   if (!form.weighbridgeTicketUrls.length) missing.push("磅单");
   return missing;
@@ -83,8 +103,36 @@ const canSubmit = computed(
     Boolean(context.value?.operation) &&
     submitMissing.value.length === 0 &&
     !state.submitting &&
+    !state.analyzing &&
     !state.uploading,
 );
+const calculatedNetWeight = computed(() => {
+  const gross = Number(form.grossWeightTon);
+  const tare = Number(form.tareWeightTon);
+  if (!Number.isFinite(gross) || !Number.isFinite(tare) || gross <= 0 || tare <= 0) {
+    return null;
+  }
+  return Math.max(0, Number((gross - tare).toFixed(3)));
+});
+const weightDifferenceWarning = computed(() => {
+  const calculated = calculatedNetWeight.value;
+  const net = Number(form.weightTon);
+  if (calculated === null || !Number.isFinite(net) || net <= 0) return "";
+  const difference = Math.abs(calculated - net);
+  return difference > 0.05
+    ? `毛重减皮重为 ${calculated} 吨，与填写净重相差 ${difference.toFixed(3)} 吨，请核对扣水、扣杂等业务数据。`
+    : "";
+});
+const recognitionConfidence = computed(() => {
+  const value = Number(form.recognitionPayload?.confidence);
+  return Number.isFinite(value) ? Math.round(value * 100) : null;
+});
+const recognitionWarnings = computed(() => form.recognitionPayload?.warnings || []);
+const recognitionIsStale = computed(() => {
+  const source = form.recognitionPayload?.ticketUrls || [];
+  if (!source.length || !form.weighbridgeTicketUrls.length) return false;
+  return source.join("|") !== form.weighbridgeTicketUrls.join("|");
+});
 const policyLabel = computed(() => {
   if (!context.value?.geofenceEnabled) return "围栏校验已停用";
   return context.value.allowOutsideCheckIn ? "可围栏外打卡" : "仅围栏内打卡";
@@ -133,9 +181,13 @@ async function load() {
     );
     const operation = context.value.operation;
     Object.assign(form, {
+      grossWeightTon: operation?.grossWeightTon ? String(operation.grossWeightTon) : "",
+      tareWeightTon: operation?.tareWeightTon ? String(operation.tareWeightTon) : "",
       weightTon: operation?.weightTon ? String(operation.weightTon) : "",
       photoUrls: operation?.photoUrls || [],
       weighbridgeTicketUrls: operation?.weighbridgeTicketUrls || [],
+      recognitionInfo: operation?.recognitionInfo || "",
+      recognitionPayload: operation?.recognitionPayload || null,
       remark: operation?.remark || "",
     });
     if (!operation && context.value.autoCheckIn) await tryAutomaticCheckIn();
@@ -283,6 +335,39 @@ function removeEvidence(kind: "photo" | "ticket", index: number) {
   target.splice(index, 1);
 }
 
+async function analyzeWeighbridgeTicket() {
+  if (state.analyzing || state.uploading || !form.weighbridgeTicketUrls.length) return;
+  state.analyzing = true;
+  try {
+    const result = await analyzeCargoWeighbridgeTicket(
+      auth.token,
+      id.value,
+      operationType.value,
+      form.weighbridgeTicketUrls,
+    );
+    form.recognitionInfo = result.rawText;
+    form.recognitionPayload = {
+      ...result,
+      source: "ai_ocr",
+      ticketUrls: [...form.weighbridgeTicketUrls],
+    };
+    if (!form.grossWeightTon && result.weights.grossWeightTon) {
+      form.grossWeightTon = String(result.weights.grossWeightTon);
+    }
+    if (!form.tareWeightTon && result.weights.tareWeightTon) {
+      form.tareWeightTon = String(result.weights.tareWeightTon);
+    }
+    if (!form.weightTon && result.weights.netWeightTon) {
+      form.weightTon = String(result.weights.netWeightTon);
+    }
+    uni.showToast({ title: "识别完成，请核对重量", icon: "success" });
+  } catch (error) {
+    showError(error, "磅单识别失败，请手工填写重量");
+  } finally {
+    state.analyzing = false;
+  }
+}
+
 async function submit() {
   if (!context.value?.operation) {
     uni.showToast({ title: `请先完成${title.value}打卡`, icon: "none" });
@@ -291,6 +376,20 @@ async function submit() {
   const weightTon = Number(form.weightTon);
   if (!Number.isFinite(weightTon) || weightTon <= 0) {
     uni.showToast({ title: `请输入正确的${title.value}重量`, icon: "none" });
+    return;
+  }
+  const grossWeightTon = form.grossWeightTon ? Number(form.grossWeightTon) : null;
+  const tareWeightTon = form.tareWeightTon ? Number(form.tareWeightTon) : null;
+  if (grossWeightTon !== null && (!Number.isFinite(grossWeightTon) || grossWeightTon <= 0)) {
+    uni.showToast({ title: "请输入正确的毛重", icon: "none" });
+    return;
+  }
+  if (tareWeightTon !== null && (!Number.isFinite(tareWeightTon) || tareWeightTon <= 0)) {
+    uni.showToast({ title: "请输入正确的皮重", icon: "none" });
+    return;
+  }
+  if (grossWeightTon !== null && tareWeightTon !== null && grossWeightTon < tareWeightTon) {
+    uni.showToast({ title: "毛重不能小于皮重", icon: "none" });
     return;
   }
   if (!form.photoUrls.length) {
@@ -308,9 +407,13 @@ async function submit() {
       id.value,
       operationType.value,
       {
+        grossWeightTon,
+        tareWeightTon,
         weightTon,
         photoUrls: [...form.photoUrls],
         weighbridgeTicketUrls: [...form.weighbridgeTicketUrls],
+        recognitionInfo: form.recognitionInfo || null,
+        recognitionPayload: form.recognitionPayload,
         remark: form.remark.trim() || null,
       },
     );
@@ -381,7 +484,7 @@ function showError(error: unknown, fallback: string) {
               ><strong>{{ context.radiusM }} 米</strong></view
             >
             <view
-              ><text>资料要求</text><strong>重量 + 照片 + 磅单</strong></view
+              ><text>资料要求</text><strong>净重 + 照片 + 磅单</strong></view
             >
           </view>
           <text class="policy-card__hint">{{ policyHint }}</text>
@@ -474,21 +577,55 @@ function showError(error: unknown, fallback: string) {
 
           <view class="field-block">
             <text class="field-block__label"
-              >{{ title }}重量（吨）<text class="required-mark">*</text></text
+              >{{ title }}净重（吨）<text class="required-mark">*</text></text
             >
             <view class="weight-input">
               <input
                 v-model="form.weightTon"
                 type="digit"
                 :disabled="!context.operation || isCompleted"
-                :placeholder="`请输入${title}重量`"
+                :placeholder="`请输入${title}净重`"
               />
               <text>吨</text>
             </view>
             <text class="field-block__help"
-              >以现场实际磅重为准，最多保留 3 位小数</text
+              >必填，以最终确认的实际净重为准，最多保留 3 位小数</text
             >
           </view>
+
+          <view class="weight-grid">
+            <view class="field-block weight-grid__item">
+              <text class="field-block__label">毛重（吨）</text>
+              <view class="weight-input">
+                <input
+                  v-model="form.grossWeightTon"
+                  type="digit"
+                  :disabled="!context.operation || isCompleted"
+                  placeholder="选填"
+                />
+                <text>吨</text>
+              </view>
+            </view>
+            <view class="field-block weight-grid__item">
+              <text class="field-block__label">皮重（吨）</text>
+              <view class="weight-input">
+                <input
+                  v-model="form.tareWeightTon"
+                  type="digit"
+                  :disabled="!context.operation || isCompleted"
+                  placeholder="选填"
+                />
+                <text>吨</text>
+              </view>
+            </view>
+          </view>
+          <view v-if="calculatedNetWeight !== null" class="weight-check">
+            <text>毛重－皮重</text>
+            <strong>{{ calculatedNetWeight }} 吨</strong>
+          </view>
+          <text v-if="weightDifferenceWarning" class="weight-warning">
+            {{ weightDifferenceWarning }}
+          </text>
 
           <view class="field-block">
             <text class="field-block__label"
@@ -586,6 +723,64 @@ function showError(error: unknown, fallback: string) {
             <text class="field-block__quota"
               >已上传 {{ form.weighbridgeTicketUrls.length }}/3 张</text
             >
+          </view>
+
+          <view class="recognition-card" :class="{ 'is-stale': recognitionIsStale }">
+            <view class="recognition-card__head">
+              <view class="recognition-card__identity">
+                <view class="recognition-card__icon">
+                  <TmsIcon name="document" size="28rpx" />
+                </view>
+                <view>
+                  <strong>识别信息</strong>
+                  <text>保留 OCR 原始文本，识别错误也不会写入备注</text>
+                </view>
+              </view>
+              <button
+                v-if="!isCompleted"
+                class="recognition-card__action"
+                :disabled="
+                  !context.operation ||
+                  !form.weighbridgeTicketUrls.length ||
+                  state.analyzing ||
+                  !!state.uploading
+                "
+                @click="analyzeWeighbridgeTicket"
+              >
+                <wd-loading
+                  v-if="state.analyzing"
+                  type="ring"
+                  color="#4f46e5"
+                  size="24rpx"
+                />
+                <wd-icon v-else name="camera" size="24rpx" />
+                <text>{{ form.recognitionInfo ? "重新识别" : "识别磅单" }}</text>
+              </button>
+            </view>
+            <view v-if="form.recognitionInfo" class="recognition-card__result">
+              <view class="recognition-card__result-meta">
+                <text>
+                  {{
+                    recognitionConfidence === null
+                      ? "OCR 原文"
+                      : `OCR 原文 · 可信度 ${recognitionConfidence}%`
+                  }}
+                </text>
+                <text v-if="recognitionIsStale" class="recognition-card__stale">
+                  磅单已变更，请重新识别
+                </text>
+              </view>
+              <text class="recognition-card__raw">{{ form.recognitionInfo }}</text>
+              <text v-if="recognitionWarnings.length" class="recognition-card__warning">
+                {{ recognitionWarnings.slice(0, 3).join("；") }}
+              </text>
+              <text class="recognition-card__notice">
+                识别内容仅供备查；毛重、皮重和净重以司机最终确认值为准。
+              </text>
+            </view>
+            <text v-else class="recognition-card__empty">
+              上传磅单后可进行识别。未识别或识别失败不影响手工填写和提交。
+            </text>
           </view>
 
           <view class="field-block">
@@ -937,6 +1132,193 @@ function showError(error: unknown, fallback: string) {
 .weight-input text {
   color: var(--tms-muted);
   font-weight: 700;
+}
+
+.weight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.weight-grid__item {
+  min-width: 0;
+}
+
+.weight-grid .weight-input {
+  padding: 0 16rpx;
+}
+
+.weight-grid .weight-input input {
+  min-width: 0;
+}
+
+.weight-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  color: #52627a;
+  background: #f3f6fb;
+  border-radius: 14rpx;
+  font-size: 22rpx;
+}
+
+.weight-check strong {
+  color: var(--tms-text);
+  font-size: 24rpx;
+}
+
+.weight-warning {
+  display: block;
+  margin-top: 12rpx;
+  padding: 14rpx 18rpx;
+  color: #9a5d00;
+  background: #fff7e8;
+  border-left: 5rpx solid #f59e0b;
+  border-radius: 12rpx;
+  font-size: 21rpx;
+  line-height: 1.55;
+}
+
+.recognition-card {
+  margin-top: 30rpx;
+  padding: 22rpx;
+  background: linear-gradient(145deg, #f4f7ff, #eef3ff);
+  border: 1rpx solid #d9e2ff;
+  border-radius: 18rpx;
+}
+
+.recognition-card.is-stale {
+  background: #fff9ef;
+  border-color: #f1d79e;
+}
+
+.recognition-card__head,
+.recognition-card__identity,
+.recognition-card__action,
+.recognition-card__result-meta {
+  display: flex;
+  align-items: center;
+}
+
+.recognition-card__head,
+.recognition-card__result-meta {
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.recognition-card__identity {
+  min-width: 0;
+  gap: 14rpx;
+}
+
+.recognition-card__identity > view:last-child {
+  min-width: 0;
+}
+
+.recognition-card__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52rpx;
+  height: 52rpx;
+  color: var(--tms-primary);
+  background: #fff;
+  border-radius: 14rpx;
+}
+
+.recognition-card__identity strong,
+.recognition-card__identity text {
+  display: block;
+}
+
+.recognition-card__identity strong {
+  color: var(--tms-text);
+  font-size: 24rpx;
+}
+
+.recognition-card__identity text {
+  margin-top: 4rpx;
+  color: var(--tms-muted);
+  font-size: 20rpx;
+  line-height: 1.45;
+}
+
+.recognition-card__action {
+  flex: 0 0 auto;
+  justify-content: center;
+  gap: 7rpx;
+  min-width: 142rpx;
+  min-height: 64rpx;
+  margin: 0;
+  padding: 0 16rpx;
+  color: var(--tms-primary);
+  background: #fff;
+  border: 1rpx solid #cfd9ff;
+  border-radius: 14rpx;
+  font-size: 21rpx;
+}
+
+.recognition-card__action::after {
+  border: 0;
+}
+
+.recognition-card__action[disabled] {
+  color: #99a3b5;
+  background: #f2f4f8;
+  border-color: #e0e4ec;
+  opacity: 1;
+}
+
+.recognition-card__result {
+  margin-top: 18rpx;
+}
+
+.recognition-card__result-meta {
+  color: #536586;
+  font-size: 20rpx;
+}
+
+.recognition-card__stale {
+  color: #9a5d00;
+  font-weight: 700;
+}
+
+.recognition-card__raw {
+  display: block;
+  max-height: 320rpx;
+  margin-top: 10rpx;
+  padding: 18rpx;
+  overflow: auto;
+  color: #28364c;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1rpx solid #dce3f3;
+  border-radius: 14rpx;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 21rpx;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.recognition-card__warning,
+.recognition-card__notice,
+.recognition-card__empty {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 20rpx;
+  line-height: 1.55;
+}
+
+.recognition-card__warning {
+  color: #a15f00;
+}
+
+.recognition-card__notice,
+.recognition-card__empty {
+  color: var(--tms-muted);
 }
 
 .evidence-grid {

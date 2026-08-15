@@ -9,9 +9,19 @@ interface RoutePoint {
   latitude: number
 }
 
-const props = defineProps<{
-  waybill?: Waybill | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    waybill?: Waybill | null
+    embedded?: boolean
+    routeMode?: 'driving' | 'nodes'
+    pointsOverride?: RoutePoint[]
+  }>(),
+  {
+    embedded: false,
+    routeMode: 'driving',
+    pointsOverride: () => []
+  }
+)
 
 const emit = defineEmits<{
   back: []
@@ -34,11 +44,14 @@ const tileSize = 256
 const amapMapId = `route-amap-${Math.random().toString(36).slice(2)}`
 const routeReady = ref(false)
 const routeError = ref('')
+const nativeRoadPath = ref<RoutePoint[]>([])
 let amap: any
 let driving: any
 let renderSeq = 0
 
-const points = computed(() => getWaybillRoutePoints(props.waybill))
+const points = computed(() =>
+  props.pointsOverride.length ? props.pointsOverride : getWaybillRoutePoints(props.waybill)
+)
 
 const center = computed(() => points.value[0] || { longitude: 120.1551, latitude: 30.2741 })
 const h5Zoom = computed(() => manualZoom.value ?? getFitZoom())
@@ -46,7 +59,8 @@ const h5Zoom = computed(() => manualZoom.value ?? getFitZoom())
 const markers = computed(() => {
   const first = points.value[0]
   const last = points.value[points.value.length - 1]
-  return [first, last]
+  const source = props.routeMode === 'nodes' ? points.value : [first, last]
+  return source
     .filter((point): point is RoutePoint => Boolean(point))
     .map((point, index) => ({
       id: index + 1,
@@ -55,28 +69,37 @@ const markers = computed(() => {
       width: 24,
       height: 24,
       callout: {
-        content: index === 0 ? '起' : '终',
+        content:
+          props.routeMode === 'nodes' ? String(index + 1) : index === 0 ? '起' : '终',
         color: '#ffffff',
         fontSize: 12,
         borderRadius: 14,
-        bgColor: index === 0 ? '#24bf78' : '#ff944d',
+        bgColor:
+          index === 0
+            ? '#24bf78'
+            : index === source.length - 1
+              ? '#ff944d'
+              : '#5b55f5',
         padding: 6,
         display: 'ALWAYS'
       }
     }))
 })
 
-const polyline = computed(() => [
-  {
-    points: points.value,
-    color: '#20c7a7',
-    width: 8,
-    dottedLine: false,
-    arrowLine: true,
-    borderColor: '#dff8f3',
-    borderWidth: 2
-  }
-])
+const polyline = computed(() => {
+  if (nativeRoadPath.value.length < 2) return []
+  return [
+    {
+      points: nativeRoadPath.value,
+      color: props.routeMode === 'nodes' ? '#5b55f5' : '#20c7a7',
+      width: 8,
+      dottedLine: false,
+      arrowLine: true,
+      borderColor: '#ffffff',
+      borderWidth: 3
+    }
+  ]
+})
 
 function project(longitude: number, latitude: number, zoom: number) {
   const scale = tileSize * 2 ** zoom
@@ -181,12 +204,14 @@ const h5Path = computed(() =>
 const h5Markers = computed(() => {
   const first = h5PointPositions.value[0]
   const last = h5PointPositions.value[h5PointPositions.value.length - 1]
-  return [first, last]
+  const source = props.routeMode === 'nodes' ? h5PointPositions.value : [first, last]
+  return source
     .filter((point): point is NonNullable<typeof point> => Boolean(point))
     .map((point, index) => ({
       id: index + 1,
-      label: index === 0 ? '起' : '终',
-      type: index === 0 ? 'start' : 'end',
+      label:
+        props.routeMode === 'nodes' ? String(index + 1) : index === 0 ? '起' : '终',
+      type: index === 0 ? 'start' : index === source.length - 1 ? 'end' : 'node',
       style: {
         left: `${point.x}px`,
         top: `${point.y}px`
@@ -235,16 +260,81 @@ function onFallbackPointerUp(event: PointerEvent) {
   ;(event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId)
 }
 
-// #ifdef H5
+type RouteCoordinate = [number, number]
+
 function withTimeout<T>(task: Promise<T>, message: string, timeout = 6000) {
+  let timer: ReturnType<typeof setTimeout> | undefined
   return Promise.race([
     task,
     new Promise<T>((_, reject) => {
-      window.setTimeout(() => reject(new Error(message)), timeout)
+      timer = setTimeout(() => reject(new Error(message)), timeout)
     })
-  ])
+  ]).finally(() => {
+    if (timer) clearTimeout(timer)
+  })
 }
 
+function parsePolyline(polyline?: string): RouteCoordinate[] {
+  if (!polyline) return []
+  return polyline
+    .split(';')
+    .map((item) => item.split(',').map(Number))
+    .filter(
+      (coordinate): coordinate is RouteCoordinate =>
+        coordinate.length === 2 &&
+        Number.isFinite(coordinate[0]) &&
+        Number.isFinite(coordinate[1])
+    )
+}
+
+function requestDrivingPath(start: RoutePoint, end: RoutePoint) {
+  const key = import.meta.env.VITE_AMAP_KEY
+  if (!key) return Promise.reject(new Error('地图路线服务未配置'))
+
+  return new Promise<RouteCoordinate[]>((resolve, reject) => {
+    uni.request({
+      url: 'https://restapi.amap.com/v3/direction/driving',
+      method: 'GET',
+      data: {
+        origin: `${start.longitude},${start.latitude}`,
+        destination: `${end.longitude},${end.latitude}`,
+        key,
+        extensions: 'base',
+        strategy: 0
+      },
+      success: (response) => {
+        const data = response.data as {
+          status?: string
+          info?: string
+          route?: { paths?: Array<{ steps?: Array<{ polyline?: string }> }> }
+        }
+        const steps = data?.route?.paths?.[0]?.steps || []
+        const path = steps.flatMap((step) => parsePolyline(step.polyline))
+        if (data?.status === '1' && path.length >= 2) {
+          resolve(path)
+          return
+        }
+        reject(new Error(data?.info || '路线规划失败'))
+      },
+      fail: () => reject(new Error('路线服务连接失败'))
+    })
+  })
+}
+
+async function requestDrivingPathThroughNodes(routePoints: RoutePoint[]) {
+  const path: RouteCoordinate[] = []
+  for (let index = 0; index < routePoints.length - 1; index += 1) {
+    const start = routePoints[index]
+    const end = routePoints[index + 1]
+    if (!start || !end) continue
+    const segment = await requestDrivingPath(start, end)
+    path.push(...(path.length ? segment.slice(1) : segment))
+  }
+  if (path.length < 2) throw new Error('路线规划结果为空')
+  return path
+}
+
+// #ifdef H5
 function loadAmap() {
   if (window.AMap) return Promise.resolve(window.AMap)
   const key = import.meta.env.VITE_AMAP_KEY
@@ -287,34 +377,6 @@ function ensureDrivingPlugin(AMap: any) {
   })
 }
 
-function parsePolyline(polyline?: string) {
-  if (!polyline) return []
-  return polyline
-    .split(';')
-    .map((item) => item.split(',').map(Number))
-    .filter(([longitude, latitude]) => Number.isFinite(longitude) && Number.isFinite(latitude))
-}
-
-async function fetchDrivingPath(start: RoutePoint, end: RoutePoint) {
-  const key = import.meta.env.VITE_AMAP_KEY
-  if (!key) throw new Error('请先配置 VITE_AMAP_KEY')
-  const params = [
-    `origin=${start.longitude},${start.latitude}`,
-    `destination=${end.longitude},${end.latitude}`,
-    `key=${key}`,
-    'extensions=base',
-    'strategy=0'
-  ].join('&')
-  const response = await fetch(`https://restapi.amap.com/v3/direction/driving?${params}`)
-  const data = await response.json()
-  const steps = data?.route?.paths?.[0]?.steps || []
-  const path = steps.flatMap((step: { polyline?: string }) => parsePolyline(step.polyline))
-  if (data?.status !== '1' || path.length < 2) {
-    throw new Error(data?.info || '路线规划失败')
-  }
-  return path
-}
-
 function extractDrivingPath(result: any) {
   const steps = result?.routes?.[0]?.steps || []
   return steps.flatMap((step: any) => step.path || [])
@@ -330,8 +392,13 @@ async function waitForMapContainer() {
   throw new Error('地图容器未就绪')
 }
 
-function createRouteMarker(AMap: any, point: RoutePoint, label: string, type: 'start' | 'end') {
-  const color = type === 'start' ? '#20c7a7' : '#ff944d'
+function createRouteMarker(
+  AMap: any,
+  point: RoutePoint,
+  label: string,
+  type: 'start' | 'node' | 'end'
+) {
+  const color = type === 'start' ? '#20c7a7' : type === 'end' ? '#ff944d' : '#5b55f5'
   return new AMap.Marker({
     position: [point.longitude, point.latitude],
     offset: new AMap.Pixel(-15, -15),
@@ -339,7 +406,12 @@ function createRouteMarker(AMap: any, point: RoutePoint, label: string, type: 's
   })
 }
 
-function drawDrivingPath(AMap: any, path: any[], start: RoutePoint, end: RoutePoint) {
+function drawDrivingPath(
+  AMap: any,
+  path: any[],
+  routePoints: RoutePoint[],
+  numberedNodes = false
+) {
   amap.clearMap?.()
   const shadow = new AMap.Polyline({
     path,
@@ -352,7 +424,7 @@ function drawDrivingPath(AMap: any, path: any[], start: RoutePoint, end: RoutePo
   })
   const routeLine = new AMap.Polyline({
     path,
-    strokeColor: '#18c7a8',
+    strokeColor: numberedNodes ? '#5b55f5' : '#18c7a8',
     strokeWeight: 9,
     strokeOpacity: 0.95,
     lineJoin: 'round',
@@ -360,10 +432,16 @@ function drawDrivingPath(AMap: any, path: any[], start: RoutePoint, end: RoutePo
     showDir: true,
     zIndex: 11
   })
-  const startMarker = createRouteMarker(AMap, start, '起', 'start')
-  const endMarker = createRouteMarker(AMap, end, '终', 'end')
-  amap.add([shadow, routeLine, startMarker, endMarker])
-  amap.setFitView([routeLine, startMarker, endMarker], false, [54, 34, 38, 34], 10)
+  const nodeMarkers = routePoints.map((point, index) =>
+    createRouteMarker(
+      AMap,
+      point,
+      numberedNodes ? String(index + 1) : index === 0 ? '起' : '终',
+      index === 0 ? 'start' : index === routePoints.length - 1 ? 'end' : 'node'
+    )
+  )
+  amap.add([shadow, routeLine, ...nodeMarkers])
+  amap.setFitView([routeLine, ...nodeMarkers], false, [54, 34, 42, 34], 10)
   setTimeout(() => {
     if (!amap || amap.getZoom?.() >= 6) return
     amap.setZoom(6)
@@ -371,6 +449,7 @@ function drawDrivingPath(AMap: any, path: any[], start: RoutePoint, end: RoutePo
 }
 
 function searchDrivingPath(AMap: any, start: RoutePoint, end: RoutePoint) {
+  driving?.clear?.()
   driving = new AMap.Driving({
     policy: AMap.DrivingPolicy.LEAST_TIME,
     showTraffic: false
@@ -389,6 +468,27 @@ function searchDrivingPath(AMap: any, start: RoutePoint, end: RoutePoint) {
       }
     )
   })
+}
+
+async function planDrivingPathThroughNodes(
+  AMap: any,
+  routePoints: RoutePoint[],
+  hasDriving: boolean
+) {
+  const path: any[] = []
+  for (let index = 0; index < routePoints.length - 1; index += 1) {
+    const start = routePoints[index]
+    const end = routePoints[index + 1]
+    if (!start || !end) continue
+    const segment = hasDriving
+      ? await withTimeout(searchDrivingPath(AMap, start, end), '节点间路线规划超时', 4500).catch(
+          () => requestDrivingPath(start, end)
+        )
+      : await requestDrivingPath(start, end)
+    path.push(...(path.length ? segment.slice(1) : segment))
+  }
+  if (path.length < 2) throw new Error('路线规划结果为空')
+  return path
 }
 
 async function renderDrivingRoute() {
@@ -431,17 +531,54 @@ async function renderDrivingRoute() {
     const hasDriving = await withTimeout(ensureDrivingPlugin(AMap), '驾车规划插件加载超时', 2500).catch(
       () => false
     )
-    const path = hasDriving
-      ? await withTimeout(searchDrivingPath(AMap, start, end), '驾车路线规划超时', 6000).catch(() =>
-          fetchDrivingPath(start, end)
-        )
-      : await fetchDrivingPath(start, end)
+    const routePoints = props.routeMode === 'nodes' ? points.value : [start, end]
+    const path =
+      props.routeMode === 'nodes'
+        ? await withTimeout(
+            planDrivingPathThroughNodes(AMap, routePoints, hasDriving),
+            '途经点车行路线规划超时',
+            15000
+          )
+        : hasDriving
+          ? await withTimeout(searchDrivingPath(AMap, start, end), '驾车路线规划超时', 6000).catch(
+              () => requestDrivingPath(start, end)
+            )
+          : await requestDrivingPath(start, end)
     if (seq !== renderSeq) return
-    drawDrivingPath(AMap, path, start, end)
+    drawDrivingPath(AMap, path, routePoints, props.routeMode === 'nodes')
     routeReady.value = true
   } catch (error) {
     console.warn('render driving route failed', error)
-    routeError.value = error instanceof Error ? error.message : '地图加载失败'
+    routeError.value = '车行路线暂时无法规划，请稍后重试'
+  }
+}
+// #endif
+
+// #ifndef H5
+async function renderNativeDrivingRoute() {
+  const seq = (renderSeq += 1)
+  routeReady.value = false
+  routeError.value = ''
+  nativeRoadPath.value = []
+  if (points.value.length < 2) return
+  try {
+    const routePoints =
+      props.routeMode === 'nodes'
+        ? points.value
+        : [points.value[0], points.value[points.value.length - 1]].filter(
+            (point): point is RoutePoint => Boolean(point)
+          )
+    const path = await withTimeout(
+      requestDrivingPathThroughNodes(routePoints),
+      '车行路线规划超时',
+      15000
+    )
+    if (seq !== renderSeq) return
+    nativeRoadPath.value = path.map(([longitude, latitude]) => ({ longitude, latitude }))
+    routeReady.value = true
+  } catch (error) {
+    console.warn('render native driving route failed', error)
+    routeError.value = '车行路线暂时无法规划，请稍后重试'
   }
 }
 // #endif
@@ -463,6 +600,9 @@ onMounted(() => {
   window.addEventListener('resize', updateMapSize)
   void renderDrivingRoute()
   // #endif
+  // #ifndef H5
+  void renderNativeDrivingRoute()
+  // #endif
 })
 
 // #ifdef H5
@@ -471,6 +611,12 @@ watch(points, () => {
   routeReady.value = false
   routeError.value = ''
   void renderDrivingRoute()
+})
+// #endif
+
+// #ifndef H5
+watch(points, () => {
+  void renderNativeDrivingRoute()
 })
 // #endif
 
@@ -487,8 +633,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <view class="route-map" :class="{ 'route-map--empty': points.length < 2 }">
-    <button class="route-map__back" hover-class="none" @tap="back">
+  <view
+    class="route-map"
+    :class="{
+      'route-map--empty': points.length < 2,
+      'route-map--embedded': embedded
+    }"
+  >
+    <button v-if="!embedded" class="route-map__back" hover-class="none" @tap="back">
       <TmsIcon name="back" size="38rpx" />
     </button>
 
@@ -498,9 +650,6 @@ onBeforeUnmount(() => {
       ref="amapRef"
       class="route-map__canvas route-map__amap"
     />
-    <view v-if="points.length >= 2 && !routeReady" class="route-map__planning">
-      {{ routeError || '正在规划车行路线' }}
-    </view>
     <!-- #endif -->
 
     <!-- #ifndef H5 -->
@@ -517,6 +666,15 @@ onBeforeUnmount(() => {
       show-location
     />
     <!-- #endif -->
+
+    <view
+      v-if="points.length >= 2 && !routeReady"
+      class="route-map__planning"
+      :class="{ 'route-map__planning--error': routeError }"
+      role="status"
+    >
+      {{ routeError || '正在规划车行路线…' }}
+    </view>
 
     <view v-if="points.length < 2" class="route-map__empty">
       <view class="route-map__empty-icon">
@@ -543,6 +701,11 @@ onBeforeUnmount(() => {
     linear-gradient(145deg, #edf2fa 0%, #e4ebf5 100%);
 }
 
+.route-map--embedded {
+  height: 440rpx;
+  border-radius: 20rpx;
+}
+
 .route-map__canvas {
   width: 100%;
   height: 100%;
@@ -565,6 +728,14 @@ onBeforeUnmount(() => {
   font-size: 24rpx;
   font-weight: 700;
   box-shadow: 0 8rpx 22rpx rgba(31, 41, 55, 0.08);
+}
+
+.route-map__planning--error {
+  max-width: calc(100% - 48rpx);
+  color: #9a5c0b;
+  background: rgba(255, 248, 235, 0.96);
+  text-align: center;
+  white-space: normal;
 }
 
 :deep(.route-map-amap-marker) {
@@ -635,6 +806,10 @@ onBeforeUnmount(() => {
 
 .route-map__marker--end {
   background: #f59e0b;
+}
+
+.route-map__marker--node {
+  background: #5b55f5;
 }
 
 .route-map__back {
