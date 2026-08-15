@@ -1111,12 +1111,12 @@ function showError(error: unknown, fallback: string) {
 .weight-input {
   display: flex;
   align-items: center;
-  height: 82rpx;
+  height: var(--tms-control-height);
   margin-top: 14rpx;
   padding: 0 22rpx;
   background: var(--tms-panel);
   border: 2rpx solid var(--tms-line);
-  border-radius: 16rpx;
+  border-radius: var(--tms-control-radius);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;

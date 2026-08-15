@@ -444,14 +444,14 @@ function showError(error: unknown, fallback: string) {
   line-height: 1.6;
 }
 .signature-sheet__error button {
-  height: 72rpx;
+  height: 80rpx;
   margin-top: 26rpx;
   padding: 0 36rpx;
   border-radius: 999rpx;
   color: #fff;
   background: linear-gradient(135deg, #4f46e5, #2563eb);
   font-size: 24rpx;
-  line-height: 72rpx;
+  line-height: 80rpx;
 }
 .signature-sheet__notice {
   margin: 22rpx 26rpx 0;
@@ -514,12 +514,12 @@ function showError(error: unknown, fallback: string) {
   text-align: right;
 }
 .sheet-field input {
-  height: 76rpx;
+  height: var(--tms-control-height);
   margin-top: 16rpx;
   padding: 0 20rpx;
   background: #f6f8fb;
   border: 1rpx solid #e7ebf1;
-  border-radius: 16rpx;
+  border-radius: var(--tms-control-radius);
   font-size: 26rpx;
 }
 .sheet-field textarea {

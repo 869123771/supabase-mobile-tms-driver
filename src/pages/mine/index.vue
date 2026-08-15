@@ -16,7 +16,7 @@ const carrier = computed(() => profile.carrier)
 
 const metrics = computed(() => [
   { label: '运输次数', value: profile.summary?.completedCount ?? 0 },
-  { label: '运输里程(km)', value: profile.summary?.totalMileageKm ?? 0 },
+  { label: '运输里程', value: profile.summary?.totalMileageKm ?? 0, unit: 'km' },
   { label: '服务评分', value: profile.summary?.rating || '--' }
 ])
 
@@ -64,7 +64,13 @@ function logout() {
       <view class="mine-page__ambient" />
       <view class="mine-page__eyebrow"><text /> 司机档案</view>
       <view class="mine-page__user">
-        <image v-if="user?.avatar" class="mine-page__avatar" :src="user.avatar" mode="aspectFill" />
+        <image
+          v-if="user?.avatar"
+          class="mine-page__avatar"
+          :src="user.avatar"
+          mode="aspectFill"
+          :aria-label="`${displayName}的头像`"
+        />
         <view v-else class="mine-page__avatar mine-page__avatar--text">
           {{ shortName(displayName) }}
         </view>
@@ -75,7 +81,12 @@ function logout() {
           </text>
           <view class="mine-page__verified"><wd-icon name="check-circle" size="24rpx" /> 司机档案已同步</view>
         </view>
-        <button class="mine-page__setting" hover-class="none" @tap="feature('设置中心')">
+        <button
+          class="mine-page__setting"
+          aria-label="打开设置中心"
+          hover-class="mine-page__setting--pressed"
+          @tap="feature('设置中心')"
+        >
           <wd-icon name="setting" size="38rpx" />
         </button>
       </view>
@@ -125,22 +136,22 @@ function logout() {
           </view>
         </view>
         <view class="feature-grid">
-          <view class="feature-grid__item" @tap="feature('我的收入')">
+          <button class="feature-grid__item" hover-class="feature-grid__item--pressed" @tap="feature('我的收入')">
             <view class="feature-grid__icon"><wd-icon name="money-circle" size="46rpx" /></view>
             <text>我的收入</text>
-          </view>
-          <view class="feature-grid__item" @tap="feature('电子回单')">
+          </button>
+          <button class="feature-grid__item" hover-class="feature-grid__item--pressed" @tap="feature('电子回单')">
             <view class="feature-grid__icon"><wd-icon name="list" size="46rpx" /></view>
             <text>电子回单</text>
-          </view>
-          <view class="feature-grid__item" @tap="feature('联系客服')">
+          </button>
+          <button class="feature-grid__item" hover-class="feature-grid__item--pressed" @tap="feature('联系客服')">
             <view class="feature-grid__icon"><wd-icon name="service" size="46rpx" /></view>
             <text>联系客服</text>
-          </view>
-          <view class="feature-grid__item" @tap="feature('帮助中心')">
+          </button>
+          <button class="feature-grid__item" hover-class="feature-grid__item--pressed" @tap="feature('帮助中心')">
             <view class="feature-grid__icon"><wd-icon name="help-circle" size="46rpx" /></view>
             <text>帮助中心</text>
-          </view>
+          </button>
         </view>
       </view>
 
@@ -212,7 +223,7 @@ function logout() {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 86rpx minmax(0, 1fr) 58rpx;
+  grid-template-columns: 94rpx minmax(0, 1fr) 64rpx;
   align-items: center;
   gap: 22rpx;
 }
@@ -266,8 +277,9 @@ function logout() {
 }
 
 .mine-page__setting {
-  width: 58rpx;
-  height: 58rpx;
+  width: 64rpx;
+  height: 64rpx;
+  margin: 0;
   padding: 0;
   border-radius: 50%;
   color: #fff;
@@ -276,6 +288,14 @@ function logout() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.mine-page__setting::after {
+  border: 0;
+}
+
+.mine-page__setting--pressed {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .mine-page__content {
@@ -359,6 +379,11 @@ function logout() {
 }
 
 .feature-grid__item {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   min-width: 0;
   color: #748096;
   display: flex;
@@ -370,6 +395,11 @@ function logout() {
   transition: transform 160ms ease;
 }
 
+.feature-grid__item::after {
+  border: 0;
+}
+
+.feature-grid__item--pressed,
 .feature-grid__item:active {
   transform: translateY(2rpx) scale(0.97);
 }

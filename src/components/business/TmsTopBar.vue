@@ -11,9 +11,13 @@ withDefaults(
   }>(),
   {
     showBack: false,
-    showMenu: true
+    showMenu: false
   }
 )
+
+const emit = defineEmits<{
+  menu: []
+}>()
 
 function back() {
   const pages = getCurrentPages()
@@ -28,7 +32,13 @@ function back() {
 <template>
   <view class="top-bar">
     <view class="top-bar__glow" />
-    <button v-if="showBack" class="top-bar__icon" hover-class="none" @tap="back">
+    <button
+      v-if="showBack"
+      class="top-bar__icon"
+      aria-label="返回上一页"
+      hover-class="top-bar__icon--pressed"
+      @tap="back"
+    >
       <TmsIcon name="back" size="38rpx" />
     </button>
     <view v-else class="top-bar__spacer" />
@@ -37,7 +47,13 @@ function back() {
       <text class="top-bar__title">{{ title }}</text>
       <text v-if="subtitle" class="top-bar__subtitle">{{ subtitle }}</text>
     </view>
-    <button v-if="showMenu" class="top-bar__icon" hover-class="none">
+    <button
+      v-if="showMenu"
+      class="top-bar__icon"
+      aria-label="打开更多操作"
+      hover-class="top-bar__icon--pressed"
+      @tap="emit('menu')"
+    >
       <TmsIcon name="menu" size="38rpx" />
     </button>
     <view v-else class="top-bar__spacer" />
@@ -129,6 +145,7 @@ function back() {
 }
 
 .top-bar__icon {
+  margin: 0;
   padding: 0;
   color: #fff;
   background: rgba(255, 255, 255, 0.13);
@@ -138,5 +155,13 @@ function back() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.top-bar__icon::after {
+  border: 0;
+}
+
+.top-bar__icon--pressed {
+  background: rgba(255, 255, 255, 0.22);
 }
 </style>

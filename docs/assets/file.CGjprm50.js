@@ -1,1 +1,0 @@
-import{_ as e}from"./index-DgORUARH.js";function r(r=3){return new Promise((s,c)=>{e({count:r,sizeType:["compressed"],sourceType:["album","camera"],success(e){const r=e.tempFilePaths;s(Array.isArray(r)?r:r?[r]:[])},fail(e){e.errMsg?.includes("cancel")?s([]):c(new Error(e.errMsg||"选择图片失败"))}})})}export{r as t};

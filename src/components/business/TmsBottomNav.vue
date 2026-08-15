@@ -22,11 +22,14 @@ function go(item: (typeof items)[number]) {
 
 <template>
   <view class="bottom-nav">
-    <view
+    <button
       v-for="item in items"
       :key="item.key"
       class="bottom-nav__item"
       :class="{ 'bottom-nav__item--active': item.key === props.active }"
+      :aria-label="item.label"
+      :aria-current="item.key === props.active ? 'page' : undefined"
+      hover-class="bottom-nav__item--pressed"
       @tap="go(item)"
     >
       <view v-if="item.key === props.active" class="bottom-nav__active-pill" />
@@ -34,7 +37,7 @@ function go(item: (typeof items)[number]) {
         <TmsIcon :name="item.icon" size="42rpx" :active="item.key === props.active" />
       </view>
       <text>{{ item.label }}</text>
-    </view>
+    </button>
   </view>
 </template>
 
@@ -59,6 +62,13 @@ function go(item: (typeof items)[number]) {
 
 .bottom-nav__item {
   position: relative;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 22rpx;
+  background: transparent;
   min-width: 0;
   color: #929daf;
   display: flex;
@@ -69,6 +79,14 @@ function go(item: (typeof items)[number]) {
   font-size: 21rpx;
   font-weight: 600;
   line-height: 1.1;
+}
+
+.bottom-nav__item::after {
+  border: 0;
+}
+
+.bottom-nav__item--pressed {
+  background: rgba(79, 70, 229, 0.06);
 }
 
 .bottom-nav__item--active {

@@ -113,8 +113,8 @@ function navigate(item: Waybill) {
           <wd-icon v-else name="refresh" size="38rpx" />
         </wd-button>
       </view>
-      <view class="waybill-page__tabs">
-        <view
+      <view class="waybill-page__tabs" role="tablist" aria-label="运单状态筛选">
+        <button
           v-for="tab in tabs"
           :key="tab.value"
           class="waybill-page__tab"
@@ -122,11 +122,15 @@ function navigate(item: Waybill) {
             'waybill-page__tab--active': active === tab.value,
             'waybill-page__tab--loading': loadingGroup === tab.value
           }"
+          role="tab"
+          :aria-selected="active === tab.value"
+          :disabled="isBusy && active !== tab.value"
+          hover-class="waybill-page__tab--pressed"
           @tap="switchGroup(tab.value)"
         >
           <view v-if="loadingGroup === tab.value" class="waybill-page__tab-spinner" />
           {{ tab.label }}
-        </view>
+        </button>
       </view>
     </view>
 
@@ -205,10 +209,13 @@ function navigate(item: Waybill) {
   height: 100dvh;
   padding-bottom: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .waybill-page__header {
   position: sticky;
+  flex: 0 0 auto;
   top: 0;
   z-index: 10;
   background: #fff;
@@ -316,7 +323,10 @@ function navigate(item: Waybill) {
 }
 
 .waybill-page__tab {
-  height: 62rpx;
+  min-width: 0;
+  height: 72rpx;
+  margin: 0;
+  padding: 0 10rpx;
   border-radius: 999rpx;
   color: #505867;
   border: 1rpx solid #edf0f5;
@@ -327,6 +337,14 @@ function navigate(item: Waybill) {
   gap: 8rpx;
   font-size: 26rpx;
   font-weight: 700;
+}
+
+.waybill-page__tab::after {
+  border: 0;
+}
+
+.waybill-page__tab--pressed {
+  background: #f4f5ff;
 }
 
 .waybill-page__tab--active {
@@ -356,7 +374,9 @@ function navigate(item: Waybill) {
 
 .waybill-page__list {
   position: relative;
-  height: calc(100vh - 272rpx - env(safe-area-inset-bottom));
+  min-height: 0;
+  height: auto;
+  flex: 1;
 }
 
 .waybill-page__list-loading {

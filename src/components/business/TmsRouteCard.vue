@@ -61,6 +61,9 @@ const groupStatus = computed(() => {
   if (status === 'cancelled') return { label: '已取消', tone: 'red' }
   return { label: '进行中', tone: 'blue' }
 })
+const accessibilityLabel = computed(
+  () => `${props.waybill.originCity || '未知起点'}到${props.waybill.destinationCity || '未知终点'}，运单号${props.waybill.waybillNo}`
+)
 
 function open() {
   if (props.clickable) emit('open', props.waybill)
@@ -68,7 +71,16 @@ function open() {
 </script>
 
 <template>
-  <view class="route-card card" :class="`route-card--${props.variant}`" @tap="open">
+  <view
+    class="route-card card"
+    :class="`route-card--${props.variant}`"
+    :role="props.clickable ? 'button' : undefined"
+    :tabindex="props.clickable ? 0 : -1"
+    :aria-label="props.clickable ? accessibilityLabel : undefined"
+    @tap="open"
+    @keydown.enter="open"
+    @keydown.space.prevent="open"
+  >
     <view v-if="props.variant === 'compact'" class="route-card__compact">
       <view class="route-card__compact-top">
         <view class="route-card__compact-main">
@@ -226,6 +238,11 @@ function open() {
   transform: scale(0.993);
 }
 
+.route-card:focus-visible {
+  outline: 4rpx solid rgba(79, 70, 229, 0.24);
+  outline-offset: 4rpx;
+}
+
 .route-card--task {
   padding: 32rpx;
   border-radius: 28rpx;
@@ -367,6 +384,7 @@ function open() {
 
 .route-card__dot {
   flex: 0 0 36rpx;
+  box-sizing: border-box;
   width: 36rpx;
   height: 36rpx;
   border: 4rpx solid #fff;
@@ -422,8 +440,9 @@ function open() {
 }
 
 .route-card__nav-button {
-  width: 50rpx;
-  height: 50rpx;
+  width: 64rpx;
+  min-width: 64rpx;
+  height: 64rpx;
   padding: 0;
   color: #748096;
   background: transparent;
@@ -434,7 +453,7 @@ function open() {
   align-items: center;
   justify-content: flex-start;
   gap: 1rpx;
-  font-size: 14rpx;
+  font-size: 20rpx;
   line-height: 1;
   min-width: 0;
 }
@@ -448,8 +467,10 @@ function open() {
 }
 
 .route-card__nav-icon {
-  width: 42rpx;
-  height: 42rpx;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 44rpx;
+  height: 44rpx;
   border-radius: 50%;
   color: #fff;
   background: var(--tms-primary-gradient);
@@ -469,19 +490,17 @@ function open() {
 
 .route-card__nav-label {
   color: #526174;
-  font-size: 18rpx;
-  font-weight: 500;
-  transform: scale(0.92);
-  transform-origin: center top;
+  font-size: 20rpx;
+  font-weight: 600;
   line-height: 1;
 }
 
 .route-card__nav-button :deep(.wd-button__text) {
-  font-size: 14rpx;
+  font-size: 20rpx;
   line-height: 1;
   display: flex;
   flex-direction: column;
-  gap : 4rpx;
+  gap: 4rpx;
 }
 
 .route-card__meta {

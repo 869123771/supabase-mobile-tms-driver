@@ -205,6 +205,7 @@ async function handleTaskAction() {
               class="vehicle-card__image"
               :src="vehicle?.vehiclePhotoUrl || FALLBACK_TRUCK_IMAGE"
               mode="aspectFill"
+              aria-label="当前绑定车辆照片"
             />
             <view class="vehicle-card__info">
               <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
@@ -531,6 +532,7 @@ async function handleTaskAction() {
 }
 
 .vehicle-card__image {
+  flex: 0 0 auto;
   width: 112rpx;
   height: 90rpx;
   border-radius: 16rpx;
@@ -552,8 +554,13 @@ async function handleTaskAction() {
 }
 
 .vehicle-card__model {
+  display: -webkit-box;
+  overflow: hidden;
   color: #9aa5b7;
   font-size: 23rpx;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .task-card {

@@ -526,12 +526,12 @@ function showError(error: unknown, fallback: string) {
   text-align: right;
 }
 .mileage-input {
-  height: 80rpx;
+  height: var(--tms-control-height);
   margin-top: 14rpx;
   padding: 0 20rpx;
   background: #f6f8fb;
   border: 1rpx solid #e5e9f0;
-  border-radius: 16rpx;
+  border-radius: var(--tms-control-radius);
   display: flex;
   align-items: center;
 }

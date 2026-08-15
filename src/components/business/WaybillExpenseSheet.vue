@@ -1196,7 +1196,7 @@ function showError(error: unknown, fallback: string) {
 }
 
 .expense-field__picker {
-  min-height: 82rpx;
+  min-height: var(--tms-control-height);
   margin-top: 16rpx;
   padding: 0 20rpx;
   display: flex;
@@ -1232,7 +1232,7 @@ function showError(error: unknown, fallback: string) {
 }
 
 .expense-field__money {
-  height: 82rpx;
+  height: var(--tms-control-height);
   margin-top: 16rpx;
   padding: 0 18rpx;
   display: flex;

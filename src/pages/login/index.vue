@@ -125,6 +125,7 @@ function forgotPassword() {
       <wd-input
         v-model="account"
         class="login-form__field"
+        aria-label="手机号或邮箱"
         prefix-icon="phone"
         placeholder="请输入手机号/邮箱"
         type="text"
@@ -136,8 +137,9 @@ function forgotPassword() {
       <wd-input
         v-model="password"
         class="login-form__field"
+        aria-label="登录密码"
         prefix-icon="lock-on"
-        placeholder="密码"
+        placeholder="请输入登录密码"
         show-password
         confirm-type="done"
         no-border
@@ -155,7 +157,13 @@ function forgotPassword() {
         >
           记住我
         </wd-checkbox>
-        <text class="login-form__link" @tap="forgotPassword">忘记密码？</text>
+        <button
+          class="login-form__link"
+          hover-class="login-form__link--pressed"
+          @tap="forgotPassword"
+        >
+          忘记密码？
+        </button>
       </view>
 
       <wd-button
@@ -189,12 +197,17 @@ function forgotPassword() {
     </wd-button>
     <!-- #endif -->
     <!-- #ifndef MP-WEIXIN -->
-    <view class="login-page__phone" @tap="phoneLogin">
+    <button
+      class="login-page__phone"
+      aria-label="使用手机号一键登录"
+      hover-class="login-page__phone--pressed"
+      @tap="phoneLogin"
+    >
       <view class="login-page__phone-icon">
         <wd-icon name="mobile" size="54rpx" />
       </view>
       <text>手机一键登录</text>
-    </view>
+    </button>
     <!-- #endif -->
 
     <view class="login-page__agreement">
@@ -512,8 +525,27 @@ function forgotPassword() {
 }
 
 .login-form__link {
+  min-height: 56rpx;
+  margin: -12rpx 0;
+  padding: 0 4rpx 0 18rpx;
+  border: 0;
   color: #4f46e5;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 23rpx;
   font-weight: 700;
+  line-height: 1;
+}
+
+.login-form__link::after {
+  border: 0;
+}
+
+.login-form__link--pressed {
+  color: #3730a3;
+  background: rgba(79, 70, 229, 0.06);
 }
 
 .login-form__button {
@@ -540,6 +572,10 @@ function forgotPassword() {
 }
 
 .login-page__phone {
+  min-width: 180rpx;
+  min-height: 126rpx;
+  margin-right: auto;
+  margin-left: auto;
   margin-top: 32rpx;
   padding: 0;
   border: 0;
@@ -551,6 +587,10 @@ function forgotPassword() {
   align-items: center;
   gap: 18rpx;
   font-size: 26rpx;
+}
+
+.login-page__phone--pressed {
+  opacity: 0.82;
 }
 
 .login-page__phone::after {

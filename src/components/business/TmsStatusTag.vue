@@ -38,12 +38,13 @@ const label = computed(
 }
 
 .status-tag__dot {
+  box-sizing: border-box;
+  flex: 0 0 auto;
   width: 10rpx;
   height: 10rpx;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 0 5rpx currentColor;
-  opacity: 0.82;
+  opacity: 0.88;
 }
 
 .status-tag--blue {

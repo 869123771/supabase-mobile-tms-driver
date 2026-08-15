@@ -76,6 +76,7 @@ function preview(url?: string) {
             class="vehicle-card__image"
             :src="vehicle?.vehiclePhotoUrl || FALLBACK_TRUCK_IMAGE"
             mode="aspectFill"
+            aria-label="当前绑定车辆照片"
           />
           <view class="vehicle-card__info">
             <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
@@ -119,22 +120,32 @@ function preview(url?: string) {
           <text class="section-head__hint">点击预览</text>
         </view>
         <view class="doc-card__grid">
-          <view class="doc-card__item" @tap="preview(vehicle?.drivingLicenseFrontUrl)">
+          <button
+            class="doc-card__item"
+            aria-label="预览行驶证"
+            hover-class="doc-card__item--pressed"
+            @tap="preview(vehicle?.drivingLicenseFrontUrl)"
+          >
             <view class="doc-card__icon"><TmsIcon name="document" size="46rpx" /></view>
             <view>
               <text class="doc-card__name">行驶证</text>
               <text class="doc-card__status">{{ vehicle?.drivingLicenseFrontUrl ? '已上传' : '待上传' }}</text>
             </view>
             <wd-icon name="chevron-right" size="28rpx" />
-          </view>
-          <view class="doc-card__item" @tap="preview(vehicle?.operationLicenseUrl)">
+          </button>
+          <button
+            class="doc-card__item"
+            aria-label="预览运输证"
+            hover-class="doc-card__item--pressed"
+            @tap="preview(vehicle?.operationLicenseUrl)"
+          >
             <view class="doc-card__icon"><TmsIcon name="vehicle" size="48rpx" /></view>
             <view>
               <text class="doc-card__name">运输证</text>
               <text class="doc-card__status">{{ vehicle?.operationLicenseUrl ? '已上传' : '待上传' }}</text>
             </view>
             <wd-icon name="chevron-right" size="28rpx" />
-          </view>
+          </button>
         </view>
       </view>
     </view>
@@ -186,7 +197,7 @@ function preview(url?: string) {
 .vehicle-card__body {
   margin-bottom: 28rpx;
   display: grid;
-  grid-template-columns: 116rpx minmax(0, 1fr) auto;
+  grid-template-columns: 116rpx minmax(0, 1fr);
   align-items: center;
   gap: 22rpx;
 }
@@ -213,11 +224,18 @@ function preview(url?: string) {
 }
 
 .vehicle-card__model {
+  display: -webkit-box;
+  overflow: hidden;
   color: #9aa5b7;
   font-size: 25rpx;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .vehicle-card__tag {
+  grid-column: 2;
+  justify-self: start;
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
   color: #059669;
@@ -288,7 +306,9 @@ function preview(url?: string) {
 }
 
 .doc-card__item {
+  width: 100%;
   min-height: 116rpx;
+  margin: 0;
   padding: 18rpx 20rpx;
   border: 1rpx solid #e8ecf3;
   border-radius: 18rpx;
@@ -299,9 +319,14 @@ function preview(url?: string) {
   align-items: center;
   gap: 18rpx;
   font-size: 26rpx;
+  line-height: 1.2;
 }
 
+.doc-card__item::after {
+  border: 0;
+}
 
+.doc-card__item--pressed,
 .doc-card__item:active {
   border-color: rgba(79, 70, 229, 0.28);
   background: #f2f4ff;

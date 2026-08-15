@@ -58,11 +58,14 @@ defineProps<{
 }
 
 .metric-grid__label {
+  min-width: 0;
+  max-width: 100%;
   color: #6c7890;
   font-size: 22rpx;
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .metric-grid__value {
@@ -77,6 +80,7 @@ defineProps<{
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .metric-grid__unit {
