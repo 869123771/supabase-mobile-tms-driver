@@ -18,7 +18,6 @@ import type {
 import { syncDriverWaybills } from "@/api/supabase";
 import { useAuthStore } from "./auth";
 import { useDictionaryStore } from "./dictionary";
-import { useProfileStore } from "./profile";
 
 interface WaybillState {
   list: Waybill[];
@@ -65,15 +64,7 @@ export const useWaybillStore = defineStore("waybill", {
       state.list.filter((item) => item.status === "completed").length,
   },
   actions: {
-    async syncAssignedWaybills(
-      token: string,
-      identities: {
-        driverId?: string;
-        driverPhone?: string;
-        driverName?: string;
-        vehicleId?: string;
-      } = {},
-    ) {
+    async syncAssignedWaybills(token: string) {
       try {
         await syncDriverWaybills(token);
       } catch (error) {
@@ -87,27 +78,13 @@ export const useWaybillStore = defineStore("waybill", {
     },
     async loadList(group?: WaybillStatusGroup) {
       const auth = await this.ensureSession();
-      const profile = useProfileStore();
-      const summary = await profile.load(true);
       const targetGroup = group || this.activeGroup;
-      const driver = summary?.driver;
-      const user = summary?.user;
-      const vehicle = summary?.vehicle;
       this.activeGroup = targetGroup;
       this.loading = true;
       try {
-        await this.syncAssignedWaybills(auth.token, {
-          driverId: driver?.id,
-          driverPhone: driver?.phone || user?.userPhone || auth.user?.phone,
-          driverName: driver?.driverName || user?.nickName || user?.userName,
-          vehicleId: vehicle?.id,
-        });
+        await this.syncAssignedWaybills(auth.token);
         this.list = await listWaybills(auth.token, {
           group: targetGroup,
-          driverId: driver?.id,
-          driverPhone: driver?.phone || user?.userPhone || auth.user?.phone,
-          driverName: driver?.driverName || user?.nickName || user?.userName,
-          vehicleId: vehicle?.id,
         });
         return this.list;
       } finally {
@@ -116,48 +93,22 @@ export const useWaybillStore = defineStore("waybill", {
     },
     async loadHomeTask() {
       const auth = await this.ensureSession();
-      const profile = useProfileStore();
-      const summary = await profile.load(true);
-      const driver = summary?.driver;
-      const user = summary?.user;
-      const vehicle = summary?.vehicle;
-      const driverId = driver?.id;
-      const driverPhone = driver?.phone || user?.userPhone || auth.user?.phone;
-      const driverName = driver?.driverName || user?.nickName || user?.userName;
-      const vehicleId = vehicle?.id;
-      await this.syncAssignedWaybills(auth.token, {
-        driverId,
-        driverPhone,
-        driverName,
-        vehicleId,
-      });
+      await this.syncAssignedWaybills(auth.token);
       const active = await listWaybills(auth.token, {
         group: "active",
-        driverId,
-        driverPhone,
-        driverName,
-        vehicleId,
         limit: 1,
       });
       const pending = active.length
         ? []
         : await listWaybills(auth.token, {
-            group: "pending",
-            driverId,
-            driverPhone,
-            driverName,
-            vehicleId,
-            limit: 1,
+          group: "pending",
+          limit: 1,
           });
       const latest =
         active.length || pending.length
           ? []
           : await listWaybills(auth.token, {
               group: "all",
-              driverId,
-              driverPhone,
-              driverName,
-              vehicleId,
               limit: 1,
             });
       const latestTask = latest[0];

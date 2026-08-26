@@ -23,8 +23,6 @@ import type {
 
 const WAYBILL_SELECT =
   '*,driver:tms_driver(id,tenant_id,carrier_id,driver_name,phone,gender,id_card_no,license_type,driver_license_front_url,driver_license_back_url,enabled)'
-const WAYBILL_DRIVER_INNER_SELECT =
-  '*,driver:tms_driver!inner(id,tenant_id,carrier_id,driver_name,phone,gender,id_card_no,license_type,driver_license_front_url,driver_license_back_url,enabled)'
 const EVENT_SELECT =
   'id,tenant_id,waybill_id,event_type,event_time,operator_name,location_text,longitude,latitude,payload,remark,create_time'
 const PROOF_SELECT =
@@ -34,19 +32,8 @@ const ORDER_ROUTE_SELECT =
 
 export type WaybillStatusGroup = 'all' | 'pending' | 'active' | 'completed'
 
-const GROUP_STATUS: Record<WaybillStatusGroup, WaybillStatus[]> = {
-  all: [],
-  pending: ['pending'],
-  active: ['accepted', 'loading', 'transporting', 'unloading', 'signed'],
-  completed: ['completed']
-}
-
 interface ListWaybillOptions {
   group?: WaybillStatusGroup
-  driverId?: string
-  driverPhone?: string
-  driverName?: string
-  vehicleId?: string
   limit?: number
 }
 
@@ -110,102 +97,11 @@ interface DriverProgressPatch {
   cancelledAt?: string
 }
 
-function addFilter(parts: string[], name: string, value?: string) {
-  if (!value) return
-  parts.push(`${name}=eq.${encodeURIComponent(value)}`)
-}
-
-function addStatusFilter(parts: string[], group: WaybillStatusGroup = 'all') {
-  const statuses = GROUP_STATUS[group]
-  if (statuses.length === 1) parts.push(`status=eq.${statuses[0]}`)
-  if (statuses.length > 1) parts.push(`status=in.(${statuses.join(',')})`)
-}
-
-function buildWaybillQuery(options: ListWaybillOptions = {}) {
-  const parts = [`select=${WAYBILL_SELECT}`, 'order=create_time.desc']
-  addStatusFilter(parts, options.group || 'all')
-  addFilter(parts, 'driver_id', options.driverId)
-  if (options.limit) parts.push(`limit=${options.limit}`)
-  return `?${parts.join('&')}`
-}
-
-function buildWaybillDriverQuery(options: ListWaybillOptions = {}, filter: string) {
-  const parts = [`select=${WAYBILL_DRIVER_INNER_SELECT}`, 'order=create_time.desc']
-  addStatusFilter(parts, options.group || 'all')
-  parts.push(filter)
-  if (options.limit) parts.push(`limit=${options.limit}`)
-  return `?${parts.join('&')}`
-}
-
-async function listWaybillsByDriverProfile(token: string, options: ListWaybillOptions) {
-  if (options.driverPhone) {
-    const rows = await request<unknown[]>(
-      restPath(
-        'tms_waybill',
-        buildWaybillDriverQuery(
-          options,
-          `driver.phone=eq.${encodeURIComponent(options.driverPhone)}`
-        )
-      ),
-      { token }
-    )
-    const waybills = keysToCamel<Waybill[]>(rows)
-    if (waybills.length > 0) return waybills
-  }
-
-  if (options.driverName) {
-    const rows = await request<unknown[]>(
-      restPath(
-        'tms_waybill',
-        buildWaybillDriverQuery(
-          options,
-          `driver.driver_name=eq.${encodeURIComponent(options.driverName)}`
-        )
-      ),
-      { token }
-    )
-    const waybills = keysToCamel<Waybill[]>(rows)
-    if (waybills.length > 0) return waybills
-  }
-
-  return []
-}
-
-function hasDriverIdentity(options: ListWaybillOptions) {
-  return Boolean(options.driverId || options.driverPhone || options.driverName || options.vehicleId)
-}
-
-async function listWaybillsByVehicle(token: string, options: ListWaybillOptions) {
-  if (!options.vehicleId) return []
-  const parts = [`select=${WAYBILL_SELECT}`, 'order=create_time.desc']
-  addStatusFilter(parts, options.group || 'all')
-  addFilter(parts, 'vehicle_id', options.vehicleId)
-  if (options.limit) parts.push(`limit=${options.limit}`)
-  const rows = await request<unknown[]>(restPath('tms_waybill', `?${parts.join('&')}`), {
-    token
+export function listWaybills(token: string, options: ListWaybillOptions = {}) {
+  return rpc<Waybill[]>(token, 'tms_list_driver_mobile_waybills', {
+    p_group: options.group || 'all',
+    p_limit: options.limit || 1000
   })
-  return keysToCamel<Waybill[]>(rows)
-}
-
-export async function listWaybills(token: string, options: ListWaybillOptions = {}) {
-  if (!hasDriverIdentity(options)) return []
-
-  if (!options.driverId) {
-    const vehicleWaybills = await listWaybillsByVehicle(token, options)
-    if (vehicleWaybills.length > 0) return vehicleWaybills
-    return listWaybillsByDriverProfile(token, options)
-  }
-
-  const rows = await request<unknown[]>(restPath('tms_waybill', buildWaybillQuery(options)), {
-    token
-  })
-  const waybills = keysToCamel<Waybill[]>(rows)
-  if (waybills.length > 0) return waybills
-
-  const vehicleWaybills = await listWaybillsByVehicle(token, options)
-  if (vehicleWaybills.length > 0) return vehicleWaybills
-
-  return listWaybillsByDriverProfile(token, options)
 }
 
 function unique(values: Array<string | undefined>) {
@@ -520,11 +416,9 @@ export async function normalizeAssignedWaybillStatuses(
 }
 
 export async function getWaybill(token: string, id: string) {
-  const rows = await request<unknown[]>(
-    restPath('tms_waybill', `?select=${WAYBILL_SELECT}&id=eq.${id}&limit=1`),
-    { token }
-  )
-  const waybill = keysToCamel<Waybill[]>(rows)[0] || null
+  const waybill = await rpc<Waybill | null>(token, 'tms_get_driver_mobile_waybill', {
+    p_waybill_id: id
+  })
   if (!waybill) return null
   return enrichWaybillRouteFromOrder(token, waybill)
 }
@@ -543,14 +437,9 @@ export async function updateWaybill(token: string, id: string, patch: Partial<Wa
 }
 
 export async function listWaybillEvents(token: string, waybillId: string) {
-  const rows = await request<unknown[]>(
-    restPath(
-      'tms_waybill_event',
-      `?select=${EVENT_SELECT}&waybill_id=eq.${waybillId}&order=event_time.asc`
-    ),
-    { token }
-  )
-  return keysToCamel<WaybillEvent[]>(rows)
+  return rpc<WaybillEvent[]>(token, 'tms_list_driver_mobile_waybill_events', {
+    p_waybill_id: waybillId
+  })
 }
 
 export async function createWaybillEvent(
@@ -578,14 +467,9 @@ export async function createWaybillEvent(
 }
 
 export async function listWaybillProofs(token: string, waybillId: string) {
-  const rows = await request<unknown[]>(
-    restPath(
-      'tms_waybill_proof',
-      `?select=${PROOF_SELECT}&waybill_id=eq.${waybillId}&order=uploaded_at.desc`
-    ),
-    { token }
-  )
-  return keysToCamel<WaybillProof[]>(rows)
+  return rpc<WaybillProof[]>(token, 'tms_list_driver_mobile_waybill_proofs', {
+    p_waybill_id: waybillId
+  })
 }
 
 function getExt(filePath: string) {
@@ -634,23 +518,16 @@ export async function createWaybillProof(
   file: ProofFile,
   uploaderName?: string
 ) {
-  const body = {
-    waybill_id: waybill.id,
-    proof_type: toDbProofType(proofType),
-    file_url: file.url,
-    file_name: file.name,
-    mime_type: file.fileType,
-    file_size: file.fileSize,
-    uploaded_at: new Date().toISOString(),
-    uploader_name: uploaderName
-  }
-  const rows = await request<unknown[]>(restPath('tms_waybill_proof', `?select=${PROOF_SELECT}`), {
-    method: 'POST',
-    token,
-    body,
-    headers: { Prefer: 'return=representation' }
+  return rpc<WaybillProof | null>(token, 'tms_create_driver_mobile_waybill_proof', {
+    p_waybill_id: waybill.id,
+    p_proof_type: toDbProofType(proofType),
+    p_file_url: file.url,
+    p_file_name: file.name,
+    p_mime_type: file.fileType,
+    p_file_size: file.fileSize,
+    p_uploaded_at: new Date().toISOString(),
+    p_uploader_name: uploaderName
   })
-  return keysToCamel<WaybillProof[]>(rows)[0] || null
 }
 
 export async function uploadWaybillProofFiles(
