@@ -1,36 +1,50 @@
-# supabase-mobile-driver
+<div align="center">
+  <h1>Art Supabase TMS Driver</h1>
+  <p><strong>A driver-facing H5 and WeChat Mini Program connected to the Art Supabase TMS execution lifecycle</strong></p>
+  <p>
+    <a href="https://gitee.com/wangyanghub/supabase-mobile-tms-driver">Gitee</a> ·
+    <a href="https://github.com/869123771/supabase-mobile-tms-driver">GitHub</a> ·
+    <a href="https://gitee.com/wangyanghub/art-supabase-tms">TMS Web App</a> ·
+    <a href="./README.md">简体中文</a>
+  </p>
+</div>
 
-#### Description
-基于supabase 的 uni-app 的 TMS 运输管理系统 司机端业务
+## Overview
 
-#### Software Architecture
-Software architecture description
+This uni-app application gives drivers a focused mobile workflow for receiving assignments and completing transportation work. It uses Vue 3, TypeScript, Pinia, Wot Design Uni, and Supabase, and targets both H5 and WeChat Mini Programs.
 
-#### Installation
+![Driver workspace](screenshots/driver-home.png)
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+## Capabilities
 
-#### Instructions
+- Password and WeChat phone login, driver profile, assigned tasks, and status filters.
+- Assignment acceptance or cancellation, route and station details, contacts, and tracking history.
+- Location/geofence check-in for loading and unloading, weight entry, photos, weighbridge tickets, and OCR assistance.
+- Departure and return times, odometer readings, and vehicle-condition photos.
+- Signatures, proof of delivery, execution timeline, and final completion.
+- Expense reports with receipt upload, OCR draft, approval status, and synchronization with the web application.
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+## Local Development
 
-#### Contribution
+Node.js 22 and pnpm are recommended.
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
+```powershell
+pnpm install
+Copy-Item .env.example .env.local
+pnpm dev:h5
+```
 
+Configure only the Supabase public URL and publishable/anon key in `.env.local`. Optional AMap variables enable map features.
 
-#### Gitee Feature
+```powershell
+pnpm dev:mp-weixin
+pnpm typecheck
+pnpm build:h5
+pnpm build:mp-weixin
+```
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+The H5 build is written to `docs/`. A WeChat deployment also requires the correct AppID, allowed domains, location/media permissions, and phone authorization.
+
+## Security
+
+The client never contains a `service_role` or AI provider secret. Server-side contracts verify the driver identity, tenant, assignment, record status, and allowed transition for every business mutation. Location data and uploaded evidence remain business records governed by least-privilege access.
