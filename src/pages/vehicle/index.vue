@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
 import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
+import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
 import TmsTopBar from '@/components/business/TmsTopBar.vue'
+import { getUserFacingErrorMessage } from '@/api/supabase'
 import { useDictionaryStore } from '@/stores/dictionary'
 import { useProfileStore } from '@/stores/profile'
 import { FALLBACK_TRUCK_IMAGE } from '@/utils/assets'
@@ -14,6 +16,10 @@ const profile = useProfileStore()
 const dictionary = useDictionaryStore()
 
 const vehicle = computed(() => profile.vehicle)
+const initialLoading = ref(!profile.summary)
+const syncing = ref(false)
+const loadError = ref('')
+const showSkeleton = computed(() => !profile.summary && (initialLoading.value || Boolean(loadError.value)))
 const approvedLoadTon = computed(() => normalizeVehicleLoadTon(vehicle.value?.approvedLoadMass))
 
 const metrics = computed(() => [
@@ -42,13 +48,17 @@ onShow(() => {
 })
 
 async function load() {
+  if (syncing.value) return
+  syncing.value = true
+  if (!profile.summary) initialLoading.value = true
+  loadError.value = ''
   try {
     await profile.load(true)
   } catch (error) {
-    uni.showToast({
-      title: error instanceof Error ? error.message : '车辆加载失败',
-      icon: 'none'
-    })
+    loadError.value = getUserFacingErrorMessage(error, '车辆档案同步失败，请重试')
+  } finally {
+    syncing.value = false
+    initialLoading.value = false
   }
 }
 
@@ -65,7 +75,18 @@ function preview(url?: string) {
   <view class="vehicle-page page safe-bottom">
     <TmsTopBar title="车辆中心" eyebrow="车辆档案" subtitle="查看绑定车辆与证件状态" />
 
-    <view class="vehicle-page__content">
+    <scroll-view scroll-y class="vehicle-page__scroll">
+    <TmsPageSkeleton
+      v-if="showSkeleton"
+      label="正在同步车辆档案…"
+      :error="loadError"
+      @retry="load"
+    />
+    <view v-else class="vehicle-page__content">
+      <view v-if="loadError" class="vehicle-page__sync-error" role="alert">
+        <text>档案同步失败，当前显示上次的信息</text>
+        <button @tap="load">重试</button>
+      </view>
       <view class="vehicle-card card">
         <view class="vehicle-card__eyebrow">
           <text>当前绑定车辆</text>
@@ -79,12 +100,14 @@ function preview(url?: string) {
             aria-label="当前绑定车辆照片"
           />
           <view class="vehicle-card__info">
-            <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
+            <view class="vehicle-card__plate-row">
+              <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
+              <text class="vehicle-card__tag"><text />{{ vehicleStatusLabel }}</text>
+            </view>
             <text class="vehicle-card__model">
               {{ vehicleTypeLabel }} · {{ vehicle?.brandModel || '--' }}
             </text>
           </view>
-          <text class="vehicle-card__tag"><text />{{ vehicleStatusLabel }}</text>
         </view>
         <TmsMetricGrid :items="metrics" />
       </view>
@@ -131,7 +154,7 @@ function preview(url?: string) {
               <text class="doc-card__name">行驶证</text>
               <text class="doc-card__status">{{ vehicle?.drivingLicenseFrontUrl ? '已上传' : '待上传' }}</text>
             </view>
-            <wd-icon name="chevron-right" size="28rpx" />
+            <wd-icon name="right" size="28rpx" />
           </button>
           <button
             class="doc-card__item"
@@ -144,11 +167,12 @@ function preview(url?: string) {
               <text class="doc-card__name">运输证</text>
               <text class="doc-card__status">{{ vehicle?.operationLicenseUrl ? '已上传' : '待上传' }}</text>
             </view>
-            <wd-icon name="chevron-right" size="28rpx" />
+            <wd-icon name="right" size="28rpx" />
           </button>
         </view>
       </view>
     </view>
+    </scroll-view>
 
     <TmsBottomNav active="vehicle" />
   </view>
@@ -156,14 +180,58 @@ function preview(url?: string) {
 
 <style scoped lang="scss">
 .vehicle-page {
-  padding-bottom: 190rpx;
+  height: 100vh;
+  height: 100dvh;
+  padding-bottom: var(--tms-tabbar-space);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.vehicle-page__scroll {
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .vehicle-page__content {
-  padding: 24rpx 28rpx 48rpx;
+  padding: 24rpx 28rpx 32rpx;
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+}
+
+.vehicle-page__sync-error {
+  min-width: 0;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #f4d8b0;
+  border-radius: var(--tms-radius-md);
+  color: #925a13;
+  background: #fff9ed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.vehicle-page__sync-error text {
+  min-width: 0;
+}
+
+.vehicle-page__sync-error button {
+  flex: 0 0 auto;
+  min-width: 88rpx;
+  height: 88rpx;
+  margin: 0;
+  padding: 0 12rpx;
+  border: 0;
+  color: var(--tms-primary);
+  background: transparent;
+  font-size: 23rpx;
+  font-weight: 800;
+  line-height: 88rpx;
 }
 
 .vehicle-card,
@@ -206,7 +274,7 @@ function preview(url?: string) {
   width: 116rpx;
   height: 94rpx;
   border-radius: 18rpx;
-  background: #f7f9fc;
+  background: #f7f9fc url('/static/truck.svg') center / cover no-repeat;
   box-shadow: 0 10rpx 24rpx rgba(40, 52, 80, 0.1);
 }
 
@@ -214,10 +282,22 @@ function preview(url?: string) {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 14rpx;
+  gap: 12rpx;
+}
+
+.vehicle-card__plate-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
 }
 
 .vehicle-card__plate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #172033;
   font-size: 32rpx;
   font-weight: 800;
@@ -234,8 +314,7 @@ function preview(url?: string) {
 }
 
 .vehicle-card__tag {
-  grid-column: 2;
-  justify-self: start;
+  flex: 0 0 auto;
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
   color: #059669;
@@ -320,6 +399,7 @@ function preview(url?: string) {
   gap: 18rpx;
   font-size: 26rpx;
   line-height: 1.2;
+  text-align: left;
 }
 
 .doc-card__item::after {
@@ -347,6 +427,7 @@ function preview(url?: string) {
 .doc-card__item > view:nth-child(2) {
   min-width: 0;
   flex: 1;
+  text-align: left;
 }
 
 .doc-card__name,

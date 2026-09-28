@@ -328,7 +328,7 @@ function preview(item: TimelineItem, index: number) {
       <text>已记录 {{ completedKeyActionCount }}/{{ keyActionTotal }} 个关键节点，费用与补录记录按提交时间同步展示</text>
     </view>
     <view v-if="syncWarning" class="tracking-card__warning">
-      <wd-icon name="warning" size="28rpx" />
+      <wd-icon name="exclamation-circle" size="28rpx" />
       <text>{{ syncWarning }}</text>
     </view>
 
@@ -342,7 +342,7 @@ function preview(item: TimelineItem, index: number) {
         <view class="tracking-item__rail" aria-hidden="true">
           <view class="tracking-item__dot">
             <wd-icon
-              :name="item.tone === 'green' ? 'check' : item.tone === 'red' ? 'close' : 'time'"
+              :name="item.tone === 'green' ? 'check' : item.tone === 'red' ? 'close' : 'time-line'"
               size="20rpx"
             />
           </view>
@@ -396,7 +396,7 @@ function preview(item: TimelineItem, index: number) {
       </view>
     </view>
     <view v-else class="tracking-card__empty">
-      <wd-icon name="time" size="40rpx" />
+      <wd-icon name="time-line" size="40rpx" />
       <strong>暂无跟踪记录</strong>
       <text>完成运输节点后，操作时间与资料摘要会显示在这里</text>
     </view>

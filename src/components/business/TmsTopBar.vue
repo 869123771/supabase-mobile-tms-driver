@@ -69,7 +69,7 @@ function back() {
   overflow: hidden;
   background: var(--tms-hero-gradient);
   display: grid;
-  grid-template-columns: 64rpx 1fr 64rpx;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 18rpx;
 }
@@ -140,8 +140,10 @@ function back() {
 .top-bar__spacer {
   position: relative;
   z-index: 1;
-  width: 64rpx;
-  height: 64rpx;
+  width: 88rpx;
+  height: 88rpx;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .top-bar__icon {
@@ -163,5 +165,10 @@ function back() {
 
 .top-bar__icon--pressed {
   background: rgba(255, 255, 255, 0.22);
+}
+
+.top-bar__icon:focus-visible {
+  outline: 4rpx solid rgba(255, 255, 255, 0.84);
+  outline-offset: 3rpx;
 }
 </style>

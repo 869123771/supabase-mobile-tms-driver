@@ -33,6 +33,8 @@ onShow(() => {
 </script>
 
 <style lang="scss">
+@use './styles/global.scss';
+
 :root,
 page {
   --tms-primary: #4f46e5;
@@ -55,9 +57,10 @@ page {
   --tms-radius-md: 18rpx;
   --tms-radius-lg: 26rpx;
   --tms-radius-xl: 32rpx;
-  --tms-control-height: 88rpx;
+  --tms-control-height: max(88rpx, 44px);
   --tms-control-radius: 18rpx;
   --tms-control-font-size: 28rpx;
+  --tms-tabbar-space: calc(160rpx + env(safe-area-inset-bottom));
   --tms-shadow-sm: 0 10rpx 30rpx rgba(28, 39, 65, 0.065);
   --tms-shadow-md: 0 20rpx 54rpx rgba(31, 40, 74, 0.12);
   --tms-shadow-primary: 0 14rpx 28rpx rgba(79, 70, 229, 0.23);
@@ -115,6 +118,72 @@ button:focus-visible,
   outline: 4rpx solid rgba(79, 70, 229, 0.32);
   outline-offset: 4rpx;
 }
+
+/* uni-button 不继承页面的 scoped 样式，凭证操作统一放在应用全局层。 */
+.tms-evidence-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  line-height: 0;
+}
+
+.tms-evidence-preview::after,
+.tms-evidence-remove::after {
+  border: 0;
+}
+
+.tms-evidence-preview image {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tms-evidence-preview:focus-visible {
+  outline: 4rpx solid var(--tms-primary);
+  outline-offset: -4rpx;
+}
+
+.tms-evidence-remove {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  width: 88rpx;
+  height: 88rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #fff;
+  background: radial-gradient(circle at center, rgba(16, 24, 40, 0.78) 21rpx, transparent 22rpx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  line-height: 1;
+}
+
+.tms-evidence-remove:focus-visible {
+  outline: 4rpx solid var(--tms-primary);
+  outline-offset: -4rpx;
+}
+
+/* #ifdef H5 */
+uni-scroll-view .uni-scroll-view {
+  scrollbar-width: none;
+}
+
+uni-scroll-view .uni-scroll-view::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+/* #endif */
 
 input,
 textarea {

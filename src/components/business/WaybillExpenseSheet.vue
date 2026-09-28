@@ -66,6 +66,11 @@ const form = reactive({
   remark: "",
 });
 const attachments = ref<ExpenseAttachmentDraft[]>([]);
+const datePickerVisible = ref(false);
+const expensePickerVisible = ref(false);
+const paymentPickerVisible = ref(false);
+const expenseDateMin = new Date(new Date().getFullYear() - 5, 0, 1).getTime();
+const expenseDateMax = new Date(new Date().getFullYear() + 1, 11, 31, 23, 59, 59).getTime();
 const initialRemoteUrls = ref<string[]>([]);
 const idempotencyKey = ref("");
 const ocrEnabled = ref(true);
@@ -77,17 +82,10 @@ const visible = computed({
   set: (value) => emit("update:modelValue", value),
 });
 const isEditing = computed(() => Boolean(props.record));
-const expenseItemLabels = computed(() =>
-  props.expenseItems.map((item) =>
-    item.parentName ? `${item.parentName} · ${item.itemName}` : item.itemName,
-  ),
-);
-const expenseItemIndex = computed(() =>
-  Math.max(
-    0,
-    props.expenseItems.findIndex((item) => item.id === form.expenseItemId),
-  ),
-);
+const expenseItemOptions = computed(() => props.expenseItems.map((item) => ({
+  value: item.id,
+  label: item.parentName ? `${item.parentName} · ${item.itemName}` : item.itemName,
+})));
 const selectedExpenseItem = computed(() =>
   props.expenseItems.find((item) => item.id === form.expenseItemId),
 );
@@ -99,12 +97,10 @@ const paymentMethods = computed(() =>
 const selectedPaymentMethod = computed(() =>
   paymentMethods.value.find((item) => item.value === form.paymentChannel),
 );
-const paymentMethodIndex = computed(() =>
-  Math.max(
-    0,
-    paymentMethods.value.findIndex((item) => item.value === form.paymentChannel),
-  ),
-);
+const paymentMethodOptions = computed(() => paymentMethods.value.map((item) => ({
+  value: item.value,
+  label: item.label,
+})));
 const ocrConfidencePercent = computed(() =>
   Math.round((ocrResult.value?.confidence || 0) * 100),
 );
@@ -189,14 +185,12 @@ async function prepareSheet() {
   }
 }
 
-function changeExpenseItem(event: { detail: { value: string | number } }) {
-  const index = Number(event.detail.value);
-  form.expenseItemId = props.expenseItems[index]?.id || "";
+function changeExpenseItem(event: { value: Array<string | number> }) {
+  form.expenseItemId = String(event.value[0] || "");
 }
 
-function changePaymentMethod(event: { detail: { value: string | number } }) {
-  const index = Number(event.detail.value);
-  form.paymentChannel = paymentMethods.value[index]?.value || "";
+function changePaymentMethod(event: { value: Array<string | number> }) {
+  form.paymentChannel = String(event.value[0] || "");
 }
 
 function normalizePaymentMethod(value?: string | null) {
@@ -565,7 +559,7 @@ function showError(error: unknown, fallback: string) {
 
       <scroll-view scroll-y class="expense-sheet__body">
         <view v-if="record?.reviewRemark" class="expense-sheet__reject-note">
-          <wd-icon name="warning" size="32rpx" />
+          <wd-icon name="exclamation-circle" size="32rpx" />
           <view>
             <strong>审批驳回说明</strong>
             <text>{{ record.reviewRemark }}</text>
@@ -583,38 +577,40 @@ function showError(error: unknown, fallback: string) {
           <text class="expense-field__label">
             费用项目 <text class="required-mark">*</text>
           </text>
-          <picker
-            mode="selector"
-            :range="expenseItemLabels"
-            :value="expenseItemIndex"
-            @change="changeExpenseItem"
-          >
-            <view
-              class="expense-field__picker"
-              :class="{ 'expense-field__picker--placeholder': !selectedExpenseItem }"
-            >
-              <text>{{
-                selectedExpenseItem
-                  ? `${selectedExpenseItem.parentName ? `${selectedExpenseItem.parentName} · ` : ""}${selectedExpenseItem.itemName}`
-                  : "请选择费用项目"
-              }}</text>
-              <wd-icon name="arrow-down" size="28rpx" />
-            </view>
-          </picker>
+          <wd-cell
+            custom-class="tms-select-trigger expense-field__picker"
+            :value="selectedExpenseItem ? `${selectedExpenseItem.parentName ? `${selectedExpenseItem.parentName} · ` : ''}${selectedExpenseItem.itemName}` : ''"
+            placeholder="请选择费用项目"
+            value-align="left"
+            is-link
+            role="button"
+            aria-label="选择费用项目"
+            @click="expensePickerVisible = true"
+          />
+          <wd-picker
+            :model-value="[form.expenseItemId]"
+            v-model:visible="expensePickerVisible"
+            :columns="expenseItemOptions"
+            title="选择费用项目"
+            @confirm="changeExpenseItem"
+          />
         </view>
 
         <view class="expense-field expense-field--split">
           <view class="expense-field__number">2</view>
+          <text class="expense-field__section-title">费用明细</text>
           <view class="expense-field__column">
             <text class="expense-field__label">
               金额（元） <text class="required-mark">*</text>
             </text>
             <view class="expense-field__money">
               <text>¥</text>
-              <input
+              <wd-input
                 v-model="form.amount"
                 type="digit"
-                maxlength="12"
+                inputmode="decimal"
+                compact
+                :maxlength="12"
                 aria-label="费用金额"
                 placeholder="0.00"
               />
@@ -624,10 +620,21 @@ function showError(error: unknown, fallback: string) {
             <text class="expense-field__label">
               发生日期 <text class="required-mark">*</text>
             </text>
-            <wd-datetime-picker
+            <wd-cell
+              custom-class="tms-date-trigger"
+              :value="formatLocalDate(form.occurredAt)"
+              is-link
+              aria-label="选择费用发生日期"
+              @click="datePickerVisible = true"
+            />
+            <wd-calendar
               v-model="form.occurredAt"
+              v-model:visible="datePickerVisible"
               type="date"
               title="选择费用发生日期"
+              switch-mode="year-month"
+              :min-date="expenseDateMin"
+              :max-date="expenseDateMax"
             />
           </view>
         </view>
@@ -672,7 +679,7 @@ function showError(error: unknown, fallback: string) {
                   v-if="
                     state.loadingAiConfig || state.analyzing || state.uploading
                   "
-                  type="ring"
+                  type="circular"
                   color="#4f46e5"
                   size="24rpx"
                 />
@@ -707,13 +714,15 @@ function showError(error: unknown, fallback: string) {
               :key="attachment.id"
               class="expense-evidence__item"
             >
-              <image
-                :src="attachment.src"
-                mode="aspectFill"
-                @click="previewAttachment(index)"
-              />
               <button
-                class="expense-evidence__remove"
+                class="tms-evidence-preview"
+                :aria-label="`预览第 ${index + 1} 张费用凭证`"
+                @click="previewAttachment(index)"
+              >
+                <image :src="attachment.src" mode="aspectFill" />
+              </button>
+              <button
+                class="tms-evidence-remove"
                 :aria-label="`删除第 ${index + 1} 张费用凭证`"
                 :disabled="busy"
                 @click="removeAttachment(index)"
@@ -730,7 +739,7 @@ function showError(error: unknown, fallback: string) {
             >
               <wd-loading
                 v-if="state.choosing"
-                type="ring"
+                type="circular"
                 color="#4f46e5"
                 size="30rpx"
               />
@@ -749,50 +758,49 @@ function showError(error: unknown, fallback: string) {
           <view class="expense-field__input-grid">
             <label>
               <text>商户 / 收款方</text>
-              <input
+              <wd-input
                 v-model="form.providerName"
-                maxlength="100"
+                custom-class="tms-form-input tms-form-input--small"
+                :maxlength="100"
                 placeholder="可选填"
               />
             </label>
             <label>
               <text>支付方式</text>
-              <picker
-                mode="selector"
-                range-key="label"
-                :range="paymentMethods"
-                :value="paymentMethodIndex"
-                :disabled="busy || !paymentMethods.length"
-                @change="changePaymentMethod"
-              >
-                <view
-                  class="expense-field__compact-picker"
-                  :class="{
-                    'expense-field__compact-picker--placeholder': !selectedPaymentMethod,
-                  }"
-                >
-                  <text>{{
-                    selectedPaymentMethod?.label ||
-                    form.paymentChannel ||
-                    (paymentMethods.length ? "请选择支付方式" : "支付方式字典未配置")
-                  }}</text>
-                  <wd-icon name="arrow-down" size="24rpx" />
-                </view>
-              </picker>
+              <wd-cell
+                custom-class="tms-select-trigger tms-select-trigger--small expense-field__compact-picker"
+                :value="selectedPaymentMethod?.label || form.paymentChannel"
+                :placeholder="paymentMethods.length ? '请选择支付方式' : '支付方式字典未配置'"
+                value-align="left"
+                is-link
+                role="button"
+                aria-label="选择支付方式"
+                :aria-disabled="busy || !paymentMethods.length"
+                @click="!busy && paymentMethods.length && (paymentPickerVisible = true)"
+              />
+              <wd-picker
+                :model-value="[form.paymentChannel]"
+                v-model:visible="paymentPickerVisible"
+                :columns="paymentMethodOptions"
+                title="选择支付方式"
+                @confirm="changePaymentMethod"
+              />
             </label>
             <label>
               <text>发票号码</text>
-              <input
+              <wd-input
                 v-model="form.invoiceNo"
-                maxlength="100"
+                custom-class="tms-form-input tms-form-input--small"
+                :maxlength="100"
                 placeholder="可选填"
               />
             </label>
           </view>
           <view class="expense-field__location-row">
-            <input
+            <wd-input
               v-model="form.expenseLocation"
-              maxlength="300"
+              compact
+              :maxlength="300"
               aria-label="费用发生地点"
               placeholder="费用发生地点（可选）"
             />
@@ -803,7 +811,7 @@ function showError(error: unknown, fallback: string) {
             >
               <wd-loading
                 v-if="state.locating"
-                type="ring"
+                type="circular"
                 color="#4f46e5"
                 size="24rpx"
               />
@@ -811,9 +819,10 @@ function showError(error: unknown, fallback: string) {
               <text>{{ state.locating ? "定位中" : "当前位置" }}</text>
             </button>
           </view>
-          <textarea
+          <wd-textarea
             v-model="form.remark"
-            maxlength="500"
+            custom-class="tms-form-textarea"
+            :maxlength="500"
             aria-label="费用说明"
             placeholder="补充费用原因、行程或异常说明（可选）"
           />
@@ -832,7 +841,7 @@ function showError(error: unknown, fallback: string) {
         </text>
         <wd-button
           custom-class="tms-secondary-action"
-          plain
+          variant="plain"
           type="primary"
           :round="false"
           :disabled="busy"
@@ -1185,10 +1194,9 @@ function showError(error: unknown, fallback: string) {
 
 .expense-field__picker,
 .expense-field__money,
-.expense-field__input-grid input,
 .expense-field__compact-picker,
 .expense-field__location-row,
-.expense-field textarea {
+:deep(.expense-field .tms-form-textarea) {
   box-sizing: border-box;
   border: 1rpx solid #e5eaf1;
   border-radius: 16rpx;
@@ -1227,6 +1235,16 @@ function showError(error: unknown, fallback: string) {
   gap: 18rpx;
 }
 
+.expense-field__section-title {
+  grid-column: 1 / -1;
+  display: block;
+  min-height: 42rpx;
+  color: var(--tms-text);
+  font-size: 27rpx;
+  font-weight: 800;
+  line-height: 42rpx;
+}
+
 .expense-field__column {
   min-width: 0;
 }
@@ -1246,14 +1264,18 @@ function showError(error: unknown, fallback: string) {
   font-weight: 900;
 }
 
-.expense-field__money input {
+.expense-field__money :deep(.wd-input) {
   min-width: 0;
   flex: 1;
+  width: 100%;
+}
+
+.expense-field__money :deep(.wd-input__inner) {
   font-size: 28rpx;
   font-weight: 800;
 }
 
-.expense-field--split :deep(.wd-picker) {
+.expense-field--split :deep(.tms-date-trigger) {
   margin-top: 16rpx;
 }
 
@@ -1282,22 +1304,6 @@ function showError(error: unknown, fallback: string) {
   height: 100%;
 }
 
-.expense-evidence__remove {
-  position: absolute;
-  top: 6rpx;
-  right: 6rpx;
-  width: 48rpx;
-  height: 48rpx;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  color: #fff;
-  background: rgba(17, 24, 39, 0.76);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
 
 .expense-evidence__add {
   color: var(--tms-primary);
@@ -1343,14 +1349,9 @@ function showError(error: unknown, fallback: string) {
   font-weight: 600;
 }
 
-.expense-field__input-grid input {
-  height: 76rpx;
-  padding: 0 16rpx;
-  font-size: 24rpx;
-}
 
 .expense-field__compact-picker {
-  height: 76rpx;
+  height: var(--tms-control-height);
   padding: 0 16rpx;
   display: flex;
   align-items: center;
@@ -1374,16 +1375,19 @@ function showError(error: unknown, fallback: string) {
 }
 
 .expense-field__location-row {
-  height: 78rpx;
+  height: var(--tms-control-height);
   margin-top: 16rpx;
   padding-left: 16rpx;
   display: flex;
   align-items: center;
 }
 
-.expense-field__location-row input {
+.expense-field__location-row :deep(.wd-input) {
   min-width: 0;
   flex: 1;
+  width: 100%;
+}
+.expense-field__location-row :deep(.wd-input__inner) {
   font-size: 24rpx;
 }
 

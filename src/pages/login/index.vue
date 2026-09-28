@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
+import { getUserFacingErrorMessage } from '@/api/supabase'
 
 const auth = useAuthStore()
 const profile = useProfileStore()
@@ -46,7 +47,7 @@ async function submit() {
     uni.reLaunch({ url: '/pages/home/index' })
   } catch (error) {
     uni.showToast({
-      title: error instanceof Error ? error.message : '登录失败',
+      title: getUserFacingErrorMessage(error, '登录失败，请检查账号与密码'),
       icon: 'none'
     })
   } finally {
@@ -72,7 +73,7 @@ async function phoneLogin(event?: unknown) {
     uni.reLaunch({ url: '/pages/home/index' })
   } catch (error) {
     uni.showToast({
-      title: error instanceof Error ? error.message : '手机号登录失败',
+      title: getUserFacingErrorMessage(error, '手机号登录失败，请稍后重试'),
       icon: 'none'
     })
   } finally {
@@ -138,7 +139,7 @@ function forgotPassword() {
         v-model="password"
         class="login-form__field"
         aria-label="登录密码"
-        prefix-icon="lock-on"
+        prefix-icon="lock"
         placeholder="请输入登录密码"
         show-password
         confirm-type="done"
@@ -151,7 +152,7 @@ function forgotPassword() {
         <wd-checkbox
           v-model="remember"
           class="login-form__remember"
-          shape="square"
+          type="square"
           checked-color="#3763f4"
           :disabled="loading"
         >
@@ -185,7 +186,7 @@ function forgotPassword() {
     <wd-button
       class="login-page__phone"
       open-type="getPhoneNumber"
-      type="text"
+      variant="text"
       :loading="phoneLoading"
       :disabled="phoneLoading"
       @getphonenumber="phoneLogin"
@@ -196,25 +197,8 @@ function forgotPassword() {
       <text>手机一键登录</text>
     </wd-button>
     <!-- #endif -->
-    <!-- #ifndef MP-WEIXIN -->
-    <button
-      class="login-page__phone"
-      aria-label="使用手机号一键登录"
-      hover-class="login-page__phone--pressed"
-      @tap="phoneLogin"
-    >
-      <view class="login-page__phone-icon">
-        <wd-icon name="mobile" size="54rpx" />
-      </view>
-      <text>手机一键登录</text>
-    </button>
-    <!-- #endif -->
-
     <view class="login-page__agreement">
-      登录即表示您已阅读并同意
-      <text>《用户协议》</text>
-      和
-      <text>《隐私政策》</text>
+      司机账号由车队管理员开通与管理
     </view>
   </view>
 </template>

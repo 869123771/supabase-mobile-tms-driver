@@ -104,11 +104,11 @@ function open() {
           <TmsIcon name="location" size="26rpx" />
           <text>{{ originStation }}</text>
         </view>
-        <view class="route-card__meta-item route-card__meta-item--center">
+        <view class="route-card__meta-item route-card__meta-item--duration">
           <TmsIcon name="time" size="26rpx" />
           <text>{{ durationLabel }}</text>
         </view>
-        <view class="route-card__meta-item route-card__meta-item--right">
+        <view class="route-card__meta-item route-card__meta-item--right route-card__meta-item--weight">
           <TmsIcon name="box" size="26rpx" />
           <text>{{ formatTon(props.waybill.cargoWeightTon) }}</text>
         </view>
@@ -183,7 +183,7 @@ function open() {
         >
           <wd-button
             class="route-card__nav-button"
-            type="text"
+            variant="text"
             @click="emit('navigate', props.waybill)"
           >
             <view class="route-card__nav-icon">
@@ -208,11 +208,11 @@ function open() {
           <TmsIcon name="location" size="28rpx" />
           <text>{{ originStation }}</text>
         </view>
-        <view class="route-card__meta-item route-card__meta-item--center">
+        <view class="route-card__meta-item route-card__meta-item--duration">
           <TmsIcon name="time" size="28rpx" />
           <text>{{ durationLabel }}</text>
         </view>
-        <view class="route-card__meta-item route-card__meta-item--right">
+        <view class="route-card__meta-item route-card__meta-item--right route-card__meta-item--weight">
           <TmsIcon name="box" size="28rpx" />
           <text>{{ formatTon(props.waybill.cargoWeightTon) }}</text>
         </view>
@@ -250,9 +250,10 @@ function open() {
 }
 
 .route-card--compact {
-  padding: 22rpx 0 18rpx;
-  border-radius: 0;
-  background: transparent;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #fbfcff;
+  box-shadow: none;
 }
 
 .route-card--list {
@@ -335,6 +336,7 @@ function open() {
 }
 
 .route-card__route text {
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -346,14 +348,14 @@ function open() {
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx 22rpx;
-  font-size: 22rpx;
+  font-size: 23rpx;
   line-height: 1.35;
 }
 
 .route-card__points {
   position: relative;
   margin-top: 22rpx;
-  padding: 22rpx 92rpx 22rpx 20rpx;
+  padding: 22rpx 120rpx 22rpx 20rpx;
   border: 1rpx solid #e8ecf3;
   border-radius: 18rpx;
   background:
@@ -415,6 +417,7 @@ function open() {
 
 .route-card__point-main {
   min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 6rpx;
@@ -422,9 +425,10 @@ function open() {
 
 .route-card__address {
   color: #4b5870;
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 600;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .route-card__time {
@@ -440,9 +444,10 @@ function open() {
 }
 
 .route-card__nav-button {
-  width: 64rpx;
-  min-width: 64rpx;
-  height: 64rpx;
+  width: 88rpx;
+  min-width: 44px;
+  height: 88rpx;
+  min-height: 44px;
   padding: 0;
   color: #748096;
   background: transparent;
@@ -451,17 +456,16 @@ function open() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 1rpx;
   font-size: 20rpx;
   line-height: 1;
-  min-width: 0;
 }
 
 .route-card__nav-button :deep(.wd-button__content) {
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 4rpx;
   line-height: 1;
 }
@@ -506,8 +510,8 @@ function open() {
 .route-card__meta {
   margin: 20rpx 0 24rpx;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12rpx;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12rpx 18rpx;
 }
 
 .route-card__meta--task {
@@ -521,8 +525,9 @@ function open() {
   display: flex;
   align-items: center;
   gap: 6rpx;
-  font-size: 22rpx;
+  font-size: 25rpx;
   font-weight: 600;
+  line-height: 1.3;
 }
 
 .route-card__meta-item--right {
@@ -533,6 +538,16 @@ function open() {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.route-card__meta-item--duration {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.route-card__meta-item--weight {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .route-card__compact {
@@ -566,12 +581,11 @@ function open() {
 .route-card__meta--compact {
   width: 100%;
   margin: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16rpx;
+  gap: 10rpx 16rpx;
 }
 
 .route-card__meta--compact .route-card__meta-item {
-  font-size: 22rpx;
+  font-size: 23rpx;
 }
 
 .route-card__meta--compact .route-card__meta-item:first-child {
@@ -579,7 +593,7 @@ function open() {
 }
 
 .route-card__meta-item--center {
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .route-card__compact-side {

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import UniIcons from '@dcloudio/uni-ui/lib/uni-icons/uni-icons.vue'
 
 type IconName =
   | 'home'
@@ -37,32 +36,31 @@ const props = withDefaults(
 )
 
 const iconType = computed(() => {
-  const filled = props.active ? '-filled' : ''
   const map: Record<IconName, string> = {
-    home: `home${filled}`,
-    waybill: props.active ? 'checkbox-filled' : 'list',
+    home: props.active ? 'home-fill' : 'home',
+    waybill: 'list',
     vehicle: '',
-    user: `person${filled}`,
-    'arrow-right': 'arrow-right',
+    user: 'user',
+    'arrow-right': 'right',
     'route-arrow': '',
-    nav: props.active ? 'paperplane-filled' : 'paperplane',
+    nav: 'nav',
     location: 'location',
-    time: 'calendar',
+    time: 'time-line',
     box: 'gift',
-    flag: props.active ? 'flag-filled' : 'flag',
-    menu: 'bars',
-    refresh: 'refreshempty',
+    flag: 'pushpin',
+    menu: 'menu',
+    refresh: 'refresh',
     back: 'left',
-    document: 'compose',
-    check: 'checkbox-filled',
-    phone: 'phone-filled',
-    settings: 'gear'
+    document: 'file',
+    check: 'check-circle-fill',
+    phone: 'phone',
+    settings: 'settings'
   }
   return map[props.name]
 })
 
 const svgSrc = computed(() => {
-  // Icons missing from uni-icons should be added under /static/icons and routed here.
+  // 业务车辆及路线箭头沿用项目 SVG，其余图标统一使用 Wot UI。
   if (props.name === 'route-arrow') return '/static/icons/route-arrow.svg'
   if (props.name !== 'vehicle') return ''
   return props.active ? '/static/icons/vehicle-active.svg' : '/static/icons/vehicle.svg'
@@ -86,10 +84,10 @@ const imageSize = computed(() => {
       :src="svgSrc"
       mode="aspectFit"
     />
-    <UniIcons
+    <wd-icon
       v-else
       class="tms-icon__font"
-      :type="iconType"
+      :name="iconType"
       :size="props.size"
       :color="props.color || 'currentColor'"
     />
@@ -106,6 +104,7 @@ const imageSize = computed(() => {
   align-items: center;
   justify-content: center;
   line-height: 1;
+  vertical-align: middle;
 }
 
 .tms-icon__svg {
@@ -115,13 +114,12 @@ const imageSize = computed(() => {
   flex: 0 0 auto;
 }
 
-.tms-icon__font {
-  flex: 0 0 auto;
-  line-height: 1;
-}
-
-:deep(.tms-icon__font .uni-icons) {
-  display: block;
+:deep(.wd-icon) {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1 !important;
 }
 </style>

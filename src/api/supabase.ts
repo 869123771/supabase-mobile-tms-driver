@@ -67,6 +67,7 @@ function normalizeKnownError(message: string, fallback: string) {
   if (/too many requests|rate limit/i.test(message)) return '操作过于频繁，请稍后重试'
   if (/timeout|timed out/i.test(message)) return '请求超时，请稍后重试'
   if (NETWORK_ERROR_PATTERN.test(message)) return '网络连接异常，请检查网络后重试'
+  if (!/[\u3400-\u9fff]/u.test(message)) return fallback
   return message
 }
 

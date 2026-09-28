@@ -32,7 +32,7 @@ defineProps<{
 .metric-grid__item {
   position: relative;
   min-width: 0;
-  min-height: 132rpx;
+  min-height: 136rpx;
   padding: 22rpx 14rpx;
   overflow: hidden;
   border: 1rpx solid #e5eaf2;
@@ -61,7 +61,7 @@ defineProps<{
   min-width: 0;
   max-width: 100%;
   color: #6c7890;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
@@ -73,7 +73,7 @@ defineProps<{
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 800;
   display: flex;
   align-items: flex-end;
@@ -85,7 +85,7 @@ defineProps<{
 
 .metric-grid__unit {
   margin-left: 4rpx;
-  font-size: 21rpx;
+  font-size: 22rpx;
   font-weight: 600;
   line-height: 1.1;
 }

@@ -77,9 +77,10 @@ export const useWaybillStore = defineStore("waybill", {
       return auth;
     },
     async loadList(group?: WaybillStatusGroup) {
-      const auth = await this.ensureSession();
       const targetGroup = group || this.activeGroup;
+      if (targetGroup !== this.activeGroup) this.list = [];
       this.activeGroup = targetGroup;
+      const auth = await this.ensureSession();
       this.loading = true;
       try {
         await this.syncAssignedWaybills(auth.token);
@@ -137,23 +138,29 @@ export const useWaybillStore = defineStore("waybill", {
     async loadDetail(id: string) {
       const auth = await this.ensureSession();
       this.loading = true;
+      this.current = null;
+      this.events = [];
+      this.proofs = [];
       try {
         await useDictionaryStore().load(auth.token);
+        let detail: Waybill | null;
         try {
-          this.current = await getWaybill(auth.token, id);
+          detail = await getWaybill(auth.token, id);
         } catch (error) {
           if (!isJwtExpiredError(error)) throw error;
           await auth.refreshSession();
-          this.current = await getWaybill(auth.token, id);
+          detail = await getWaybill(auth.token, id);
         }
-        if (this.current) {
-          this.events = await listWaybillEvents(auth.token, id);
-          this.proofs = await listWaybillProofs(auth.token, id);
-        } else {
-          this.events = [];
-          this.proofs = [];
-        }
-        return this.current;
+        const [events, proofs] = detail
+          ? await Promise.all([
+              listWaybillEvents(auth.token, id),
+              listWaybillProofs(auth.token, id),
+            ])
+          : [[], []];
+        this.current = detail;
+        this.events = events;
+        this.proofs = proofs;
+        return detail;
       } finally {
         this.loading = false;
       }

@@ -2,10 +2,13 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { getWaybillExecutionContext, signWaybill, uploadWaybillProofFiles } from '@/api/waybill'
 import type { Waybill } from '@/api/types'
+import { getUserFacingErrorMessage } from '@/api/supabase'
 import TmsRecordTimeNotice from '@/components/business/TmsRecordTimeNotice.vue'
+import TmsDateTimePicker from '@/components/business/TmsDateTimePicker.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { chooseImages } from '@/utils/file'
+import { formatDateTime } from '@/utils/format'
 
 const props = defineProps<{
   modelValue: boolean
@@ -27,6 +30,7 @@ const form = reactive({
   signatureUrls: [] as string[],
   remark: ''
 })
+const datePickerVisible = ref(false)
 
 const visible = computed({
   get: () => props.modelValue,
@@ -70,8 +74,7 @@ async function load() {
     form.signatureUrls = [...(record?.signatureUrls || [])]
     form.remark = record?.signatureRemark || ''
   } catch (error) {
-    state.error = error instanceof Error ? error.message : '签收信息加载失败'
-    showError(error, '签收信息加载失败')
+    state.error = getUserFacingErrorMessage(error, '签收信息加载失败，请重试')
   } finally {
     state.loading = false
   }
@@ -141,7 +144,7 @@ async function submit() {
 
 function showError(error: unknown, fallback: string) {
   uni.showToast({
-    title: error instanceof Error ? error.message : fallback,
+    title: getUserFacingErrorMessage(error, fallback),
     icon: 'none',
     duration: 3000
   })
@@ -177,7 +180,7 @@ function showError(error: unknown, fallback: string) {
       <scroll-view scroll-y class="signature-sheet__body">
         <view v-if="state.loading" class="signature-sheet__loading">
           <view class="signature-sheet__loading-head">
-            <wd-loading type="ring" color="#4f46e5" size="36rpx" />
+            <wd-loading type="circular" color="#4f46e5" size="36rpx" />
             <text>正在同步签收信息…</text>
           </view>
           <view class="signature-sheet__loading-card"><view /><view /><view /></view>
@@ -198,16 +201,29 @@ function showError(error: unknown, fallback: string) {
           <view class="sheet-field">
             <view class="sheet-field__number">1</view>
             <text class="sheet-field__label">签收时间 <text class="required-mark">*</text></text>
-            <wd-datetime-picker
+            <wd-cell
+              custom-class="tms-date-trigger"
+              :value="formatDateTime(new Date(form.signedAt).toISOString())"
+              is-link
+              aria-label="选择签收时间"
+              @click="datePickerVisible = true"
+            />
+            <TmsDateTimePicker
               v-model="form.signedAt"
-              type="datetime"
+              v-model:visible="datePickerVisible"
               title="选择签收时间"
             />
           </view>
           <view class="sheet-field">
             <view class="sheet-field__number">2</view>
             <text class="sheet-field__label">签收人 <text class="required-mark">*</text></text>
-            <input v-model="form.signerName" maxlength="50" placeholder="请输入实际签收人" />
+            <wd-input
+              v-model="form.signerName"
+              custom-class="tms-form-input"
+              :maxlength="50"
+              aria-label="签收人"
+              placeholder="请输入实际签收人"
+            />
           </view>
 
           <view v-for="kind in ['receipt', 'signature'] as const" :key="kind" class="sheet-field">
@@ -229,12 +245,19 @@ function showError(error: unknown, fallback: string) {
                 :key="url"
                 class="sheet-evidence__item"
               >
-                <image
-                  :src="url"
-                  mode="aspectFill"
+                <button
+                  class="tms-evidence-preview"
+                  :aria-label="`预览第 ${index + 1} 张${kind === 'receipt' ? '签收回单' : '签字照片'}`"
                   @click="preview(url, kind === 'receipt' ? form.receiptUrls : form.signatureUrls)"
-                />
-                <button class="sheet-evidence__remove" @click="remove(kind, index)">×</button>
+                >
+                  <image :src="url" mode="aspectFill" />
+                </button>
+                <button
+                  class="tms-evidence-remove"
+                  :aria-label="`删除第 ${index + 1} 张${kind === 'receipt' ? '签收回单' : '签字照片'}`"
+                  :disabled="state.submitting || !!state.uploading"
+                  @click="remove(kind, index)"
+                >×</button>
               </view>
               <button
                 class="sheet-evidence__add"
@@ -243,7 +266,7 @@ function showError(error: unknown, fallback: string) {
               >
                 <wd-loading
                   v-if="state.uploading === kind"
-                  type="ring"
+                  type="circular"
                   color="#3763f4"
                   size="28rpx"
                 />
@@ -260,8 +283,9 @@ function showError(error: unknown, fallback: string) {
 
           <view class="sheet-field">
             <text class="sheet-field__label">备注</text>
-            <textarea
+            <wd-textarea
               v-model="form.remark"
+              custom-class="tms-form-textarea"
               maxlength="300"
               placeholder="可填写货损、少货或现场说明"
             />
@@ -277,7 +301,7 @@ function showError(error: unknown, fallback: string) {
         <wd-button
           class="signature-sheet__cancel"
           custom-class="tms-secondary-action"
-          plain
+          variant="plain"
           type="primary"
           :round="false"
           :disabled="state.submitting"
@@ -513,25 +537,6 @@ function showError(error: unknown, fallback: string) {
   font-size: 20rpx;
   text-align: right;
 }
-.sheet-field input {
-  height: var(--tms-control-height);
-  margin-top: 16rpx;
-  padding: 0 20rpx;
-  background: #f6f8fb;
-  border: 1rpx solid #e7ebf1;
-  border-radius: var(--tms-control-radius);
-  font-size: 26rpx;
-}
-.sheet-field textarea {
-  box-sizing: border-box;
-  width: 100%;
-  height: 150rpx;
-  margin-top: 16rpx;
-  padding: 18rpx 18rpx 48rpx;
-  background: #f6f8fb;
-  border-radius: 16rpx;
-  font-size: 25rpx;
-}
 .sheet-field__count {
   position: absolute;
   right: 42rpx;
@@ -560,19 +565,6 @@ function showError(error: unknown, fallback: string) {
 .sheet-evidence__item image {
   width: 100%;
   height: 100%;
-}
-.sheet-evidence__remove {
-  position: absolute;
-  top: 6rpx;
-  right: 6rpx;
-  width: 38rpx;
-  height: 38rpx;
-  padding: 0;
-  color: #fff;
-  background: rgba(16, 24, 40, 0.72);
-  border: 0;
-  border-radius: 50%;
-  line-height: 34rpx;
 }
 .sheet-evidence__add {
   color: var(--tms-primary);

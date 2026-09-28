@@ -42,12 +42,24 @@ type DetailAction = "accept" | "cancel";
 type DetailTab = "tracking" | "trajectory";
 const activeAction = ref<DetailAction | "">("");
 const activeDetailTab = ref<DetailTab>("tracking");
+const detailTabOptions = [
+  { value: "tracking", payload: { label: "运单跟踪" } },
+  { value: "trajectory", payload: { label: "轨迹定位" } },
+];
+
+function setDetailTab(option: { value: string | number }) {
+  if (option.value === "tracking" || option.value === "trajectory") {
+    activeDetailTab.value = option.value;
+  }
+}
 const executionContext = ref<WaybillExecutionContext>();
 const signatureVisible = ref(false);
 const expenseRecords = ref<DriverExpenseRecord[]>([]);
 const trackingWarning = ref("");
 
-const current = computed(() => waybill.current);
+const current = computed(() =>
+  waybill.current?.id === id.value ? waybill.current : null,
+);
 const isPending = computed(() => current.value?.status === "pending");
 const isCompleted = computed(() => current.value?.status === "completed");
 const isAccepted = computed(() => current.value?.status === "accepted");
@@ -167,19 +179,25 @@ const stationRows = computed(() => {
 
 onLoad((query) => {
   id.value = String(query?.id || "");
+  activeDetailTab.value = "tracking";
+  executionContext.value = undefined;
+  expenseRecords.value = [];
 });
 
 onShow(() => void load());
 
 async function load() {
   if (!id.value) return;
+  const requestedId = id.value;
   try {
     trackingWarning.value = "";
-    const loaded = await waybill.loadDetail(id.value);
+    const loaded = await waybill.loadDetail(requestedId);
+    if (requestedId !== id.value) return;
     const [executionResult, expenseResult] = await Promise.allSettled([
-      getWaybillExecutionContext(auth.token, id.value),
-      getDriverExpenseContext(auth.token, id.value),
+      getWaybillExecutionContext(auth.token, requestedId),
+      getDriverExpenseContext(auth.token, requestedId),
     ]);
+    if (requestedId !== id.value) return;
     if (executionResult.status === "fulfilled") {
       executionContext.value = executionResult.value;
     } else {
@@ -356,12 +374,12 @@ async function handleSignatureSuccess() {
   });
 }
 
-function viewReceipt() {
+function viewReceipt(current?: string) {
   if (proofUrls.value.length === 0) {
     uni.showToast({ title: "暂无回单文件", icon: "none" });
     return;
   }
-  uni.previewImage({ urls: proofUrls.value });
+  uni.previewImage({ current: current || proofUrls.value[0], urls: proofUrls.value });
 }
 </script>
 
@@ -445,16 +463,16 @@ function viewReceipt() {
                 v-if="isAccepted"
                 class="detail-actions__outline"
                 custom-class="tms-danger-action"
-                type="error"
-                plain
+                type="danger"
+                variant="plain"
                 :round="false"
                 :disabled="actionBusy"
-                @click.stop="cancel"
+                @click="cancel"
               >
                 <view class="detail-actions__button-content">
                   <wd-loading
                     v-if="activeAction === 'cancel'"
-                    type="ring"
+                    type="circular"
                     color="#dc2626"
                     size="28rpx"
                   />
@@ -471,7 +489,7 @@ function viewReceipt() {
                 type="primary"
                 :round="false"
                 :disabled="actionBusy"
-                @click.stop="openCargoOperation('loading')"
+                @click="openCargoOperation('loading')"
               >
                 <view class="detail-actions__button-content">
                   <wd-icon name="location" size="30rpx" />
@@ -485,10 +503,10 @@ function viewReceipt() {
                 type="primary"
                 :round="false"
                 :disabled="actionBusy"
-                @click.stop="openExecutionOperation('departure')"
+                @click="openExecutionOperation('departure')"
               >
                 <view class="detail-actions__button-content">
-                  <wd-icon name="vehicle" size="30rpx" />
+                  <TmsIcon name="vehicle" size="30rpx" />
                   <text>录入发车信息</text>
                 </view>
               </wd-button>
@@ -499,7 +517,7 @@ function viewReceipt() {
                 type="primary"
                 :round="false"
                 :disabled="actionBusy"
-                @click.stop="openCargoOperation('unloading', 'arrival')"
+                @click="openCargoOperation('unloading', 'arrival')"
               >
                 <view class="detail-actions__button-content">
                   <wd-icon name="location" size="30rpx" />
@@ -513,7 +531,7 @@ function viewReceipt() {
                 type="primary"
                 :round="false"
                 :disabled="actionBusy"
-                @click.stop="
+                @click="
                   executionContext?.unloadingStatus === 'completed'
                     ? (signatureVisible = true)
                     : openCargoOperation('unloading')
@@ -542,7 +560,7 @@ function viewReceipt() {
                 type="primary"
                 :round="false"
                 :disabled="actionBusy"
-                @click.stop="openExecutionOperation('completion')"
+                @click="openExecutionOperation('completion')"
               >
                 <view class="detail-actions__button-content">
                   <wd-icon name="check" size="30rpx" />
@@ -556,12 +574,12 @@ function viewReceipt() {
                 class="detail-actions__receipt"
                 custom-class="tms-secondary-action"
                 type="primary"
-                plain
+                variant="plain"
                 :round="false"
-                @click.stop="viewReceipt"
+                @click="viewReceipt()"
               >
                 <view class="detail-actions__button-content">
-                  <wd-icon name="view" size="30rpx" />
+                  <wd-icon name="eye" size="30rpx" />
                   <text>查看运输单据</text>
                 </view>
               </wd-button>
@@ -571,43 +589,36 @@ function viewReceipt() {
               class="detail-actions__expense"
               custom-class="tms-secondary-action"
               type="primary"
-              plain
+              variant="plain"
               :round="false"
-              @click.stop="openExpense"
+              @click="openExpense"
             >
               <view class="detail-actions__button-content">
-                <wd-icon name="add-circle" size="30rpx" />
+                <wd-icon name="plus-circle" size="30rpx" />
                 <text>费用上报</text>
               </view>
             </wd-button>
           </view>
         </TmsRouteCard>
 
-        <view class="detail-tabs card" role="tablist" aria-label="运单详情视图">
-          <button
-            class="detail-tabs__item"
-            :class="{ 'is-active': activeDetailTab === 'tracking' }"
-            role="tab"
-            :aria-selected="activeDetailTab === 'tracking'"
-            @click="activeDetailTab = 'tracking'"
-          >
-            <TmsIcon name="document" size="28rpx" />
-            <text>运单跟踪</text>
-            <i v-if="waybill.events.length" class="detail-tabs__count">
-              {{ waybill.events.length }}
-            </i>
-          </button>
-          <button
-            class="detail-tabs__item"
-            :class="{ 'is-active': activeDetailTab === 'trajectory' }"
-            role="tab"
-            :aria-selected="activeDetailTab === 'trajectory'"
-            @click="activeDetailTab = 'trajectory'"
-          >
-            <TmsIcon name="location" size="28rpx" />
-            <text>轨迹定位</text>
-          </button>
-        </view>
+        <wd-segmented
+          :value="activeDetailTab"
+          :options="detailTabOptions"
+          theme="outline"
+          custom-class="detail-tabs card"
+          aria-label="运单详情视图"
+          @change="setDetailTab"
+        >
+          <template #label="{ option }">
+            <view class="detail-tabs__item" role="tab" :aria-selected="activeDetailTab === option.value">
+              <TmsIcon :name="option.value === 'tracking' ? 'document' : 'location'" size="28rpx" />
+              <text>{{ option.payload.label }}</text>
+              <i v-if="option.value === 'tracking' && waybill.events.length" class="detail-tabs__count">
+                {{ waybill.events.length }}
+              </i>
+            </view>
+          </template>
+        </wd-segmented>
 
         <WaybillTrackingTimeline
           v-if="activeDetailTab === 'tracking'"
@@ -671,12 +682,11 @@ function viewReceipt() {
               </view>
               <wd-button
                 class="station-list__call"
-                type="icon"
                 :aria-label="`拨打${row.label}电话`"
-                custom-style="width: 50rpx; min-width: 50rpx; height: 50rpx; padding: 0; border-radius: 50%; background: #25bf75; color: #fff;"
+                custom-style="width: 88rpx; min-width: 44px; height: 88rpx; min-height: 44px; padding: 0; border-radius: 50%; background: #25bf75; color: #fff;"
                 @click="callPhone(row.phone)"
               >
-                <wd-icon name="phone" size="30rpx" />
+                <wd-icon name="phone" size="38rpx" />
               </wd-button>
             </view>
           </view>
@@ -693,14 +703,15 @@ function viewReceipt() {
             >
           </view>
           <view class="proof-card__grid">
-            <image
-              v-for="proof in waybill.proofs"
+            <button
+              v-for="(proof, index) in waybill.proofs"
               :key="proof.id"
               class="proof-card__image"
-              :src="proof.fileUrl"
-              mode="aspectFill"
-              @tap="viewReceipt"
-            />
+              :aria-label="`预览第 ${index + 1} 份运输单据`"
+              @click="viewReceipt(proof.fileUrl)"
+            >
+              <image :src="proof.fileUrl" mode="aspectFill" />
+            </button>
           </view>
         </view>
       </view>
@@ -708,7 +719,7 @@ function viewReceipt() {
         <view class="detail-page__state-icon">
           <wd-loading
             v-if="waybill.loading"
-            type="ring"
+            type="circular"
             color="#4f46e5"
             size="58rpx"
           />
@@ -745,7 +756,7 @@ function viewReceipt() {
         <view class="detail-actions__button-content">
           <wd-loading
             v-if="activeAction === 'accept'"
-            type="ring"
+            type="circular"
             color="#ffffff"
             size="30rpx"
           />
@@ -768,11 +779,15 @@ function viewReceipt() {
 <style scoped lang="scss">
 .detail-page {
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: #f4f6fa;
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-page__blue {
+  flex: 0 0 auto;
   color: #fff;
   background: linear-gradient(135deg, #292266 0%, #4f46e5 56%, #2563eb 118%);
 }
@@ -814,15 +829,9 @@ function viewReceipt() {
 }
 
 .detail-page__scroll {
-  height: calc(100vh - 298rpx);
-}
-
-.detail-page__scroll--header-only {
-  height: calc(100vh - 176rpx);
-}
-
-.detail-page--pending .detail-page__scroll {
-  height: calc(100vh - 298rpx - 128rpx - env(safe-area-inset-bottom));
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .detail-page__content {
@@ -838,19 +847,21 @@ function viewReceipt() {
 }
 
 .detail-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 8rpx;
+  gap: 8rpx;
 }
 
-.detail-tabs__item {
+:deep(.detail-tabs)::before {
+  display: none;
+}
+
+:deep(.detail-tabs .wd-segmented__item) {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9rpx;
   min-width: 0;
-  min-height: 92rpx;
+  min-height: var(--tms-control-height);
   margin: 0;
   padding: 0 14rpx;
   color: #657188;
@@ -862,6 +873,13 @@ function viewReceipt() {
   touch-action: manipulation;
 }
 
+.detail-tabs__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9rpx;
+}
+
 .detail-tabs__item > :deep(.tms-icon) {
   flex: 0 0 28rpx;
   width: 28rpx !important;
@@ -870,17 +888,17 @@ function viewReceipt() {
   min-height: 28rpx;
 }
 
-.detail-tabs__item::after {
-  border: 0;
+:deep(.detail-tabs .wd-segmented__item + .wd-segmented__item) {
+  border-left: 0;
 }
 
-.detail-tabs__item.is-active {
+:deep(.detail-tabs .wd-segmented__item.is-active) {
   color: #4338ca;
   background: linear-gradient(135deg, #f0efff, #edf3ff);
   box-shadow: inset 0 0 0 1rpx rgba(79, 70, 229, 0.12);
 }
 
-.detail-tabs__item.is-active::before {
+:deep(.detail-tabs .wd-segmented__item.is-active)::before {
   position: absolute;
   right: 26rpx;
   bottom: 0;
@@ -1056,7 +1074,7 @@ function viewReceipt() {
 .station-list__row {
   min-width: 0;
   display: grid;
-  grid-template-columns: 86rpx minmax(0, 1fr) 54rpx;
+  grid-template-columns: 86rpx minmax(0, 1fr) 44px;
   align-items: center;
   gap: 16rpx;
   padding: 24rpx 0;
@@ -1119,9 +1137,10 @@ function viewReceipt() {
 }
 
 .station-list__call {
-  width: 50rpx;
-  height: 50rpx;
-  min-width: 50rpx;
+  width: 88rpx;
+  height: 88rpx;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   border-radius: 50%;
   color: #fff;
@@ -1139,8 +1158,19 @@ function viewReceipt() {
 .proof-card__image {
   width: 100%;
   height: 150rpx;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
   border-radius: 16rpx;
   background: #f7f9fc;
+}
+
+.proof-card__image image {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .detail-page__state {
@@ -1182,10 +1212,8 @@ function viewReceipt() {
 }
 
 .pending-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
+  flex: 0 0 auto;
   z-index: 30;
   min-height: calc(128rpx + env(safe-area-inset-bottom));
   padding: 22rpx 30rpx calc(22rpx + env(safe-area-inset-bottom));

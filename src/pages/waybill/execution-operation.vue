@@ -12,11 +12,13 @@ import type { ExecutionAction } from "@/api/types";
 import TmsIcon from "@/components/business/TmsIcon.vue";
 import TmsPageSkeleton from "@/components/business/TmsPageSkeleton.vue";
 import TmsRecordTimeNotice from "@/components/business/TmsRecordTimeNotice.vue";
+import TmsDateTimePicker from "@/components/business/TmsDateTimePicker.vue";
 import TmsTopBar from "@/components/business/TmsTopBar.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useProfileStore } from "@/stores/profile";
 import { useWaybillStore } from "@/stores/waybill";
 import { chooseImages } from "@/utils/file";
+import { formatDateTime } from "@/utils/format";
 
 const auth = useAuthStore();
 const profile = useProfileStore();
@@ -35,6 +37,7 @@ const form = reactive({
   photoUrls: [] as string[],
   remark: "",
 });
+const datePickerVisible = ref(false);
 const current = computed(() => waybill.current);
 const executionContext =
   ref<Awaited<ReturnType<typeof getWaybillExecutionContext>>>();
@@ -65,6 +68,11 @@ const submitMissing = computed(() => {
   const odometer = Number(form.odometerKm);
   if (form.odometerKm === "" || !Number.isFinite(odometer) || odometer < 0)
     missing.push("里程");
+  else if (
+    !isDeparture.value &&
+    odometer < Number(executionContext.value?.record?.departureOdometerKm ?? 0)
+  )
+    missing.push("收车里程不得小于出车里程");
   if (!form.photoUrls.length) missing.push("车辆照片");
   return missing;
 });
@@ -283,9 +291,16 @@ function showError(error: unknown, fallback: string) {
               >{{ isDeparture ? "实际发车时间" : "收车时间"
               }}<text class="required-mark">*</text></text
             >
-            <wd-datetime-picker
+            <wd-cell
+              custom-class="tms-date-trigger"
+              :value="formatDateTime(new Date(form.occurredAt).toISOString())"
+              is-link
+              :aria-label="`选择${isDeparture ? '发车' : '收车'}时间`"
+              @click="datePickerVisible = true"
+            />
+            <TmsDateTimePicker
               v-model="form.occurredAt"
-              type="datetime"
+              v-model:visible="datePickerVisible"
               :title="`选择${isDeparture ? '发车' : '收车'}时间`"
             />
           </view>
@@ -294,9 +309,11 @@ function showError(error: unknown, fallback: string) {
               >{{ fieldTitle }}<text class="required-mark">*</text></text
             >
             <view class="mileage-input"
-              ><input
+              ><wd-input
                 v-model="form.odometerKm"
                 type="digit"
+                inputmode="decimal"
+                compact
                 placeholder="请输入仪表盘公里数"
               /><text>km</text></view
             >
@@ -315,9 +332,17 @@ function showError(error: unknown, fallback: string) {
                 :key="url"
                 class="evidence-grid__item"
               >
-                <image :src="url" mode="aspectFill" @click="preview(url)" />
                 <button
-                  class="evidence-grid__remove"
+                  class="tms-evidence-preview"
+                  :aria-label="`预览第 ${index + 1} 张${isDeparture ? '发车' : '收车'}照片`"
+                  @click="preview(url)"
+                >
+                  <image :src="url" mode="aspectFill" />
+                </button>
+                <button
+                  class="tms-evidence-remove"
+                  :aria-label="`删除第 ${index + 1} 张${isDeparture ? '发车' : '收车'}照片`"
+                  :disabled="state.uploading || state.submitting"
                   @click="removePhoto(index)"
                 >
                   ×
@@ -331,7 +356,7 @@ function showError(error: unknown, fallback: string) {
               >
                 <wd-loading
                   v-if="state.uploading"
-                  type="ring"
+                  type="circular"
                   color="#3763f4"
                   size="30rpx"
                 />
@@ -347,8 +372,9 @@ function showError(error: unknown, fallback: string) {
           </view>
           <view class="field-block field-block--remark">
             <text class="field-block__label">备注</text>
-            <textarea
+            <wd-textarea
               v-model="form.remark"
+              custom-class="tms-form-textarea"
               maxlength="300"
               placeholder="可填写现场说明"
             />
@@ -398,7 +424,7 @@ function showError(error: unknown, fallback: string) {
 .execution-page__hero {
   flex: 0 0 auto;
   color: #fff;
-  background: linear-gradient(145deg, #315bef, #4978ff);
+  background: var(--tms-hero-gradient);
 }
 .execution-page__hero-main {
   padding: 22rpx 30rpx 34rpx;
@@ -535,9 +561,12 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
 }
-.mileage-input input {
+.mileage-input :deep(.wd-input) {
   flex: 1;
   min-width: 0;
+  width: 100%;
+}
+.mileage-input :deep(.wd-input__inner) {
   font-size: 28rpx;
   font-weight: 700;
 }
@@ -567,19 +596,6 @@ function showError(error: unknown, fallback: string) {
   width: 100%;
   height: 100%;
 }
-.evidence-grid__remove {
-  position: absolute;
-  top: 6rpx;
-  right: 6rpx;
-  width: 38rpx;
-  height: 38rpx;
-  padding: 0;
-  color: #fff;
-  background: rgba(16, 24, 40, 0.72);
-  border: 0;
-  border-radius: 50%;
-  line-height: 34rpx;
-}
 .evidence-grid__add {
   color: var(--tms-primary);
   background: #f4f7ff;
@@ -608,16 +624,6 @@ function showError(error: unknown, fallback: string) {
 .evidence-grid__add-content text {
   display: block;
   line-height: 1.2;
-}
-.field-block textarea {
-  box-sizing: border-box;
-  width: 100%;
-  height: 150rpx;
-  margin-top: 14rpx;
-  padding: 18rpx 18rpx 48rpx;
-  background: #f6f8fb;
-  border-radius: 16rpx;
-  font-size: 25rpx;
 }
 .field-block__count {
   position: absolute;

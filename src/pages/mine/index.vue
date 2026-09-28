@@ -1,18 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
+import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
+import { getUserFacingErrorMessage } from '@/api/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
+import { useWaybillStore } from '@/stores/waybill'
 import { maskIdCard, maskPhone, shortName } from '@/utils/format'
 
 const auth = useAuthStore()
 const profile = useProfileStore()
+const waybill = useWaybillStore()
 
 const driver = computed(() => profile.driver)
 const user = computed(() => profile.user)
 const carrier = computed(() => profile.carrier)
+const initialLoading = ref(!profile.summary)
+const syncing = ref(false)
+const loadError = ref('')
+const openingExpense = ref(false)
+const helpVisible = ref(false)
+const contactNoticeVisible = ref(false)
+const logoutConfirmVisible = ref(false)
+const serviceButtonStyle = 'width: 100%; height: 132rpx; min-height: 132rpx; padding: 0; font-size: 26rpx; line-height: 1.3; background: transparent; border: 0;'
+const showSkeleton = computed(() => !profile.summary && (initialLoading.value || Boolean(loadError.value)))
 
 const metrics = computed(() => [
   { label: '运输次数', value: profile.summary?.completedCount ?? 0 },
@@ -29,41 +42,79 @@ onShow(() => {
 })
 
 async function load() {
+  if (syncing.value) return
+  syncing.value = true
+  if (!profile.summary) initialLoading.value = true
+  loadError.value = ''
   try {
     await profile.load(true)
   } catch (error) {
-    uni.showToast({
-      title: error instanceof Error ? error.message : '资料加载失败',
-      icon: 'none'
-    })
+    loadError.value = getUserFacingErrorMessage(error, '司机档案同步失败，请重试')
+    if (profile.summary) uni.showToast({ title: loadError.value, icon: 'none' })
+  } finally {
+    syncing.value = false
+    initialLoading.value = false
   }
 }
 
-function feature(name: string) {
-  uni.showToast({ title: `${name}即将开放`, icon: 'none' })
+async function refreshProfile() {
+  await load()
+  if (!loadError.value) uni.showToast({ title: '司机档案已更新', icon: 'success' })
 }
 
-function logout() {
-  uni.showModal({
-    title: '退出登录',
-    content: '确认退出当前账号吗？',
-    confirmColor: '#f05252',
-    success: async (result) => {
-      if (!result.confirm) return
-      profile.clear()
-      await auth.logout()
+async function openExpense() {
+  if (openingExpense.value) return
+  openingExpense.value = true
+  try {
+    const list = await waybill.loadList('all')
+    const item = list.find((entry) =>
+      ['accepted', 'loading', 'transporting', 'unloading', 'signed', 'completed'].includes(entry.status)
+    )
+    if (item) {
+      uni.navigateTo({ url: `/pages/waybill/expense?id=${encodeURIComponent(item.id)}` })
+    } else {
+      uni.showToast({ title: '暂无可查看费用的运单', icon: 'none' })
     }
-  })
+  } catch (error) {
+    uni.showToast({ title: getUserFacingErrorMessage(error, '费用记录加载失败，请重试'), icon: 'none' })
+  } finally {
+    openingExpense.value = false
+  }
+}
+
+function openCompletedWaybills() {
+  uni.reLaunch({ url: '/pages/waybill/index?group=completed' })
+}
+
+function contactCarrier() {
+  const phone = carrier.value?.contactPhone
+  if (phone) {
+    uni.makePhoneCall({ phoneNumber: phone })
+  } else {
+    contactNoticeVisible.value = true
+  }
+}
+
+async function confirmLogout() {
+  logoutConfirmVisible.value = false
+  try {
+    profile.clear()
+    await auth.logout()
+  } catch {
+    uni.showToast({ title: '退出登录失败，请稍后重试', icon: 'none' })
+  }
 }
 </script>
 
 <template>
   <view class="mine-page page safe-bottom">
+    <scroll-view scroll-y class="mine-page__scroll">
     <view class="mine-page__hero">
       <view class="mine-page__mesh" />
       <view class="mine-page__ambient" />
       <view class="mine-page__eyebrow"><text /> 司机档案</view>
-      <view class="mine-page__user">
+      <text v-if="showSkeleton" class="mine-page__loading">正在同步司机档案…</text>
+      <view v-else class="mine-page__user">
         <image
           v-if="user?.avatar"
           class="mine-page__avatar"
@@ -81,18 +132,25 @@ function logout() {
           </text>
           <view class="mine-page__verified"><wd-icon name="check-circle" size="24rpx" /> 司机档案已同步</view>
         </view>
-        <button
+        <wd-button
           class="mine-page__setting"
-          aria-label="打开设置中心"
-          hover-class="mine-page__setting--pressed"
-          @tap="feature('设置中心')"
+          aria-label="刷新司机档案"
+          custom-style="width: 88rpx; min-width: 44px; height: 88rpx; min-height: 44px; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); color: #fff;"
+          :disabled="syncing"
+          @click="refreshProfile"
         >
-          <wd-icon name="setting" size="38rpx" />
-        </button>
+          <wd-icon name="refresh" size="36rpx" />
+        </wd-button>
       </view>
     </view>
 
-    <view class="mine-page__content">
+    <TmsPageSkeleton
+      v-if="showSkeleton"
+      label="正在同步司机档案…"
+      :error="loadError"
+      @retry="load"
+    />
+    <view v-else class="mine-page__content">
       <view class="mine-card card">
         <view class="section-head">
           <view>
@@ -122,8 +180,8 @@ function logout() {
             <text>{{ maskIdCard(driver?.idCardNo) }}</text>
           </view>
           <view class="account-list__row">
-            <text>驾驶证号</text>
-            <text>{{ maskIdCard(driver?.licenseType ? `${driver?.idCardNo || ''}${driver.licenseType}` : '') }}</text>
+            <text>准驾车型</text>
+            <text>{{ driver?.licenseType || '--' }}</text>
           </view>
         </view>
       </view>
@@ -136,37 +194,83 @@ function logout() {
           </view>
         </view>
         <view class="feature-grid">
-          <button class="feature-grid__item" hover-class="feature-grid__item--pressed" @tap="feature('我的收入')">
-            <view class="feature-grid__icon"><wd-icon name="money-circle" size="46rpx" /></view>
-            <text>我的收入</text>
-          </button>
-          <button class="feature-grid__item" hover-class="feature-grid__item--pressed" @tap="feature('电子回单')">
+          <wd-button variant="text" custom-class="feature-grid__item" :custom-style="serviceButtonStyle" :disabled="openingExpense" @click="openExpense">
+            <view class="feature-grid__icon"><wd-icon name="file" size="46rpx" /></view>
+            <text>费用记录</text>
+          </wd-button>
+          <wd-button variant="text" custom-class="feature-grid__item" :custom-style="serviceButtonStyle" @click="openCompletedWaybills">
             <view class="feature-grid__icon"><wd-icon name="list" size="46rpx" /></view>
             <text>电子回单</text>
-          </button>
-          <button class="feature-grid__item" hover-class="feature-grid__item--pressed" @tap="feature('联系客服')">
-            <view class="feature-grid__icon"><wd-icon name="service" size="46rpx" /></view>
-            <text>联系客服</text>
-          </button>
-          <button class="feature-grid__item" hover-class="feature-grid__item--pressed" @tap="feature('帮助中心')">
-            <view class="feature-grid__icon"><wd-icon name="help-circle" size="46rpx" /></view>
-            <text>帮助中心</text>
-          </button>
+          </wd-button>
+          <wd-button variant="text" custom-class="feature-grid__item" :custom-style="serviceButtonStyle" @click="contactCarrier">
+            <view class="feature-grid__icon"><wd-icon name="headset" size="46rpx" /></view>
+            <text>联系车队</text>
+          </wd-button>
+          <wd-button variant="text" custom-class="feature-grid__item" :custom-style="serviceButtonStyle" @click="helpVisible = true">
+            <view class="feature-grid__icon"><wd-icon name="question-circle" size="46rpx" /></view>
+            <text>使用说明</text>
+          </wd-button>
         </view>
       </view>
 
-      <button class="mine-page__logout" hover-class="none" @tap="logout">退出登录</button>
+      <wd-button custom-class="mine-page__logout" type="danger" variant="soft" block @click="logoutConfirmVisible = true">退出登录</wd-button>
     </view>
+    </scroll-view>
 
     <TmsBottomNav active="mine" />
+    <wd-popup v-model="helpVisible" position="bottom" round safe-area-inset-bottom :z-index="60" custom-class="mine-help">
+      <view class="mine-help__panel">
+        <view class="mine-help__head">
+          <view>
+            <text class="section-eyebrow">运输流程</text>
+            <text class="section-title">使用说明</text>
+          </view>
+          <wd-button variant="text" icon="close" custom-class="mine-help__close" aria-label="关闭使用说明" @click="helpVisible = false" />
+        </view>
+        <view class="mine-help__steps">
+          <view><text>01</text><text>在运单列表核对站点与货物信息，接受任务。</text></view>
+          <view><text>02</text><text>到达装货地打卡，填写重量并上传照片与磅单。</text></view>
+          <view><text>03</text><text>录入发车信息；到达后完成卸货、签收及回单上传。</text></view>
+          <view><text>04</text><text>录入收车里程与车辆照片；垫付费用可在运单内上报。</text></view>
+        </view>
+        <wd-button type="primary" custom-class="tms-primary-action mine-help__done" block @click="helpVisible = false">我知道了</wd-button>
+      </view>
+    </wd-popup>
+    <wd-popup v-model="contactNoticeVisible" position="center" round :z-index="70" custom-class="mine-dialog">
+      <view class="mine-dialog__body" role="alertdialog" aria-label="联系车队">
+        <text class="mine-dialog__title">联系车队</text>
+        <text class="mine-dialog__message">当前承运商尚未配置联系电话，请联系车队管理员。</text>
+        <wd-button type="primary" block @click="contactNoticeVisible = false">我知道了</wd-button>
+      </view>
+    </wd-popup>
+    <wd-popup v-model="logoutConfirmVisible" position="center" round :z-index="70" custom-class="mine-dialog">
+      <view class="mine-dialog__body" role="alertdialog" aria-label="退出登录">
+        <text class="mine-dialog__title">退出登录</text>
+        <text class="mine-dialog__message">确认退出当前账号吗？</text>
+        <view class="mine-dialog__actions">
+          <wd-button variant="plain" type="primary" @click="logoutConfirmVisible = false">取消</wd-button>
+          <wd-button type="danger" @click="confirmLogout">退出登录</wd-button>
+        </view>
+      </view>
+    </wd-popup>
   </view>
 </template>
 
 <style scoped lang="scss">
 .mine-page {
-  min-height: 100vh;
-  padding-bottom: 190rpx;
+  height: 100vh;
+  height: 100dvh;
+  padding-bottom: var(--tms-tabbar-space);
+  overflow: hidden;
   background: var(--tms-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.mine-page__scroll {
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .mine-page__hero {
@@ -217,6 +321,17 @@ function logout() {
   border-radius: 50%;
   background: #5eead4;
   box-shadow: 0 0 0 6rpx rgba(94, 234, 212, 0.12);
+}
+
+.mine-page__loading {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 54rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.4;
+  opacity: 0.9;
 }
 
 .mine-page__user {
@@ -279,6 +394,8 @@ function logout() {
 .mine-page__setting {
   width: 64rpx;
   height: 64rpx;
+  min-width: 44px;
+  min-height: 44px;
   margin: 0;
   padding: 0;
   border-radius: 50%;
@@ -302,7 +419,7 @@ function logout() {
   position: relative;
   z-index: 2;
   margin-top: -54rpx;
-  padding: 0 28rpx 52rpx;
+  padding: 0 28rpx 32rpx;
   display: flex;
   flex-direction: column;
   gap: 22rpx;
@@ -380,6 +497,8 @@ function logout() {
 
 .feature-grid__item {
   width: 100%;
+  height: auto;
+  min-height: 132rpx;
   margin: 0;
   padding: 0;
   border: 0;
@@ -395,8 +514,16 @@ function logout() {
   transition: transform 160ms ease;
 }
 
-.feature-grid__item::after {
-  border: 0;
+.feature-grid :deep(.feature-grid__item .wd-button__content),
+.feature-grid :deep(.feature-grid__item .wd-button__text) {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
+  line-height: 1.3;
+  white-space: normal;
 }
 
 .feature-grid__item--pressed,
@@ -448,5 +575,119 @@ function logout() {
 
 .mine-page__logout:active {
   opacity: 0.82;
+}
+
+.mine-help {
+  width: 100%;
+}
+
+.mine-help__panel {
+  position: relative;
+  width: 100%;
+  padding: 32rpx 32rpx calc(34rpx + env(safe-area-inset-bottom));
+  border-radius: 32rpx 32rpx 0 0;
+  background: #fff;
+  box-shadow: 0 -20rpx 60rpx rgba(17, 24, 39, 0.16);
+}
+
+.mine-help__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mine-help__close {
+  width: 72rpx;
+  height: 72rpx;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  color: #64748b;
+  background: #f1f5f9;
+  font-size: 42rpx;
+  line-height: 72rpx;
+}
+
+.mine-help__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin: 32rpx 0;
+}
+
+.mine-help__steps view {
+  display: grid;
+  grid-template-columns: 56rpx minmax(0, 1fr);
+  align-items: start;
+  gap: 18rpx;
+  padding: 18rpx;
+  border-radius: 18rpx;
+  background: #f6f8fc;
+  color: #475569;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.mine-help__steps view text:first-child {
+  color: #4f46e5;
+  font-weight: 800;
+}
+
+.mine-help__done {
+  width: 100%;
+  height: 88rpx;
+  margin: 0;
+  border-radius: 18rpx;
+  color: #fff;
+  background: var(--tms-hero-gradient);
+  font-size: 27rpx;
+  font-weight: 800;
+  line-height: 88rpx;
+}
+
+.mine-dialog {
+  width: min(84vw, 520rpx);
+}
+
+.mine-dialog__body {
+  box-sizing: border-box;
+  width: min(84vw, 600rpx);
+  padding: 40rpx 32rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  background: #fff;
+}
+
+.mine-dialog__title {
+  color: var(--tms-text);
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.mine-dialog__message {
+  color: var(--tms-muted);
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.mine-dialog__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.mine-dialog__actions :deep(.wd-button) {
+  width: 100%;
+}
+
+@media (max-width: 360px) {
+  .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 18rpx;
+  }
 }
 </style>

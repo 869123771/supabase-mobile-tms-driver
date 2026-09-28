@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
+import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
 import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
 import type { WaybillStatusGroup } from '@/api/waybill'
 import type { Waybill } from '@/api/types'
+import { getUserFacingErrorMessage } from '@/api/supabase'
 import { useWaybillStore } from '@/stores/waybill'
 import { openWaybillNavigation } from '@/utils/navigation'
 
@@ -17,7 +18,9 @@ const loadingGroup = ref<WaybillStatusGroup | ''>('')
 const initialized = ref(false)
 const loadError = ref('')
 const isBusy = computed(() => waybill.loading || refreshing.value || Boolean(loadingGroup.value))
-const showListLoading = computed(() => waybill.loading && waybill.list.length > 0)
+const showListLoading = computed(
+  () => initialized.value && !loadingGroup.value && waybill.loading && waybill.list.length > 0
+)
 const activeLabel = computed(() => tabs.find((item) => item.value === active.value)?.label || '全部')
 
 const tabs: Array<{ label: string; value: WaybillStatusGroup }> = [
@@ -26,6 +29,15 @@ const tabs: Array<{ label: string; value: WaybillStatusGroup }> = [
   { label: '进行中', value: 'active' },
   { label: '已完成', value: 'completed' }
 ]
+const segmentOptions = computed(() => tabs.map((tab) => ({
+  value: tab.value,
+  disabled: isBusy.value && active.value !== tab.value,
+  payload: { label: tab.label }
+})))
+
+onLoad((query) => {
+  if (query?.group === 'completed') active.value = 'completed'
+})
 
 onShow(() => {
   void load()
@@ -41,11 +53,7 @@ async function load(group: WaybillStatusGroup = active.value) {
   try {
     await waybill.loadList(group)
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : '运单加载失败'
-    uni.showToast({
-      title: error instanceof Error ? error.message : '运单加载失败',
-      icon: 'none'
-    })
+    loadError.value = getUserFacingErrorMessage(error, '运单加载失败，请重试')
   } finally {
     initialized.value = true
   }
@@ -70,6 +78,10 @@ async function switchGroup(value: WaybillStatusGroup) {
   } finally {
     loadingGroup.value = ''
   }
+}
+
+function onSegmentChange(option: { value: string | number }) {
+  void switchGroup(option.value as WaybillStatusGroup)
 }
 
 function openDetail(id: string) {
@@ -103,40 +115,44 @@ function navigate(item: Waybill) {
         </view>
         <wd-button
           class="waybill-page__refresh"
-          type="icon"
           aria-label="刷新运单列表"
-          custom-style="width: 62rpx; min-width: 62rpx; height: 62rpx; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.16); color: #fff;"
+          custom-style="width: 88rpx; min-width: 44px; height: 88rpx; min-height: 44px; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.16); color: #fff;"
           :disabled="isBusy"
           @click="refreshList"
         >
-          <wd-loading v-if="refreshing || waybill.loading" type="ring" color="#ffffff" size="34rpx" />
+          <wd-loading v-if="refreshing || waybill.loading" type="circular" color="#ffffff" size="34rpx" />
           <wd-icon v-else name="refresh" size="38rpx" />
         </wd-button>
       </view>
-      <view class="waybill-page__tabs" role="tablist" aria-label="运单状态筛选">
-        <button
-          v-for="tab in tabs"
-          :key="tab.value"
-          class="waybill-page__tab"
-          :class="{
-            'waybill-page__tab--active': active === tab.value,
-            'waybill-page__tab--loading': loadingGroup === tab.value
-          }"
-          role="tab"
-          :aria-selected="active === tab.value"
-          :disabled="isBusy && active !== tab.value"
-          hover-class="waybill-page__tab--pressed"
-          @tap="switchGroup(tab.value)"
-        >
-          <view v-if="loadingGroup === tab.value" class="waybill-page__tab-spinner" />
-          {{ tab.label }}
-        </button>
-      </view>
+      <wd-segmented
+        :value="active"
+        :options="segmentOptions"
+        theme="outline"
+        custom-class="waybill-page__tabs"
+        aria-label="运单状态筛选"
+        @change="onSegmentChange"
+      >
+        <template #label="{ option }">
+          <view class="waybill-page__tab" role="tab" :aria-selected="active === option.value">
+            <view v-if="loadingGroup === option.value" class="waybill-page__tab-spinner" />
+            {{ option.payload.label }}
+          </view>
+        </template>
+      </wd-segmented>
     </view>
 
     <scroll-view scroll-y class="waybill-page__list">
+      <view v-if="loadError && waybill.list.length" class="waybill-page__sync-error" role="alert">
+        <TmsIcon name="refresh" size="30rpx" />
+        <text>同步失败，当前显示上次的任务列表</text>
+        <button @tap="refreshList">重试</button>
+      </view>
+      <view v-if="showListLoading" class="waybill-page__list-loading" role="status">
+        <wd-loading type="circular" color="#3763f4" size="32rpx" />
+        <text>正在更新任务…</text>
+      </view>
       <TmsPageSkeleton
-        v-if="!initialized || (loadError && !waybill.list.length)"
+        v-if="!initialized || loadingGroup || (loadError && !waybill.list.length)"
         compact
         label="正在同步运输任务…"
         :error="loadError"
@@ -172,7 +188,7 @@ function navigate(item: Waybill) {
               hover-class="waybill-expense-action__button--pressed"
               @tap.stop="openExpense(item.id)"
             >
-              <wd-icon name="add-circle" size="26rpx" />
+              <wd-icon name="plus-circle" size="26rpx" />
               <text>费用上报</text>
             </button>
           </view>
@@ -180,7 +196,7 @@ function navigate(item: Waybill) {
       </view>
       <view v-else class="waybill-page__empty card">
         <view class="waybill-page__empty-icon">
-          <wd-loading v-if="waybill.loading" type="ring" color="#4f46e5" size="54rpx" />
+          <wd-loading v-if="waybill.loading" type="circular" color="#4f46e5" size="54rpx" />
           <TmsIcon v-else name="waybill" size="62rpx" />
         </view>
         <text class="waybill-page__empty-title">
@@ -189,13 +205,9 @@ function navigate(item: Waybill) {
         <text class="waybill-page__empty-hint">
           {{ waybill.loading ? '请稍候，正在获取最新运单数据' : '可切换任务状态，或确认后台订单已绑定当前司机' }}
         </text>
-        <wd-button v-if="!waybill.loading" class="waybill-page__empty-action" type="text" @click="refreshList">
+        <wd-button v-if="!waybill.loading" class="waybill-page__empty-action" variant="text" @click="refreshList">
           重新同步
         </wd-button>
-      </view>
-      <view v-if="showListLoading" class="waybill-page__list-loading">
-        <wd-loading type="ring" color="#3763f4" size="32rpx" />
-        <text>正在加载</text>
       </view>
     </scroll-view>
 
@@ -207,7 +219,7 @@ function navigate(item: Waybill) {
 .waybill-page {
   height: 100vh;
   height: 100dvh;
-  padding-bottom: 0;
+  padding-bottom: var(--tms-tabbar-space);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -294,9 +306,9 @@ function navigate(item: Waybill) {
 .waybill-page__refresh {
   position: relative;
   z-index: 1;
-  flex: 0 0 62rpx;
-  width: 62rpx;
-  height: 62rpx;
+  flex: 0 0 88rpx;
+  width: 88rpx;
+  height: 88rpx;
   margin: 0 0 0 auto;
   padding: 0;
   min-width: 0;
@@ -317,14 +329,17 @@ function navigate(item: Waybill) {
 .waybill-page__tabs {
   padding: 18rpx 28rpx 20rpx;
   background: rgba(255, 255, 255, 0.96);
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12rpx;
+  border-radius: 0;
 }
 
-.waybill-page__tab {
+:deep(.waybill-page__tabs)::before {
+  display: none;
+}
+
+:deep(.waybill-page__tabs .wd-segmented__item) {
   min-width: 0;
-  height: 72rpx;
+  height: var(--tms-control-height);
   margin: 0;
   padding: 0 10rpx;
   border-radius: 999rpx;
@@ -339,23 +354,26 @@ function navigate(item: Waybill) {
   font-weight: 700;
 }
 
-.waybill-page__tab::after {
-  border: 0;
+:deep(.waybill-page__tabs .wd-segmented__item + .wd-segmented__item) {
+  border-left: 0;
 }
 
-.waybill-page__tab--pressed {
-  background: #f4f5ff;
+.waybill-page__tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
 }
 
-.waybill-page__tab--active {
+:deep(.waybill-page__tabs .wd-segmented__item.is-active) {
   color: #fff;
   border-color: transparent;
   background: linear-gradient(135deg, #4f46e5, #3b67df);
   box-shadow: 0 10rpx 22rpx rgba(79, 70, 229, 0.2);
 }
 
-.waybill-page__tab--loading {
-  pointer-events: none;
+:deep(.waybill-page__tabs .wd-segmented__item.is-disabled) {
+  opacity: 0.68;
 }
 
 .waybill-page__tab-spinner {
@@ -380,23 +398,57 @@ function navigate(item: Waybill) {
 }
 
 .waybill-page__list-loading {
-  position: absolute;
-  left: 54rpx;
-  right: 54rpx;
-  top: 28rpx;
-  z-index: 2;
-  height: 68rpx;
-  border-radius: 12rpx;
+  min-height: 68rpx;
+  margin: 18rpx 28rpx 0;
+  border-radius: 16rpx;
   color: #4f46e5;
-  background: rgba(255, 255, 255, 0.86);
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
   font-size: 24rpx;
   font-weight: 700;
-  box-shadow: 0 8rpx 24rpx rgba(40, 45, 54, 0.05);
+  box-shadow: var(--tms-shadow-sm);
   pointer-events: none;
+}
+
+.waybill-page__sync-error {
+  min-height: 76rpx;
+  margin: 18rpx 28rpx 0;
+  padding: 12rpx 16rpx 12rpx 22rpx;
+  border: 1rpx solid #fed7aa;
+  border-radius: 16rpx;
+  color: #9a5a0d;
+  background: #fff8ed;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 23rpx;
+  font-weight: 600;
+}
+
+.waybill-page__sync-error text {
+  min-width: 0;
+  flex: 1;
+  line-height: 1.35;
+}
+
+.waybill-page__sync-error button {
+  flex: 0 0 auto;
+  min-width: 88rpx;
+  min-height: 64rpx;
+  margin: 0;
+  padding: 0 12rpx;
+  border-radius: 12rpx;
+  color: #9a5a0d;
+  background: #ffedd5;
+  font-size: 23rpx;
+  font-weight: 800;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @keyframes waybill-spin {
@@ -406,7 +458,7 @@ function navigate(item: Waybill) {
 }
 
 .waybill-page__stack {
-  padding: 24rpx 28rpx 184rpx;
+  padding: 24rpx 28rpx 32rpx;
   display: flex;
   flex-direction: column;
   gap: 20rpx;
@@ -416,7 +468,7 @@ function navigate(item: Waybill) {
   padding: 2rpx 4rpx 4rpx;
   color: #748096;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 20rpx;
   font-size: 21rpx;
@@ -424,8 +476,12 @@ function navigate(item: Waybill) {
 
 .waybill-page__list-head > view {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12rpx;
+}
+
+.waybill-page__list-head text {
+  line-height: 1.25;
 }
 
 .waybill-page__list-head > view text:first-child {
@@ -435,7 +491,7 @@ function navigate(item: Waybill) {
 }
 
 .waybill-expense-action {
-  min-height: 76rpx;
+  min-height: 88rpx;
   margin-top: 20rpx;
   padding-top: 18rpx;
   border-top: 1rpx solid #edf0f5;
@@ -472,7 +528,7 @@ function navigate(item: Waybill) {
 
 .waybill-expense-action button {
   flex: 0 0 auto;
-  min-height: 64rpx;
+  min-height: 80rpx;
   margin: 0;
   padding: 0 20rpx;
   border: 1rpx solid rgba(79, 70, 229, 0.25);
@@ -481,6 +537,7 @@ function navigate(item: Waybill) {
   background: #f6f7ff;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 7rpx;
   font-size: 22rpx;
   font-weight: 800;
@@ -490,6 +547,15 @@ function navigate(item: Waybill) {
     color 160ms ease,
     background-color 160ms ease,
     transform 160ms ease;
+}
+
+.waybill-expense-action button :deep(.wd-icon) {
+  width: 28rpx;
+  height: 28rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .waybill-expense-action button::after {

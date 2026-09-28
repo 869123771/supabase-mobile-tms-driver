@@ -12,6 +12,9 @@ function normalize(value?: string) {
   return value?.trim()
 }
 
+let pendingLoad: Promise<void> | null = null
+let loadRevision = 0
+
 export const useDictionaryStore = defineStore('dictionary', {
   state: (): DictionaryState => ({
     types: [],
@@ -37,17 +40,27 @@ export const useDictionaryStore = defineStore('dictionary', {
   },
   actions: {
     async load(token: string, force = false) {
-      if (!token || this.loading) return
+      if (!token) return
+      if (pendingLoad) return pendingLoad
       if (this.loaded && !force) return
 
       this.loading = true
-      try {
+      const revision = loadRevision
+      const request = (async () => {
         const { types, entries } = await listDictionaries(token)
+        if (revision !== loadRevision) return
         this.types = types
         this.entries = entries
         this.loaded = true
+      })()
+      pendingLoad = request
+      try {
+        await request
       } finally {
-        this.loading = false
+        if (pendingLoad === request) {
+          pendingLoad = null
+          this.loading = false
+        }
       }
     },
     findLabel(typeCode: string, value?: string) {
@@ -70,6 +83,8 @@ export const useDictionaryStore = defineStore('dictionary', {
       return value || fallback
     },
     clear() {
+      loadRevision += 1
+      pendingLoad = null
       this.types = []
       this.entries = []
       this.loaded = false

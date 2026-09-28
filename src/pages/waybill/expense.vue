@@ -188,7 +188,7 @@ async function handleSuccess() {
         </view>
 
         <view v-if="!context.canReport" class="expense-page__notice expense-page__notice--warning">
-          <wd-icon name="warning" size="32rpx" />
+          <wd-icon name="exclamation-circle" size="32rpx" />
           <text>当前运单尚未接受或已经取消，暂不能上报费用。</text>
         </view>
         <view v-else class="expense-page__notice">
@@ -291,7 +291,7 @@ async function handleSuccess() {
         @click="openCreate"
       >
         <view class="expense-footer__button-content">
-          <wd-icon name="add" size="30rpx" />
+          <wd-icon name="plus" size="30rpx" />
           <text>新增费用</text>
         </view>
       </wd-button>
@@ -513,10 +513,8 @@ async function handleSuccess() {
 }
 
 .expense-stats {
-  margin-top: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12rpx;
 }
 
@@ -529,12 +527,25 @@ async function handleSuccess() {
 }
 
 .expense-stats__item:first-child {
-  grid-row: 1 / span 2;
-  padding: 24rpx 20rpx;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  grid-column: 1 / -1;
+  padding: 20rpx 22rpx;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   background: linear-gradient(145deg, #f4f4ff 0%, #eef4ff 100%);
+}
+
+.expense-stats__item:first-child strong {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+  color: var(--tms-primary);
+  font-size: 34rpx;
+}
+
+.expense-stats__item:first-child small {
+  grid-column: 1;
+  margin-top: 6rpx;
 }
 
 .expense-stats__item--pending {

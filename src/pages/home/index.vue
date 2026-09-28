@@ -14,6 +14,7 @@ import { getRouteDistanceKm } from '@/utils/route'
 import { openWaybillNavigation } from '@/utils/navigation'
 import { formatVehicleLoad } from '@/utils/format'
 import type { Waybill } from '@/api/types'
+import { getUserFacingErrorMessage } from '@/api/supabase'
 
 const profile = useProfileStore()
 const waybill = useWaybillStore()
@@ -29,12 +30,19 @@ const task = computed(() => waybill.currentTask)
 const todoList = computed(() => {
   const candidates = waybill.list.filter((item) => item.id !== task.value?.id)
   const pending = candidates.filter((item) => item.status === 'pending')
-  const supplements = candidates.filter((item) => item.status !== 'pending')
+  const supplements = candidates.filter((item) =>
+    ['accepted', 'loading', 'transporting', 'unloading', 'signed'].includes(item.status)
+  )
   return [...pending, ...supplements].slice(0, 3)
 })
 const routeDistanceKm = computed(() => getRouteDistanceKm(task.value))
 const vehicleTypeLabel = computed(() => dictionary.label('vehicleType', vehicle.value?.vehicleType))
 const fuelTypeLabel = computed(() => dictionary.label('vehicleFuelType', vehicle.value?.fuelType))
+const vehicleStatusLabel = computed(() =>
+  vehicle.value
+    ? dictionary.label('vehicleOperationStatus', vehicle.value.operationStatus, '状态待同步')
+    : '未绑定'
+)
 const vehicleModelSummary = computed(() => {
   const load = vehicle.value?.approvedLoadMass
   const loadLabel = load === undefined || load === null ? '载重待同步' : `载重 ${formatVehicleLoad(load)}`
@@ -43,7 +51,7 @@ const vehicleModelSummary = computed(() => {
 
 const vehicleMetrics = computed(() => [
   {
-    label: '当前里程',
+    label: '任务路线',
     value: routeDistanceKm.value === undefined ? '--' : Number(routeDistanceKm.value).toFixed(1),
     unit: routeDistanceKm.value === undefined ? '' : 'km'
   },
@@ -57,12 +65,12 @@ const vehicleMetrics = computed(() => [
 
 const taskButtonText = computed(() => {
   const status = task.value?.status
-  if (status === 'pending') return '接受任务'
+  if (status === 'pending') return '核对并接受'
   if (status === 'accepted') return '装货打卡'
   if (status === 'loading') return '录入发车信息'
   if (status === 'transporting') return '到达打卡'
-  if (status === 'unloading') return '卸货 / 签收'
-  if (status === 'signed') return '确认完成'
+  if (status === 'unloading') return '查看卸货进度'
+  if (status === 'signed') return '录入收车信息'
   return '查看详情'
 })
 const taskButtonIcon = computed(() => {
@@ -72,7 +80,7 @@ const taskButtonIcon = computed(() => {
   if (status === 'unloading') return 'upload'
   if (status === 'signed') return 'check'
   if (status === 'pending' || status === 'transporting') return 'check-circle'
-  return 'arrow-right'
+  return 'right'
 })
 const taskButtonLabel = computed(() => {
   if (!waybill.actionLoading) return taskButtonText.value
@@ -110,11 +118,7 @@ async function refresh() {
     await waybill.loadHomeTask()
     await waybill.loadList('all')
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : '数据加载失败'
-    uni.showToast({
-      title: error instanceof Error ? error.message : '数据加载失败',
-      icon: 'none'
-    })
+    loadError.value = getUserFacingErrorMessage(error, '首页同步失败，请重试')
   } finally {
     refreshing.value = false
     initialized.value = true
@@ -138,9 +142,20 @@ function navigate(item?: Waybill) {
   openWaybillNavigation(item || task.value)
 }
 
-async function handleTaskAction() {
+function handleTaskAction() {
   if (!task.value) return
-  openDetail(task.value.id)
+  const { id, status } = task.value
+  const route =
+    status === 'accepted'
+      ? `/pages/waybill/cargo-operation?id=${encodeURIComponent(id)}&type=loading`
+      : status === 'loading'
+        ? `/pages/waybill/execution-operation?id=${encodeURIComponent(id)}&action=departure`
+        : status === 'transporting'
+          ? `/pages/waybill/cargo-operation?id=${encodeURIComponent(id)}&type=unloading&mode=arrival`
+          : status === 'signed'
+            ? `/pages/waybill/execution-operation?id=${encodeURIComponent(id)}&action=completion`
+            : `/pages/waybill/detail?id=${encodeURIComponent(id)}`
+  uni.navigateTo({ url: route })
 }
 </script>
 
@@ -155,14 +170,13 @@ async function handleTaskAction() {
             <text class="home-page__online-dot" />
             <text>司机工作台</text>
           </view>
-          <text class="home-page__welcome">{{ greeting }}，{{ driver?.driverName || '司机师傅' }}</text>
+          <text class="home-page__welcome">{{ !initialized && !driver ? '正在同步司机档案…' : `${greeting}，${driver?.driverName || '司机师傅'}` }}</text>
           <text class="home-page__summary">{{ taskSummary }}</text>
         </view>
         <wd-button
           class="home-page__settings"
-          type="icon"
           aria-label="打开我的页面"
-          custom-style="width: 62rpx; min-width: 62rpx; height: 62rpx; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); border: 2rpx solid rgba(255,255,255,0.22); color: #fff;"
+          custom-style="width: 88rpx; min-width: 44px; height: 88rpx; min-height: 44px; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); border: 2rpx solid rgba(255,255,255,0.22); color: #fff;"
           :disabled="refreshing"
           @click="openMine"
         >
@@ -170,7 +184,7 @@ async function handleTaskAction() {
         </wd-button>
       </view>
       <view class="home-page__company-row">
-        <text class="home-page__company">{{ carrier?.companyName || '暂未绑定承运商' }}</text>
+        <text class="home-page__company">{{ !initialized && !carrier ? '正在同步承运商…' : carrier?.companyName || '暂未绑定承运商' }}</text>
         <view class="home-page__network">
           <text class="home-page__online-dot" />
           <text>运力在线</text>
@@ -186,37 +200,6 @@ async function handleTaskAction() {
         @retry="refresh"
       />
       <view v-else class="home-page__content">
-        <view class="vehicle-card card">
-          <view class="vehicle-card__title-row">
-            <view>
-              <text class="section-eyebrow">绑定车辆</text>
-              <text class="section-title vehicle-card__title">车辆概览</text>
-            </view>
-            <view class="vehicle-card__status-group">
-              <view v-if="refreshing" class="vehicle-card__refreshing">
-                <wd-loading type="ring" color="#3763f4" size="28rpx" />
-                <text>刷新中</text>
-              </view>
-              <text class="vehicle-card__normal">正常</text>
-            </view>
-          </view>
-          <view class="vehicle-card__body">
-            <image
-              class="vehicle-card__image"
-              :src="vehicle?.vehiclePhotoUrl || FALLBACK_TRUCK_IMAGE"
-              mode="aspectFill"
-              aria-label="当前绑定车辆照片"
-            />
-            <view class="vehicle-card__info">
-              <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
-              <text class="vehicle-card__model">
-                {{ vehicleModelSummary }}
-              </text>
-            </view>
-          </view>
-          <TmsMetricGrid :items="vehicleMetrics" />
-        </view>
-
         <view v-if="task" class="task-card">
           <TmsRouteCard
             :waybill="task"
@@ -237,7 +220,7 @@ async function handleTaskAction() {
                 @click="handleTaskAction"
               >
                 <view class="task-card__button-content">
-                  <wd-loading v-if="waybill.actionLoading" type="ring" color="#ffffff" size="30rpx" />
+                  <wd-loading v-if="waybill.actionLoading" type="circular" color="#ffffff" size="30rpx" />
                   <wd-icon v-else :name="taskButtonIcon" size="32rpx" />
                   <text>{{ taskButtonLabel }}</text>
                 </view>
@@ -252,7 +235,7 @@ async function handleTaskAction() {
             <text class="section-title">当前没有运输任务</text>
             <text class="empty-card__text">新任务到达后会显示在这里，也可以前往运单列表查看。</text>
           </view>
-          <wd-button class="empty-card__action" type="text" @click="openWaybillList">
+          <wd-button class="empty-card__action" variant="text" @click="openWaybillList">
             查看运单
           </wd-button>
         </view>
@@ -263,9 +246,9 @@ async function handleTaskAction() {
               <text class="section-eyebrow">待办任务</text>
               <text class="section-title todo-card__title">接下来</text>
             </view>
-            <wd-button class="todo-card__all" type="text" @click="openWaybillList">
+            <wd-button class="todo-card__all" variant="text" @click="openWaybillList">
               <text>全部</text>
-              <wd-icon name="chevron-right" size="26rpx" />
+              <wd-icon name="right" size="26rpx" />
             </wd-button>
           </view>
           <view class="todo-card__stack">
@@ -279,6 +262,37 @@ async function handleTaskAction() {
             />
           </view>
         </view>
+
+        <view class="vehicle-card card">
+          <view class="vehicle-card__title-row">
+            <view>
+              <text class="section-eyebrow">绑定车辆</text>
+              <text class="section-title vehicle-card__title">车辆概览</text>
+            </view>
+            <view class="vehicle-card__status-group">
+              <view v-if="refreshing" class="vehicle-card__refreshing">
+                <wd-loading type="circular" color="#3763f4" size="28rpx" />
+                <text>刷新中</text>
+              </view>
+              <text class="vehicle-card__normal" :class="{ 'vehicle-card__normal--muted': vehicle?.operationStatus !== 'operating' }">{{ vehicleStatusLabel }}</text>
+            </view>
+          </view>
+          <view class="vehicle-card__body">
+            <image
+              class="vehicle-card__image"
+              :src="vehicle?.vehiclePhotoUrl || FALLBACK_TRUCK_IMAGE"
+              mode="aspectFill"
+              aria-label="当前绑定车辆照片"
+            />
+            <view class="vehicle-card__info">
+              <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
+              <text class="vehicle-card__model">
+                {{ vehicleModelSummary }}
+              </text>
+            </view>
+          </view>
+          <TmsMetricGrid :items="vehicleMetrics" />
+        </view>
       </view>
     </scroll-view>
 
@@ -290,6 +304,7 @@ async function handleTaskAction() {
 .home-page {
   position: relative;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--tms-bg);
 }
@@ -326,7 +341,7 @@ async function handleTaskAction() {
 .home-page__mesh {
   position: absolute;
   inset: 0;
-  opacity: 0.12;
+  opacity: 0.055;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx),
     linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx);
@@ -429,9 +444,9 @@ async function handleTaskAction() {
 }
 
 .home-page__settings {
-  flex: 0 0 62rpx;
-  width: 62rpx;
-  height: 62rpx;
+  flex: 0 0 88rpx;
+  width: 88rpx;
+  height: 88rpx;
   margin: 0 0 0 auto;
   padding: 0;
   min-width: 0;
@@ -460,7 +475,7 @@ async function handleTaskAction() {
   left: 0;
   right: 0;
   top: 336rpx;
-  bottom: calc(142rpx + env(safe-area-inset-bottom));
+  bottom: var(--tms-tabbar-space);
 }
 
 .home-page__content {
@@ -511,6 +526,11 @@ async function handleTaskAction() {
   font-weight: 700;
 }
 
+.vehicle-card__normal--muted {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
 .vehicle-card__refreshing {
   height: 48rpx;
   padding: 0 18rpx;
@@ -536,7 +556,7 @@ async function handleTaskAction() {
   width: 112rpx;
   height: 90rpx;
   border-radius: 16rpx;
-  background: #f7f9fc;
+  background: #f7f9fc url('/static/truck.svg') center / cover no-repeat;
   box-shadow: 0 10rpx 24rpx rgba(40, 52, 80, 0.1);
 }
 
@@ -564,7 +584,7 @@ async function handleTaskAction() {
 }
 
 .task-card {
-  margin-top: 24rpx;
+  margin-top: 0;
 }
 
 .task-card__button-wrap {
@@ -625,7 +645,7 @@ async function handleTaskAction() {
 }
 
 .todo-card {
-  margin: 24rpx 0 34rpx;
+  margin: 24rpx 0;
   padding: 30rpx;
   border-radius: 24rpx;
 }
@@ -661,10 +681,14 @@ async function handleTaskAction() {
 }
 
 .todo-card__stack {
-  margin-top: 12rpx;
+  margin-top: 18rpx;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 14rpx;
+}
+
+.home-page__content > .vehicle-card {
+  margin-top: 24rpx;
 }
 
 @media screen and (max-width: 350px) {

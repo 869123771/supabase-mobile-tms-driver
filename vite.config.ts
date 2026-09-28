@@ -27,7 +27,7 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        // wot-design-uni 1.x 仍使用 Sass 旧式 @import 与全局函数；只屏蔽依赖层弃用提示。
+        // Uni-app 依赖仍有旧式 Sass API；只屏蔽依赖层弃用提示。
         quietDeps: true,
         silenceDeprecations: ['import', 'global-builtin']
       }

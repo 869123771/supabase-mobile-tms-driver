@@ -580,10 +580,13 @@ function showError(error: unknown, fallback: string) {
               >{{ title }}净重（吨）<text class="required-mark">*</text></text
             >
             <view class="weight-input">
-              <input
+              <wd-input
                 v-model="form.weightTon"
                 type="digit"
-                :disabled="!context.operation || isCompleted"
+                inputmode="decimal"
+                compact
+                :disabled="!context.operation"
+                :readonly="isCompleted"
                 :placeholder="`请输入${title}净重`"
               />
               <text>吨</text>
@@ -597,10 +600,13 @@ function showError(error: unknown, fallback: string) {
             <view class="field-block weight-grid__item">
               <text class="field-block__label">毛重（吨）</text>
               <view class="weight-input">
-                <input
+                <wd-input
                   v-model="form.grossWeightTon"
                   type="digit"
-                  :disabled="!context.operation || isCompleted"
+                  inputmode="decimal"
+                  compact
+                  :disabled="!context.operation"
+                  :readonly="isCompleted"
                   placeholder="选填"
                 />
                 <text>吨</text>
@@ -609,10 +615,13 @@ function showError(error: unknown, fallback: string) {
             <view class="field-block weight-grid__item">
               <text class="field-block__label">皮重（吨）</text>
               <view class="weight-input">
-                <input
+                <wd-input
                   v-model="form.tareWeightTon"
                   type="digit"
-                  :disabled="!context.operation || isCompleted"
+                  inputmode="decimal"
+                  compact
+                  :disabled="!context.operation"
+                  :readonly="isCompleted"
                   placeholder="选填"
                 />
                 <text>吨</text>
@@ -640,14 +649,18 @@ function showError(error: unknown, fallback: string) {
                 :key="url"
                 class="evidence-grid__item"
               >
-                <image
-                  :src="url"
-                  mode="aspectFill"
+                <button
+                  class="tms-evidence-preview"
+                  :aria-label="`预览第 ${index + 1} 张${title}照片`"
                   @click="preview(url, form.photoUrls)"
-                />
+                >
+                  <image :src="url" mode="aspectFill" />
+                </button>
                 <button
                   v-if="!isCompleted"
-                  class="evidence-grid__remove"
+                  class="tms-evidence-remove"
+                  :aria-label="`删除第 ${index + 1} 张${title}照片`"
+                  :disabled="!!state.uploading || state.submitting"
                   @click="removeEvidence('photo', index)"
                 >
                   ×
@@ -661,7 +674,7 @@ function showError(error: unknown, fallback: string) {
               >
                 <wd-loading
                   v-if="state.uploading === 'photo'"
-                  type="ring"
+                  type="circular"
                   color="#3763f4"
                   size="30rpx"
                 />
@@ -689,14 +702,18 @@ function showError(error: unknown, fallback: string) {
                 :key="url"
                 class="evidence-grid__item"
               >
-                <image
-                  :src="url"
-                  mode="aspectFill"
+                <button
+                  class="tms-evidence-preview"
+                  :aria-label="`预览第 ${index + 1} 张${title}磅单`"
                   @click="preview(url, form.weighbridgeTicketUrls)"
-                />
+                >
+                  <image :src="url" mode="aspectFill" />
+                </button>
                 <button
                   v-if="!isCompleted"
-                  class="evidence-grid__remove"
+                  class="tms-evidence-remove"
+                  :aria-label="`删除第 ${index + 1} 张${title}磅单`"
+                  :disabled="!!state.uploading || state.submitting"
                   @click="removeEvidence('ticket', index)"
                 >
                   ×
@@ -710,7 +727,7 @@ function showError(error: unknown, fallback: string) {
               >
                 <wd-loading
                   v-if="state.uploading === 'ticket'"
-                  type="ring"
+                  type="circular"
                   color="#3763f4"
                   size="30rpx"
                 />
@@ -749,7 +766,7 @@ function showError(error: unknown, fallback: string) {
               >
                 <wd-loading
                   v-if="state.analyzing"
-                  type="ring"
+                  type="circular"
                   color="#4f46e5"
                   size="24rpx"
                 />
@@ -785,9 +802,11 @@ function showError(error: unknown, fallback: string) {
 
           <view class="field-block">
             <text class="field-block__label">备注</text>
-            <textarea
+            <wd-textarea
               v-model="form.remark"
-              :disabled="!context.operation || isCompleted"
+              custom-class="tms-form-textarea"
+              :disabled="!context.operation"
+              :readonly="isCompleted"
               maxlength="300"
               placeholder="可填写货损、磅差或现场说明"
             />
@@ -839,7 +858,7 @@ function showError(error: unknown, fallback: string) {
 .operation-page__hero {
   flex: 0 0 auto;
   color: #fff;
-  background: linear-gradient(145deg, #315bef, #4978ff);
+  background: var(--tms-hero-gradient);
 }
 
 .operation-page__hero-main {
@@ -1122,9 +1141,13 @@ function showError(error: unknown, fallback: string) {
     box-shadow 0.2s ease;
 }
 
-.weight-input input {
+.weight-input :deep(.wd-input) {
   flex: 1;
   height: 100%;
+  width: 100%;
+  min-width: 0;
+}
+.weight-input :deep(.wd-input__inner) {
   color: var(--tms-text);
   font-size: 28rpx;
 }
@@ -1148,7 +1171,7 @@ function showError(error: unknown, fallback: string) {
   padding: 0 16rpx;
 }
 
-.weight-grid .weight-input input {
+.weight-grid .weight-input :deep(.wd-input) {
   min-width: 0;
 }
 
@@ -1380,31 +1403,7 @@ function showError(error: unknown, fallback: string) {
   line-height: 1.2;
 }
 
-.evidence-grid__remove {
-  position: absolute;
-  top: 6rpx;
-  right: 6rpx;
-  width: 42rpx;
-  height: 42rpx;
-  padding: 0;
-  color: #fff;
-  background: rgba(20, 28, 43, 0.72);
-  border-radius: 50%;
-  font-size: 30rpx;
-  line-height: 40rpx;
-}
 
-.field-block textarea {
-  width: 100%;
-  min-height: 150rpx;
-  margin-top: 14rpx;
-  padding: 20rpx 20rpx 50rpx;
-  color: var(--tms-text);
-  background: var(--tms-panel);
-  border: 2rpx solid var(--tms-line);
-  border-radius: 16rpx;
-  font-size: 25rpx;
-}
 
 .field-block__count {
   position: absolute;
