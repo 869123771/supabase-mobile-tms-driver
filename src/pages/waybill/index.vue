@@ -121,7 +121,7 @@ function navigate(item: Waybill) {
           @click="refreshList"
         >
           <wd-loading v-if="refreshing || waybill.loading" type="circular" color="#ffffff" size="34rpx" />
-          <wd-icon v-else name="refresh" size="38rpx" />
+          <TmsIcon v-else name="refresh" size="38rpx" />
         </wd-button>
       </view>
       <wd-segmented
@@ -129,11 +129,20 @@ function navigate(item: Waybill) {
         :options="segmentOptions"
         theme="outline"
         custom-class="waybill-page__tabs"
+        role="tablist"
         aria-label="运单状态筛选"
         @change="onSegmentChange"
       >
         <template #label="{ option }">
-          <view class="waybill-page__tab" role="tab" :aria-selected="active === option.value">
+          <view
+            class="waybill-page__tab"
+            role="tab"
+            :aria-selected="active === option.value"
+            :aria-disabled="isBusy && active !== option.value"
+            tabindex="0"
+            @keydown.enter="switchGroup(option.value)"
+            @keydown.space.prevent="switchGroup(option.value)"
+          >
             <view v-if="loadingGroup === option.value" class="waybill-page__tab-spinner" />
             {{ option.payload.label }}
           </view>
@@ -188,7 +197,7 @@ function navigate(item: Waybill) {
               hover-class="waybill-expense-action__button--pressed"
               @tap.stop="openExpense(item.id)"
             >
-              <wd-icon name="plus-circle" size="26rpx" />
+              <TmsIcon name="expense" size="26rpx" />
               <text>费用上报</text>
             </button>
           </view>
@@ -283,12 +292,12 @@ function navigate(item: Waybill) {
   display: block;
   margin-top: 7rpx;
   font-size: 36rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.12;
 }
 
 .waybill-page__eyebrow {
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   font-weight: 600;
   line-height: 1.2;
   opacity: 0.76;
@@ -297,7 +306,7 @@ function navigate(item: Waybill) {
 .waybill-page__subtitle {
   display: block;
   margin-top: 10rpx;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   font-weight: 600;
   line-height: 1.2;
   opacity: 0.82;
@@ -350,7 +359,7 @@ function navigate(item: Waybill) {
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
   font-weight: 700;
 }
 
@@ -358,11 +367,23 @@ function navigate(item: Waybill) {
   border-left: 0;
 }
 
+:deep(.waybill-page__tabs .wd-segmented__item-label) {
+  width: 100%;
+}
+
 .waybill-page__tab {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8rpx;
+  width: 100%;
+  min-height: var(--tms-control-height);
+}
+
+.waybill-page__tab:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -4px;
+  border-radius: 999rpx;
 }
 
 :deep(.waybill-page__tabs .wd-segmented__item.is-active) {
@@ -407,7 +428,7 @@ function navigate(item: Waybill) {
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   font-weight: 700;
   box-shadow: var(--tms-shadow-sm);
   pointer-events: none;
@@ -424,7 +445,7 @@ function navigate(item: Waybill) {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   font-weight: 600;
 }
 
@@ -443,8 +464,8 @@ function navigate(item: Waybill) {
   border-radius: 12rpx;
   color: #9a5a0d;
   background: #ffedd5;
-  font-size: 23rpx;
-  font-weight: 800;
+  font-size: max(23rpx, 12px);
+  font-weight: 700;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -471,7 +492,7 @@ function navigate(item: Waybill) {
   align-items: center;
   justify-content: space-between;
   gap: 20rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .waybill-page__list-head > view {
@@ -486,8 +507,8 @@ function navigate(item: Waybill) {
 
 .waybill-page__list-head > view text:first-child {
   color: #172033;
-  font-size: 27rpx;
-  font-weight: 800;
+  font-size: max(27rpx, 12px);
+  font-weight: 700;
 }
 
 .waybill-expense-action {
@@ -516,19 +537,19 @@ function navigate(item: Waybill) {
 
 .waybill-expense-action > view text {
   color: #344054;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 700;
 }
 
 .waybill-expense-action > view small {
   margin-top: 3rpx;
   color: #98a2b3;
-  font-size: 19rpx;
+  font-size: max(19rpx, 12px);
 }
 
 .waybill-expense-action button {
   flex: 0 0 auto;
-  min-height: 80rpx;
+  min-height: var(--tms-control-height);
   margin: 0;
   padding: 0 20rpx;
   border: 1rpx solid rgba(79, 70, 229, 0.25);
@@ -539,23 +560,14 @@ function navigate(item: Waybill) {
   align-items: center;
   justify-content: center;
   gap: 7rpx;
-  font-size: 22rpx;
-  font-weight: 800;
+  font-size: max(22rpx, 12px);
+  font-weight: 700;
   line-height: 1;
   touch-action: manipulation;
   transition:
     color 160ms ease,
     background-color 160ms ease,
     transform 160ms ease;
-}
-
-.waybill-expense-action button :deep(.wd-icon) {
-  width: 28rpx;
-  height: 28rpx;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
 }
 
 .waybill-expense-action button::after {
@@ -602,13 +614,13 @@ function navigate(item: Waybill) {
 .waybill-page__empty-title {
   color: #172033;
   font-size: 29rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .waybill-page__empty-hint {
   padding: 0 38rpx;
   color: #9aa5b7;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   line-height: 1.5;
 }
 
@@ -617,7 +629,7 @@ function navigate(item: Waybill) {
   margin-top: 8rpx;
   padding: 0 20rpx;
   color: #4f46e5;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   font-weight: 700;
 }
 </style>

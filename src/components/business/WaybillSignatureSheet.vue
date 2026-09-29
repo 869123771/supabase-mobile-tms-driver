@@ -5,6 +5,7 @@ import type { Waybill } from '@/api/types'
 import { getUserFacingErrorMessage } from '@/api/supabase'
 import TmsRecordTimeNotice from '@/components/business/TmsRecordTimeNotice.vue'
 import TmsDateTimePicker from '@/components/business/TmsDateTimePicker.vue'
+import TmsIcon from '@/components/business/TmsIcon.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { chooseImages } from '@/utils/file'
@@ -162,7 +163,7 @@ function showError(error: unknown, fallback: string) {
     <view class="signature-sheet">
       <view class="signature-sheet__header">
         <view>
-          <text class="signature-sheet__kicker">DELIVERY SIGNATURE</text>
+          <text class="signature-sheet__kicker">签收与回单</text>
           <text class="signature-sheet__title">签收确认</text>
           <text class="signature-sheet__subtitle">手机和电脑提交后使用同一份签收记录</text>
         </view>
@@ -173,7 +174,7 @@ function showError(error: unknown, fallback: string) {
           :disabled="state.submitting"
           @click="visible = false"
         >
-          <wd-icon name="close" size="28rpx" />
+          <TmsIcon name="close" size="28rpx" />
         </button>
       </view>
 
@@ -193,7 +194,7 @@ function showError(error: unknown, fallback: string) {
         </view>
         <template v-else>
           <view class="signature-sheet__notice">
-            <wd-icon name="info-circle" size="32rpx" />
+            <TmsIcon name="info" size="32rpx" />
             <text>签收后运单进入“已签收”，还需录入收车时间和里程才算完成。</text>
           </view>
           <TmsRecordTimeNotice class="signature-sheet__time-notice" subject="签收时间" />
@@ -271,7 +272,7 @@ function showError(error: unknown, fallback: string) {
                   size="28rpx"
                 />
                 <view v-else class="sheet-evidence__add-content">
-                  <wd-icon name="camera" size="40rpx" />
+                  <TmsIcon name="camera" size="40rpx" />
                   <text>拍照上传</text>
                 </view>
               </button>
@@ -286,7 +287,7 @@ function showError(error: unknown, fallback: string) {
             <wd-textarea
               v-model="form.remark"
               custom-class="tms-form-textarea"
-              maxlength="300"
+              :maxlength="300"
               placeholder="可填写货损、少货或现场说明"
             />
             <text class="sheet-field__count">{{ form.remark.length }}/300</text>
@@ -346,20 +347,20 @@ function showError(error: unknown, fallback: string) {
 }
 .signature-sheet__kicker {
   color: var(--tms-primary);
-  font-size: 20rpx;
-  font-weight: 800;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
   letter-spacing: 2rpx;
 }
 .signature-sheet__title {
   margin-top: 5rpx;
   color: var(--tms-text);
   font-size: 36rpx;
-  font-weight: 900;
+  font-weight: 700;
 }
 .signature-sheet__subtitle {
   margin-top: 7rpx;
   color: var(--tms-muted);
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
 }
 .signature-sheet__close {
   box-sizing: border-box;
@@ -453,29 +454,29 @@ function showError(error: unknown, fallback: string) {
   color: #4f46e5;
   background: #eef2ff;
   font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 70rpx;
 }
 .signature-sheet__error strong {
   margin-top: 22rpx;
   color: var(--tms-text);
-  font-size: 28rpx;
+  font-size: max(28rpx, 12px);
 }
 .signature-sheet__error > text:last-of-type {
   margin-top: 10rpx;
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1.6;
 }
 .signature-sheet__error button {
-  height: 80rpx;
+  min-height: var(--tms-control-height);
   margin-top: 26rpx;
   padding: 0 36rpx;
   border-radius: 999rpx;
   color: #fff;
   background: linear-gradient(135deg, #4f46e5, #2563eb);
-  font-size: 24rpx;
-  line-height: 80rpx;
+  font-size: max(24rpx, 12px);
+  line-height: var(--tms-control-height);
 }
 .signature-sheet__notice {
   margin: 22rpx 26rpx 0;
@@ -485,7 +486,7 @@ function showError(error: unknown, fallback: string) {
   border-radius: 16rpx;
   display: flex;
   gap: 12rpx;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   line-height: 1.5;
 }
 .signature-sheet__time-notice {
@@ -512,14 +513,14 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20rpx;
-  font-weight: 900;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
 }
 .sheet-field__label {
   display: block;
   color: var(--tms-text);
-  font-size: 27rpx;
-  font-weight: 800;
+  font-size: max(27rpx, 14px);
+  font-weight: 700;
 }
 .sheet-field__label .required-mark {
   color: #ef4d57;
@@ -528,13 +529,13 @@ function showError(error: unknown, fallback: string) {
   display: block;
   margin-top: 8rpx;
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
 }
 .sheet-field__quota {
   display: block;
   margin-top: 10rpx;
   color: #8b95a8;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   text-align: right;
 }
 .sheet-field__count {
@@ -542,7 +543,7 @@ function showError(error: unknown, fallback: string) {
   right: 42rpx;
   bottom: 36rpx;
   color: #9aa2b1;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 .sheet-evidence {
   margin-top: 18rpx;
@@ -573,7 +574,7 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1;
 }
 .sheet-evidence__add::after {
@@ -585,10 +586,6 @@ function showError(error: unknown, fallback: string) {
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  line-height: 1;
-}
-.sheet-evidence__add-content :deep(.wd-icon) {
-  display: flex;
   line-height: 1;
 }
 .sheet-evidence__add-content text {
@@ -606,14 +603,14 @@ function showError(error: unknown, fallback: string) {
 .signature-sheet__completion {
   grid-column: 1 / -1;
   color: #667085;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   text-align: center;
 }
 .signature-sheet__footer :deep(.wd-button) {
   height: var(--tms-control-height);
   border-radius: var(--tms-control-radius);
   font-size: var(--tms-control-font-size);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 @keyframes sheet-shimmer {

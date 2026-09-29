@@ -61,7 +61,7 @@ defineProps<{
   min-width: 0;
   max-width: 100%;
   color: #6c7890;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
@@ -74,7 +74,7 @@ defineProps<{
   max-width: 100%;
   overflow: hidden;
   font-size: 34rpx;
-  font-weight: 800;
+  font-weight: 700;
   display: flex;
   align-items: flex-end;
   line-height: 1;
@@ -85,7 +85,7 @@ defineProps<{
 
 .metric-grid__unit {
   margin-left: 4rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 600;
   line-height: 1.1;
 }

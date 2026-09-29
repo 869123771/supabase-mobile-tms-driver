@@ -35,44 +35,11 @@ onShow(() => {
 <style lang="scss">
 @use './styles/global.scss';
 
-:root,
-page {
-  --tms-primary: #4f46e5;
-  --tms-primary-deep: #312e81;
-  --tms-primary-bright: #2563eb;
-  --tms-primary-gradient: linear-gradient(135deg, #4338ca 0%, #4f46e5 48%, #2563eb 100%);
-  --tms-hero-gradient: linear-gradient(142deg, #211d59 0%, #4338ca 48%, #2563eb 112%);
-  --tms-bg: #f2f5fa;
-  --tms-panel: #f7f9fc;
-  --tms-surface: #ffffff;
-  --tms-text: #152033;
-  --tms-muted: #66738a;
-  --tms-light: #98a3b5;
-  --tms-line: #e4e9f1;
-  --tms-green: #0f9f6e;
-  --tms-orange: #ea8a14;
-  --tms-red: #e5484d;
-  --tms-blue-soft: #eef2ff;
-  --tms-radius-sm: 14rpx;
-  --tms-radius-md: 18rpx;
-  --tms-radius-lg: 26rpx;
-  --tms-radius-xl: 32rpx;
-  --tms-control-height: max(88rpx, 44px);
-  --tms-control-radius: 18rpx;
-  --tms-control-font-size: 28rpx;
-  --tms-tabbar-space: calc(160rpx + env(safe-area-inset-bottom));
-  --tms-shadow-sm: 0 10rpx 30rpx rgba(28, 39, 65, 0.065);
-  --tms-shadow-md: 0 20rpx 54rpx rgba(31, 40, 74, 0.12);
-  --tms-shadow-primary: 0 14rpx 28rpx rgba(79, 70, 229, 0.23);
-}
-
 page {
   min-height: 100%;
-  background: #f2f5fa;
-  color: #152033;
-  font-family:
-    'HarmonyOS Sans', 'HarmonyOS Sans SC', 'PingFang SC', MiSans, 'Noto Sans SC', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: var(--tms-bg);
+  color: var(--tms-text);
+  font-family: var(--tms-font-family);
   font-weight: 400;
   font-synthesis: none;
   font-variant-numeric: tabular-nums;
@@ -109,7 +76,9 @@ button,
   touch-action: manipulation;
 }
 
-button {
+button,
+input,
+textarea {
   font-family: inherit;
 }
 
@@ -187,6 +156,6 @@ uni-scroll-view .uni-scroll-view::-webkit-scrollbar {
 
 input,
 textarea {
-  caret-color: #4f46e5;
+  caret-color: var(--tms-primary);
 }
 </style>

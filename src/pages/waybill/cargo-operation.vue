@@ -452,7 +452,7 @@ function showError(error: unknown, fallback: string) {
           />
         </view>
         <view>
-          <text class="operation-page__eyebrow">CARGO OPERATION</text>
+          <text class="operation-page__eyebrow">现场作业</text>
           <text class="operation-page__title">{{
             current?.waybillNo || "运单装卸货"
           }}</text>
@@ -551,7 +551,7 @@ function showError(error: unknown, fallback: string) {
             :disabled="state.locating"
             @click="handleCheckIn"
           >
-            <wd-icon v-if="!state.locating" name="location" size="32rpx" />
+            <TmsIcon v-if="!state.locating" name="location" size="32rpx" />
             获取定位并打卡
           </wd-button>
         </view>
@@ -679,7 +679,7 @@ function showError(error: unknown, fallback: string) {
                   size="30rpx"
                 />
                 <view v-else class="evidence-grid__add-content">
-                  <wd-icon name="camera" size="42rpx" />
+                  <TmsIcon name="camera" size="42rpx" />
                   <text>上传照片</text>
                 </view>
               </button>
@@ -732,7 +732,7 @@ function showError(error: unknown, fallback: string) {
                   size="30rpx"
                 />
                 <view v-else class="evidence-grid__add-content">
-                  <wd-icon name="camera" size="42rpx" />
+                  <TmsIcon name="camera" size="42rpx" />
                   <text>上传磅单</text>
                 </view>
               </button>
@@ -770,7 +770,7 @@ function showError(error: unknown, fallback: string) {
                   color="#4f46e5"
                   size="24rpx"
                 />
-                <wd-icon v-else name="camera" size="24rpx" />
+                <TmsIcon v-else name="camera" size="24rpx" />
                 <text>{{ form.recognitionInfo ? "重新识别" : "识别磅单" }}</text>
               </button>
             </view>
@@ -807,7 +807,7 @@ function showError(error: unknown, fallback: string) {
               custom-class="tms-form-textarea"
               :disabled="!context.operation"
               :readonly="isCompleted"
-              maxlength="300"
+              :maxlength="300"
               placeholder="可填写货损、磅差或现场说明"
             />
             <text class="field-block__count">{{ form.remark.length }}/300</text>
@@ -886,8 +886,8 @@ function showError(error: unknown, fallback: string) {
 }
 
 .operation-page__eyebrow {
-  font-size: 20rpx;
-  font-weight: 800;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
   letter-spacing: 3rpx;
   opacity: 0.78;
 }
@@ -895,14 +895,14 @@ function showError(error: unknown, fallback: string) {
 .operation-page__title {
   margin-top: 4rpx;
   font-size: 34rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .operation-page__address {
   max-width: 550rpx;
   margin-top: 6rpx;
   overflow: hidden;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   text-overflow: ellipsis;
   white-space: nowrap;
   opacity: 0.88;
@@ -947,8 +947,8 @@ function showError(error: unknown, fallback: string) {
 
 .section-kicker {
   color: var(--tms-primary);
-  font-size: 20rpx;
-  font-weight: 800;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
   letter-spacing: 2rpx;
 }
 
@@ -956,7 +956,7 @@ function showError(error: unknown, fallback: string) {
   margin-top: 5rpx;
   color: var(--tms-text);
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .policy-card__badge,
@@ -965,7 +965,7 @@ function showError(error: unknown, fallback: string) {
   color: var(--tms-primary);
   background: var(--tms-blue-soft);
   border-radius: 999rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 700;
 }
 
@@ -999,21 +999,21 @@ function showError(error: unknown, fallback: string) {
 .policy-card__grid text,
 .checkin-card__metrics text {
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
 }
 
 .policy-card__grid strong,
 .checkin-card__metrics strong {
   margin-top: 8rpx;
   color: var(--tms-text);
-  font-size: 25rpx;
+  font-size: max(25rpx, 12px);
 }
 
 .policy-card__hint {
   display: block;
   margin-top: 20rpx;
   color: var(--tms-muted);
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   line-height: 1.65;
 }
 
@@ -1049,7 +1049,7 @@ function showError(error: unknown, fallback: string) {
   display: block;
   margin-top: 8rpx;
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
 }
 
 .checkin-card__metrics {
@@ -1091,13 +1091,13 @@ function showError(error: unknown, fallback: string) {
 }
 
 .form-card__locked strong {
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .form-card__locked text {
   margin-top: 5rpx;
   color: #6f7c91;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .field-block {
@@ -1107,15 +1107,15 @@ function showError(error: unknown, fallback: string) {
 
 .field-block__label {
   color: var(--tms-text);
-  font-size: 26rpx;
-  font-weight: 800;
+  font-size: max(26rpx, 14px);
+  font-weight: 700;
 }
 
 .field-block__help {
   display: block;
   margin-top: 8rpx;
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   line-height: 1.5;
 }
 
@@ -1123,7 +1123,7 @@ function showError(error: unknown, fallback: string) {
   display: block;
   margin-top: 10rpx;
   color: #8b95a8;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   text-align: right;
 }
 
@@ -1149,7 +1149,7 @@ function showError(error: unknown, fallback: string) {
 }
 .weight-input :deep(.wd-input__inner) {
   color: var(--tms-text);
-  font-size: 28rpx;
+  font-size: max(28rpx, 12px);
 }
 
 .weight-input text {
@@ -1184,12 +1184,12 @@ function showError(error: unknown, fallback: string) {
   color: #52627a;
   background: #f3f6fb;
   border-radius: 14rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
 }
 
 .weight-check strong {
   color: var(--tms-text);
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .weight-warning {
@@ -1200,7 +1200,7 @@ function showError(error: unknown, fallback: string) {
   background: #fff7e8;
   border-left: 5rpx solid #f59e0b;
   border-radius: 12rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   line-height: 1.55;
 }
 
@@ -1259,13 +1259,13 @@ function showError(error: unknown, fallback: string) {
 
 .recognition-card__identity strong {
   color: var(--tms-text);
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .recognition-card__identity text {
   margin-top: 4rpx;
   color: var(--tms-muted);
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1.45;
 }
 
@@ -1281,7 +1281,7 @@ function showError(error: unknown, fallback: string) {
   background: #fff;
   border: 1rpx solid #cfd9ff;
   border-radius: 14rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .recognition-card__action::after {
@@ -1301,7 +1301,7 @@ function showError(error: unknown, fallback: string) {
 
 .recognition-card__result-meta {
   color: #536586;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
 }
 
 .recognition-card__stale {
@@ -1320,7 +1320,7 @@ function showError(error: unknown, fallback: string) {
   border: 1rpx solid #dce3f3;
   border-radius: 14rpx;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   line-height: 1.65;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -1331,7 +1331,7 @@ function showError(error: unknown, fallback: string) {
 .recognition-card__empty {
   display: block;
   margin-top: 12rpx;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1.55;
 }
 
@@ -1376,7 +1376,7 @@ function showError(error: unknown, fallback: string) {
   align-items: center;
   justify-content: center;
   color: var(--tms-primary);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1;
 }
 
@@ -1393,11 +1393,6 @@ function showError(error: unknown, fallback: string) {
   line-height: 1;
 }
 
-.evidence-grid__add-content :deep(.wd-icon) {
-  display: flex;
-  line-height: 1;
-}
-
 .evidence-grid__add-content text {
   display: block;
   line-height: 1.2;
@@ -1410,7 +1405,7 @@ function showError(error: unknown, fallback: string) {
   right: 18rpx;
   bottom: 14rpx;
   color: var(--tms-light);
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
 }
 
 .operation-footer {
@@ -1433,13 +1428,13 @@ function showError(error: unknown, fallback: string) {
 
 .operation-footer text {
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .operation-footer strong {
   margin-top: 4rpx;
   color: var(--tms-text);
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
 }
 
 .operation-footer__button {

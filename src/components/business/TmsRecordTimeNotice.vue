@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TmsIcon from './TmsIcon.vue'
 withDefaults(
   defineProps<{
     subject?: string;
@@ -11,7 +12,7 @@ withDefaults(
 
 <template>
   <view class="record-time-notice">
-    <wd-icon name="info-circle" size="30rpx" />
+    <TmsIcon name="info" size="30rpx" />
     <text>
       支持实时填报与事后补录，{{ subject }}不受当前时间或前后节点限制；系统仅提示，请按实际发生时间填写。
     </text>
@@ -30,7 +31,7 @@ withDefaults(
   display: flex;
   align-items: flex-start;
   gap: 12rpx;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   font-weight: 600;
   line-height: 1.55;
 }

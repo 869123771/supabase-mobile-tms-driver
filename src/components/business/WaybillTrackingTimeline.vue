@@ -6,6 +6,7 @@ import type {
   WaybillEvent,
 } from "@/api/types";
 import { formatDateTime, formatMoney } from "@/utils/format";
+import TmsIcon from './TmsIcon.vue'
 
 type TimelineTone = "blue" | "green" | "orange" | "red" | "gray";
 
@@ -324,11 +325,11 @@ function preview(item: TimelineItem, index: number) {
     </view>
 
     <view class="tracking-card__summary">
-      <wd-icon name="check-circle" size="28rpx" />
+      <TmsIcon name="success" size="28rpx" />
       <text>已记录 {{ completedKeyActionCount }}/{{ keyActionTotal }} 个关键节点，费用与补录记录按提交时间同步展示</text>
     </view>
     <view v-if="syncWarning" class="tracking-card__warning">
-      <wd-icon name="exclamation-circle" size="28rpx" />
+      <TmsIcon name="warning" size="28rpx" />
       <text>{{ syncWarning }}</text>
     </view>
 
@@ -341,8 +342,8 @@ function preview(item: TimelineItem, index: number) {
       >
         <view class="tracking-item__rail" aria-hidden="true">
           <view class="tracking-item__dot">
-            <wd-icon
-              :name="item.tone === 'green' ? 'check' : item.tone === 'red' ? 'close' : 'time-line'"
+            <TmsIcon
+              :name="item.tone === 'green' ? 'check' : item.tone === 'red' ? 'close' : 'time'"
               size="20rpx"
             />
           </view>
@@ -366,7 +367,7 @@ function preview(item: TimelineItem, index: number) {
             </view>
 
             <view v-if="item.location" class="tracking-item__detail">
-              <wd-icon name="location" size="24rpx" />
+              <TmsIcon name="location" size="24rpx" />
               <text>{{ item.location }}</text>
             </view>
             <view v-if="item.remark" class="tracking-item__remark">
@@ -396,7 +397,7 @@ function preview(item: TimelineItem, index: number) {
       </view>
     </view>
     <view v-else class="tracking-card__empty">
-      <wd-icon name="time-line" size="40rpx" />
+      <TmsIcon name="time" size="40rpx" />
       <strong>暂无跟踪记录</strong>
       <text>完成运输节点后，操作时间与资料摘要会显示在这里</text>
     </view>
@@ -424,7 +425,7 @@ function preview(item: TimelineItem, index: number) {
   display: flex;
   align-items: baseline;
   gap: 6rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .tracking-card__count strong {
@@ -442,7 +443,7 @@ function preview(item: TimelineItem, index: number) {
   display: flex;
   align-items: flex-start;
   gap: 10rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 600;
   line-height: 1.5;
 }
@@ -461,7 +462,7 @@ function preview(item: TimelineItem, index: number) {
   display: flex;
   align-items: flex-start;
   gap: 10rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 600;
   line-height: 1.45;
 }
@@ -508,7 +509,7 @@ function preview(item: TimelineItem, index: number) {
   justify-content: center;
 }
 
-.tracking-item__dot :deep(.wd-icon) {
+.tracking-item__dot :deep(.tms-icon) {
   box-sizing: border-box;
   flex: 0 0 20rpx;
   width: 20rpx;
@@ -518,10 +519,6 @@ function preview(item: TimelineItem, index: number) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  line-height: 1 !important;
-}
-
-.tracking-item__dot :deep(.wd-icon::before) {
   line-height: 1 !important;
 }
 
@@ -561,7 +558,7 @@ function preview(item: TimelineItem, index: number) {
 .tracking-item__time-row {
   min-height: 40rpx;
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-variant-numeric: tabular-nums;
 }
 
@@ -571,7 +568,7 @@ function preview(item: TimelineItem, index: number) {
   border-radius: 999rpx;
   color: var(--tms-primary);
   background: #eef2ff;
-  font-size: 19rpx;
+  font-size: max(19rpx, 12px);
   font-weight: 700;
 }
 
@@ -592,8 +589,8 @@ function preview(item: TimelineItem, index: number) {
 .tracking-item__title-row strong {
   min-width: 0;
   color: var(--tms-text);
-  font-size: 27rpx;
-  font-weight: 800;
+  font-size: max(27rpx, 12px);
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -601,7 +598,7 @@ function preview(item: TimelineItem, index: number) {
   max-width: 180rpx;
   overflow: hidden;
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -611,7 +608,7 @@ function preview(item: TimelineItem, index: number) {
   display: block;
   margin-top: 8rpx;
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1.5;
 }
 
@@ -627,8 +624,8 @@ function preview(item: TimelineItem, index: number) {
   border-radius: 10rpx;
   color: #46546b;
   background: #f0f3f8;
-  font-size: 20rpx;
-  font-weight: 650;
+  font-size: max(20rpx, 12px);
+  font-weight: 600;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
 }
@@ -640,7 +637,7 @@ function preview(item: TimelineItem, index: number) {
   display: flex;
   align-items: flex-start;
   gap: 8rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   line-height: 1.5;
 }
 
@@ -661,7 +658,7 @@ function preview(item: TimelineItem, index: number) {
   display: flex;
   align-items: flex-start;
   gap: 10rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   line-height: 1.45;
 }
 
@@ -713,8 +710,8 @@ function preview(item: TimelineItem, index: number) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26rpx;
-  font-weight: 800;
+  font-size: max(26rpx, 12px);
+  font-weight: 700;
 }
 
 .tracking-item__recorded {
@@ -723,7 +720,7 @@ function preview(item: TimelineItem, index: number) {
   padding-top: 13rpx;
   border-top: 1rpx dashed #dfe5ee;
   color: #8a95a7;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   font-variant-numeric: tabular-nums;
 }
 
@@ -740,12 +737,12 @@ function preview(item: TimelineItem, index: number) {
 
 .tracking-card__empty strong {
   color: var(--tms-text);
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
 }
 
 .tracking-card__empty text {
   max-width: 470rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1.5;
 }
 </style>

@@ -115,7 +115,7 @@ async function handleSuccess() {
   <view class="expense-page page">
     <TmsTopBar
       title="费用上报"
-      eyebrow="WAYBILL EXPENSES"
+      eyebrow="运输费用"
       :subtitle="context?.waybill.waybillNo || '同步运单费用与审批状态'"
       show-back
       :show-menu="false"
@@ -188,17 +188,17 @@ async function handleSuccess() {
         </view>
 
         <view v-if="!context.canReport" class="expense-page__notice expense-page__notice--warning">
-          <wd-icon name="exclamation-circle" size="32rpx" />
+          <TmsIcon name="warning" size="32rpx" />
           <text>当前运单尚未接受或已经取消，暂不能上报费用。</text>
         </view>
         <view v-else class="expense-page__notice">
-          <wd-icon name="info-circle" size="32rpx" />
+          <TmsIcon name="info" size="32rpx" />
           <text>司机提交后，Web 端会在运单费用和审批中心同步看到同一条记录。</text>
         </view>
 
         <view class="expense-section-head">
           <view>
-            <text>REPORT HISTORY</text>
+            <text>审批与凭证</text>
             <strong>费用上报记录</strong>
           </view>
           <small class="expense-section-head__count">{{ records.length }} 条</small>
@@ -238,8 +238,8 @@ async function handleSuccess() {
                 'expense-record__review--rejected': record.auditStatus === 'rejected',
               }"
             >
-              <wd-icon
-                :name="record.auditStatus === 'rejected' ? 'warning' : 'info-circle'"
+              <TmsIcon
+                :name="record.auditStatus === 'rejected' ? 'warning' : 'info'"
                 size="27rpx"
               />
               <text>{{ record.reviewRemark }}</text>
@@ -291,7 +291,7 @@ async function handleSuccess() {
         @click="openCreate"
       >
         <view class="expense-footer__button-content">
-          <wd-icon name="plus" size="30rpx" />
+          <TmsIcon name="add" size="30rpx" />
           <text>新增费用</text>
         </view>
       </wd-button>
@@ -367,14 +367,14 @@ async function handleSuccess() {
 
 .expense-waybill__copy text {
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .expense-waybill__copy strong {
   margin-top: 3rpx;
   overflow: hidden;
   color: var(--tms-text);
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -388,8 +388,8 @@ async function handleSuccess() {
   background: #ecfdf5;
   display: flex;
   align-items: center;
-  font-size: 21rpx;
-  font-weight: 800;
+  font-size: max(21rpx, 12px);
+  font-weight: 700;
 }
 
 .expense-waybill__status--disabled {
@@ -443,8 +443,8 @@ async function handleSuccess() {
   border-radius: 12rpx;
   color: #fff;
   background: #10b981;
-  font-size: 20rpx;
-  font-weight: 800;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
   line-height: 38rpx;
   text-align: center;
 }
@@ -462,17 +462,17 @@ async function handleSuccess() {
 .expense-waybill__station strong {
   overflow: hidden;
   color: var(--tms-text);
-  font-size: 25rpx;
+  font-size: max(25rpx, 12px);
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .expense-waybill__station small {
-  min-height: 58rpx;
+  min-height: max(58rpx, 38px);
   overflow: hidden;
   color: var(--tms-muted);
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1.45;
   overflow-wrap: anywhere;
   display: -webkit-box;
@@ -567,15 +567,15 @@ async function handleSuccess() {
 .expense-stats__item text,
 .expense-stats__item small {
   color: var(--tms-muted);
-  font-size: 19rpx;
+  font-size: max(19rpx, 12px);
 }
 
 .expense-stats__item strong {
   margin: 6rpx 0 4rpx;
   overflow: hidden;
   color: var(--tms-text);
-  font-size: 27rpx;
-  font-weight: 900;
+  font-size: max(27rpx, 12px);
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -590,7 +590,7 @@ async function handleSuccess() {
   display: flex;
   align-items: flex-start;
   gap: 10rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1.5;
 }
 
@@ -613,8 +613,8 @@ async function handleSuccess() {
 
 .expense-section-head text {
   color: var(--tms-primary);
-  font-size: 18rpx;
-  font-weight: 800;
+  font-size: max(18rpx, 12px);
+  font-weight: 700;
   letter-spacing: 1.6rpx;
 }
 
@@ -626,7 +626,7 @@ async function handleSuccess() {
 
 .expense-section-head small {
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .expense-section-head__count {
@@ -681,13 +681,13 @@ async function handleSuccess() {
 
 .expense-record__head text {
   color: var(--tms-muted);
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
 }
 
 .expense-record__head strong {
   margin-top: 4rpx;
   color: var(--tms-text);
-  font-size: 28rpx;
+  font-size: max(28rpx, 12px);
 }
 
 .expense-record__tag {
@@ -699,8 +699,8 @@ async function handleSuccess() {
   background: #f2f4f7;
   display: flex;
   align-items: center;
-  font-size: 20rpx;
-  font-weight: 800;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
 }
 
 .expense-record__tag--blue {
@@ -726,14 +726,14 @@ async function handleSuccess() {
 .expense-record__amount-row strong {
   color: var(--tms-primary);
   font-size: 38rpx;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .expense-record__amount-row text,
 .expense-record__meta,
 .expense-record__footer {
   color: var(--tms-muted);
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
 }
 
 .expense-record__meta {
@@ -749,7 +749,7 @@ async function handleSuccess() {
   display: flex;
   align-items: flex-start;
   gap: 9rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   line-height: 1.45;
 }
 
@@ -795,8 +795,8 @@ async function handleSuccess() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26rpx;
-  font-weight: 900;
+  font-size: max(26rpx, 12px);
+  font-weight: 700;
 }
 
 .expense-record__footer {
@@ -814,8 +814,8 @@ async function handleSuccess() {
   border-radius: 999rpx;
   color: var(--tms-primary);
   background: #f7f8ff;
-  font-size: 21rpx;
-  font-weight: 800;
+  font-size: max(21rpx, 12px);
+  font-weight: 700;
   line-height: 58rpx;
 }
 
@@ -850,7 +850,7 @@ async function handleSuccess() {
   max-width: 500rpx;
   margin-top: 10rpx;
   color: var(--tms-muted);
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   line-height: 1.55;
 }
 
@@ -882,13 +882,13 @@ async function handleSuccess() {
 
 .expense-footer > view:first-child text {
   color: var(--tms-muted);
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
 }
 
 .expense-footer > view:first-child strong {
   margin-top: 4rpx;
   color: var(--tms-text);
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .expense-footer :deep(.wd-button) {

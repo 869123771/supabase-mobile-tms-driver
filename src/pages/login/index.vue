@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { getUserFacingErrorMessage } from '@/api/supabase'
+import TmsIcon from '@/components/business/TmsIcon.vue'
 
 const auth = useAuthStore()
 const profile = useProfileStore()
@@ -12,8 +13,20 @@ const password = ref('')
 const remember = ref(true)
 const loading = ref(false)
 const phoneLoading = ref(false)
+const accountError = ref('')
+const passwordError = ref('')
+const loginError = ref('')
+const focusField = ref<'account' | 'password' | ''>('')
 const accountValue = computed(() => account.value.trim())
-const canSubmit = computed(() => Boolean(accountValue.value && password.value && !loading.value))
+
+watch(account, () => {
+  accountError.value = ''
+  loginError.value = ''
+})
+watch(password, () => {
+  passwordError.value = ''
+  loginError.value = ''
+})
 
 onLoad(() => {
   auth.hydrate()
@@ -26,15 +39,15 @@ onLoad(() => {
 
 async function submit() {
   if (loading.value) return
-  if (!accountValue.value) {
-    uni.showToast({ title: '请输入账号', icon: 'none' })
-    return
-  }
-  if (!password.value) {
-    uni.showToast({ title: '请输入密码', icon: 'none' })
+  accountError.value = accountValue.value ? '' : '请输入司机账号'
+  passwordError.value = password.value ? '' : '请输入登录密码'
+  loginError.value = ''
+  if (accountError.value || passwordError.value) {
+    focusField.value = accountError.value ? 'account' : 'password'
     return
   }
 
+  focusField.value = ''
   loading.value = true
   try {
     await auth.login(accountValue.value, password.value)
@@ -46,10 +59,7 @@ async function submit() {
     await profile.load(true)
     uni.reLaunch({ url: '/pages/home/index' })
   } catch (error) {
-    uni.showToast({
-      title: getUserFacingErrorMessage(error, '登录失败，请检查账号与密码'),
-      icon: 'none'
-    })
+    loginError.value = getUserFacingErrorMessage(error, '登录失败，请检查账号与密码')
   } finally {
     loading.value = false
   }
@@ -88,7 +98,7 @@ function forgotPassword() {
 </script>
 
 <template>
-  <view class="login-page">
+  <view class="login-page page">
     <view class="login-page__orb login-page__orb--one" />
     <view class="login-page__orb login-page__orb--two" />
     <view class="login-page__grid" />
@@ -123,30 +133,49 @@ function forgotPassword() {
         </view>
         <text class="login-form__secure">安全登录</text>
       </view>
-      <wd-input
-        v-model="account"
-        class="login-form__field"
-        aria-label="手机号或邮箱"
-        prefix-icon="phone"
-        placeholder="请输入手机号/邮箱"
-        type="text"
-        confirm-type="next"
-        clearable
-        no-border
-        :disabled="loading"
-      />
-      <wd-input
-        v-model="password"
-        class="login-form__field"
-        aria-label="登录密码"
-        prefix-icon="lock"
-        placeholder="请输入登录密码"
-        show-password
-        confirm-type="done"
-        no-border
-        :disabled="loading"
-        @confirm="submit"
-      />
+      <view class="login-form__control" :class="{ 'login-form__control--error': accountError }">
+        <text class="login-form__label">司机账号</text>
+        <wd-input
+          v-model="account"
+          class="login-form__field"
+          aria-label="司机账号，手机号或邮箱"
+          :aria-invalid="Boolean(accountError)"
+          :error="Boolean(accountError)"
+          :focus="focusField === 'account'"
+          placeholder="请输入手机号/邮箱"
+          type="text"
+          confirm-type="next"
+          clearable
+          no-border
+          :disabled="loading"
+          @blur="focusField = ''"
+        >
+          <template #prefix><TmsIcon name="user" size="34rpx" /></template>
+        </wd-input>
+        <text v-if="accountError" class="login-form__error" role="alert">{{ accountError }}</text>
+      </view>
+      <view class="login-form__control" :class="{ 'login-form__control--error': passwordError }">
+        <text class="login-form__label">登录密码</text>
+        <wd-input
+          v-model="password"
+          class="login-form__field"
+          aria-label="登录密码"
+          :aria-invalid="Boolean(passwordError)"
+          :error="Boolean(passwordError)"
+          :focus="focusField === 'password'"
+          placeholder="请输入登录密码"
+          show-password
+          confirm-type="done"
+          no-border
+          :disabled="loading"
+          @blur="focusField = ''"
+          @confirm="submit"
+        >
+          <template #prefix><TmsIcon name="lock" size="34rpx" /></template>
+        </wd-input>
+        <text v-if="passwordError" class="login-form__error" role="alert">{{ passwordError }}</text>
+      </view>
+      <text v-if="loginError" class="login-form__error login-form__error--server" role="alert">{{ loginError }}</text>
 
       <view class="login-form__options">
         <wd-checkbox
@@ -175,7 +204,7 @@ function forgotPassword() {
         block
         :round="false"
         :loading="loading"
-        :disabled="!canSubmit"
+        :disabled="loading"
         @click="submit"
       >
         登录
@@ -192,7 +221,7 @@ function forgotPassword() {
       @getphonenumber="phoneLogin"
     >
       <view class="login-page__phone-icon">
-        <wd-icon name="mobile" size="54rpx" />
+        <TmsIcon name="mobile" size="54rpx" />
       </view>
       <text>手机一键登录</text>
     </wd-button>
@@ -327,7 +356,7 @@ function forgotPassword() {
   color: #172033;
   font-size: 50rpx;
   font-style: italic;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -337,7 +366,7 @@ function forgotPassword() {
   border-radius: 10rpx;
   background: #4f46e5;
   color: #fff;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -347,8 +376,8 @@ function forgotPassword() {
   display: block;
   margin-top: 64rpx;
   color: #4f46e5;
-  font-size: 19rpx;
-  font-weight: 800;
+  font-size: max(19rpx, 12px);
+  font-weight: 700;
 }
 
 .login-page__title {
@@ -356,7 +385,7 @@ function forgotPassword() {
   margin-top: 18rpx;
   color: #172033;
   font-size: 46rpx;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.18;
   letter-spacing: -1rpx;
 }
@@ -366,7 +395,7 @@ function forgotPassword() {
   max-width: 590rpx;
   margin-top: 18rpx;
   color: #748096;
-  font-size: 25rpx;
+  font-size: max(25rpx, 12px);
   font-weight: 500;
   line-height: 1.65;
 }
@@ -377,7 +406,7 @@ function forgotPassword() {
   align-items: center;
   gap: 28rpx;
   color: #4b5870;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 600;
 }
 
@@ -421,13 +450,13 @@ function forgotPassword() {
 .login-form__title {
   color: #172033;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .login-form__hint {
   margin-top: 8rpx;
   color: #748096;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .login-form__secure {
@@ -435,13 +464,14 @@ function forgotPassword() {
   border-radius: 999rpx;
   color: #059669;
   background: #ecfdf5;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   font-weight: 700;
 }
 
 .login-form__field {
   box-sizing: border-box;
   height: 98rpx;
+  min-height: 44px;
   padding: 0 28rpx;
   border: 1rpx solid #e8ecf3;
   border-radius: 16rpx;
@@ -449,12 +479,47 @@ function forgotPassword() {
   color: #9aa5b7;
 }
 
-.login-form__field + .login-form__field {
-  margin-top: 20rpx;
+.login-form__control + .login-form__control {
+  margin-top: 18rpx;
+}
+
+.login-form__label {
+  display: block;
+  margin-bottom: 10rpx;
+  color: #344054;
+  font-size: max(25rpx, 14px);
+  font-weight: 600;
+}
+
+.login-form__control--error .login-form__field {
+  border-color: #e5484d;
+}
+
+.login-form__field:focus-within {
+  border-color: var(--tms-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.13);
+}
+
+.login-form__control--error .login-form__field:focus-within {
+  border-color: #e5484d;
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.13);
+}
+
+.login-form__error {
+  display: block;
+  margin-top: 8rpx;
+  color: #b42328;
+  font-size: max(22rpx, 12px);
+  line-height: 1.4;
+}
+
+.login-form__error--server {
+  margin-top: 18rpx;
 }
 
 .login-form__field :deep(.wd-input__value) {
   height: 98rpx;
+  min-height: 44px;
 }
 
 .login-form__field :deep(.wd-input__prefix) {
@@ -469,8 +534,9 @@ function forgotPassword() {
 
 .login-form__field :deep(.wd-input__inner) {
   height: 98rpx;
+  min-height: 44px;
   color: #172033;
-  font-size: 28rpx;
+  font-size: max(28rpx, 12px);
   background: transparent;
 }
 
@@ -488,12 +554,12 @@ function forgotPassword() {
   align-items: center;
   justify-content: space-between;
   color: #172033;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
 }
 
 .login-form__remember {
   margin-bottom: 0;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .login-form__remember :deep(.wd-checkbox__shape) {
@@ -505,7 +571,7 @@ function forgotPassword() {
 
 .login-form__remember :deep(.wd-checkbox__label) {
   color: #172033;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
 }
 
 .login-form__link {
@@ -518,7 +584,7 @@ function forgotPassword() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   font-weight: 700;
   line-height: 1;
 }
@@ -570,7 +636,7 @@ function forgotPassword() {
   flex-direction: column;
   align-items: center;
   gap: 18rpx;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
 }
 
 .login-page__phone--pressed {
@@ -602,7 +668,7 @@ function forgotPassword() {
   margin-top: auto;
   padding-top: 30rpx;
   color: #9aa5b7;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1.6;
   text-align: center;
 }

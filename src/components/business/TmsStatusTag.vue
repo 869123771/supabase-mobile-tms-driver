@@ -31,7 +31,7 @@ const label = computed(
   align-items: center;
   justify-content: center;
   gap: 9rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;

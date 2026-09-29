@@ -29,6 +29,8 @@ function go(value: string | number) {
       custom-class="bottom-nav__bar"
       active-color="#4f46e5"
       inactive-color="#929daf"
+      role="navigation"
+      aria-label="主导航"
       @change="go($event.value)"
     >
       <wd-tabbar-item
@@ -39,13 +41,14 @@ function go(value: string | number) {
         :class="{ 'bottom-nav__item--active': item.key === props.active }"
         :aria-label="item.label"
         :aria-current="item.key === props.active ? 'page' : undefined"
-        role="tab"
-        :aria-selected="item.key === props.active"
+        role="link"
         tabindex="0"
+        @keydown.enter="go(item.key)"
+        @keydown.space.prevent="go(item.key)"
       >
         <view v-if="item.key === props.active" class="bottom-nav__active-pill" />
         <view class="bottom-nav__icon-box">
-          <TmsIcon :name="item.icon" :size="item.key === 'vehicle' ? '50rpx' : '42rpx'" :active="item.key === props.active" />
+          <TmsIcon :name="item.icon" size="44rpx" />
         </view>
         <text>{{ item.label }}</text>
       </wd-tabbar-item>
@@ -88,13 +91,14 @@ function go(value: string | number) {
   border-radius: 22rpx;
   background: transparent;
   min-width: 0;
+  min-height: 44px;
   color: #929daf;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2rpx;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   font-weight: 600;
   line-height: 1.1;
 }
@@ -103,13 +107,14 @@ function go(value: string | number) {
   border: 0;
 }
 
-:deep(.bottom-nav__item--pressed) {
+:deep(.bottom-nav__item--pressed),
+:deep(.bottom-nav__item:active) {
   background: rgba(79, 70, 229, 0.06);
 }
 
 :deep(.bottom-nav__item--active) {
   color: #4f46e5;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .bottom-nav__active-pill {
@@ -131,7 +136,6 @@ function go(value: string | number) {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s ease;
 }
 
 :deep(.bottom-nav__item--active) .bottom-nav__icon-box {
@@ -147,5 +151,14 @@ function go(value: string | number) {
 :deep(.bottom-nav__item):focus-visible {
   outline: 4rpx solid rgba(79, 70, 229, 0.36);
   outline-offset: -4rpx;
+}
+
+@media screen and (min-width: 520px) {
+  .bottom-nav {
+    left: 50%;
+    right: auto;
+    width: min(calc(100vw - 36rpx), 484px);
+    transform: translateX(-50%);
+  }
 }
 </style>

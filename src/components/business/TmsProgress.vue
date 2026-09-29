@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { WaybillStatus } from '@/api/types'
 import { getStatusStep } from '@/utils/format'
+import TmsIcon from './TmsIcon.vue'
 
 const props = defineProps<{
   status: WaybillStatus
@@ -40,7 +41,7 @@ const currentStep = computed(() => getStatusStep(props.status))
           'progress__dot--current': index === currentStep
         }"
       >
-        <text v-if="index < currentStep" class="progress__check">✓</text>
+        <TmsIcon v-if="index < currentStep" name="check" size="16rpx" class="progress__check" />
       </view>
     </view>
   </view>
@@ -59,7 +60,7 @@ const currentStep = computed(() => getStatusStep(props.status))
 
 .progress__label {
   color: #748096;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   text-align: center;
   line-height: 1.2;
 }
@@ -154,8 +155,5 @@ const currentStep = computed(() => getStatusStep(props.status))
 
 .progress__check {
   color: #fff;
-  font-size: 16rpx;
-  font-weight: 800;
-  line-height: 1;
 }
 </style>

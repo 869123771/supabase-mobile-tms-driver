@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Waybill } from '@/api/types'
+import { calculateDistanceMeters } from '@/utils/location'
 import { getWaybillRoutePoints } from '@/utils/route'
 import TmsIcon from './TmsIcon.vue'
 
@@ -44,9 +45,12 @@ const tileSize = 256
 const amapMapId = `route-amap-${Math.random().toString(36).slice(2)}`
 const routeReady = ref(false)
 const routeError = ref('')
+const routeRetryable = ref(true)
+const routeNotice = ref('')
 const nativeRoadPath = ref<RoutePoint[]>([])
 let amap: any
 let driving: any
+let amapLoadPromise: Promise<typeof window.AMap> | null = null
 let renderSeq = 0
 
 const points = computed(() =>
@@ -261,6 +265,21 @@ function onFallbackPointerUp(event: PointerEvent) {
 }
 
 type RouteCoordinate = [number, number]
+const MIN_DRIVING_SEGMENT_METERS = 30
+
+class RouteConfigurationError extends Error {}
+
+function getDrivingWaypoints(routePoints: RoutePoint[]) {
+  const waypoints: RoutePoint[] = []
+  for (const point of routePoints) {
+    const previous = waypoints[waypoints.length - 1]
+    const distance = previous
+      ? calculateDistanceMeters(previous, point.longitude, point.latitude)
+      : null
+    if (distance === null || distance >= MIN_DRIVING_SEGMENT_METERS) waypoints.push(point)
+  }
+  return waypoints
+}
 
 function withTimeout<T>(task: Promise<T>, message: string, timeout = 6000) {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -288,8 +307,8 @@ function parsePolyline(polyline?: string): RouteCoordinate[] {
 }
 
 function requestDrivingPath(start: RoutePoint, end: RoutePoint) {
-  const key = import.meta.env.VITE_AMAP_KEY
-  if (!key) return Promise.reject(new Error('地图路线服务未配置'))
+  const key = import.meta.env.VITE_AMAP_WEB_SERVICE_KEY
+  if (!key) return Promise.reject(new RouteConfigurationError('地图 Web 服务密钥未配置'))
 
   return new Promise<RouteCoordinate[]>((resolve, reject) => {
     uni.request({
@@ -337,36 +356,29 @@ async function requestDrivingPathThroughNodes(routePoints: RoutePoint[]) {
 // #ifdef H5
 function loadAmap() {
   if (window.AMap) return Promise.resolve(window.AMap)
+  if (amapLoadPromise) return amapLoadPromise
   const key = import.meta.env.VITE_AMAP_KEY
   const securityJsCode = import.meta.env.VITE_AMAP_SECURITY_JS_CODE
-  if (!key) return Promise.reject(new Error('请先配置 VITE_AMAP_KEY'))
+  if (!key) return Promise.reject(new RouteConfigurationError('地图 JS API 密钥未配置'))
   if (securityJsCode) {
     window._AMapSecurityConfig = { securityJsCode }
   }
 
-  const existingScript = document.querySelector<HTMLScriptElement>('script[data-tms-amap-driving]')
-  if (existingScript) {
-    return new Promise((resolve, reject) => {
-      if (window.AMap) {
-        resolve(window.AMap)
-        return
-      }
-      existingScript.addEventListener('load', () => resolve(window.AMap), { once: true })
-      existingScript.addEventListener('error', () => reject(new Error('高德地图加载失败')), {
-        once: true
-      })
-    })
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script')
+  const script = document.createElement('script')
+  amapLoadPromise = new Promise((resolve, reject) => {
     script.dataset.tmsAmapDriving = 'true'
     script.src = `https://webapi.amap.com/maps?v=2.0&key=${key}&plugin=AMap.Driving`
     script.async = true
-    script.onload = () => resolve(window.AMap)
+    script.onload = () =>
+      window.AMap ? resolve(window.AMap) : reject(new Error('高德地图加载失败'))
     script.onerror = () => reject(new Error('高德地图加载失败'))
     document.head.appendChild(script)
+  }).catch((error: unknown) => {
+    script.remove()
+    amapLoadPromise = null
+    throw error
   })
+  return amapLoadPromise
 }
 
 function ensureDrivingPlugin(AMap: any) {
@@ -402,8 +414,22 @@ function createRouteMarker(
   return new AMap.Marker({
     position: [point.longitude, point.latitude],
     offset: new AMap.Pixel(-15, -15),
-    content: `<div style="width:27px;height:27px;border:2px solid #fff;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;box-shadow:0 4px 11px rgba(31,41,55,.18);">${label}</div>`
+    content: `<div style="width:27px;height:27px;border:2px solid #fff;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 4px 11px rgba(31,41,55,.18);">${label}</div>`
   })
+}
+
+function drawRouteMarkers(AMap: any, routePoints: RoutePoint[], numberedNodes = false) {
+  amap.clearMap?.()
+  const nodeMarkers = routePoints.map((point, index) =>
+    createRouteMarker(
+      AMap,
+      point,
+      numberedNodes ? String(index + 1) : index === 0 ? '起' : '终',
+      index === 0 ? 'start' : index === routePoints.length - 1 ? 'end' : 'node'
+    )
+  )
+  amap.add(nodeMarkers)
+  amap.setFitView(nodeMarkers, false, [54, 34, 42, 34], 10)
 }
 
 function drawDrivingPath(
@@ -470,6 +496,31 @@ function searchDrivingPath(AMap: any, start: RoutePoint, end: RoutePoint) {
   })
 }
 
+async function searchDrivingPathWithFallback(
+  AMap: any,
+  start: RoutePoint,
+  end: RoutePoint,
+  timeout: number
+) {
+  try {
+    return await withTimeout(searchDrivingPath(AMap, start, end), '驾车路线规划超时', timeout)
+  } catch (error) {
+    if (!import.meta.env.VITE_AMAP_WEB_SERVICE_KEY) throw error
+    return requestDrivingPath(start, end)
+  }
+}
+
+function planDrivingSegment(
+  AMap: any,
+  start: RoutePoint,
+  end: RoutePoint,
+  hasDriving: boolean
+) {
+  if (hasDriving) return searchDrivingPathWithFallback(AMap, start, end, 6000)
+  if (import.meta.env.VITE_AMAP_WEB_SERVICE_KEY) return requestDrivingPath(start, end)
+  return Promise.reject(new Error('地图驾车插件不可用'))
+}
+
 async function planDrivingPathThroughNodes(
   AMap: any,
   routePoints: RoutePoint[],
@@ -480,11 +531,7 @@ async function planDrivingPathThroughNodes(
     const start = routePoints[index]
     const end = routePoints[index + 1]
     if (!start || !end) continue
-    const segment = hasDriving
-      ? await withTimeout(searchDrivingPath(AMap, start, end), '节点间路线规划超时', 4500).catch(
-          () => requestDrivingPath(start, end)
-        )
-      : await requestDrivingPath(start, end)
+    const segment = await planDrivingSegment(AMap, start, end, hasDriving)
     path.push(...(path.length ? segment.slice(1) : segment))
   }
   if (path.length < 2) throw new Error('路线规划结果为空')
@@ -498,6 +545,8 @@ async function renderDrivingRoute() {
   if (points.value.length < 2) return
   routeReady.value = false
   routeError.value = ''
+  routeRetryable.value = true
+  routeNotice.value = ''
 
   try {
     const container = await waitForMapContainer()
@@ -532,24 +581,31 @@ async function renderDrivingRoute() {
       () => false
     )
     const routePoints = props.routeMode === 'nodes' ? points.value : [start, end]
+    drawRouteMarkers(AMap, routePoints, props.routeMode === 'nodes')
+    const waypoints = getDrivingWaypoints(routePoints)
+    if (waypoints.length < 2) {
+      routeNotice.value = '业务节点位于同一地点，无需规划车行路线'
+      routeReady.value = true
+      return
+    }
     const path =
       props.routeMode === 'nodes'
         ? await withTimeout(
-            planDrivingPathThroughNodes(AMap, routePoints, hasDriving),
+            planDrivingPathThroughNodes(AMap, waypoints, hasDriving),
             '途经点车行路线规划超时',
             15000
           )
-        : hasDriving
-          ? await withTimeout(searchDrivingPath(AMap, start, end), '驾车路线规划超时', 6000).catch(
-              () => requestDrivingPath(start, end)
-            )
-          : await requestDrivingPath(start, end)
+        : await planDrivingSegment(AMap, start, end, hasDriving)
     if (seq !== renderSeq) return
     drawDrivingPath(AMap, path, routePoints, props.routeMode === 'nodes')
     routeReady.value = true
   } catch (error) {
+    if (seq !== renderSeq) return
     console.warn('render driving route failed', error)
-    routeError.value = '车行路线暂时无法规划，请稍后重试'
+    routeRetryable.value = !(error instanceof RouteConfigurationError)
+    routeError.value = routeRetryable.value
+      ? '车行路线暂时无法规划，请稍后重试'
+      : '地图路线服务未配置，请联系管理员'
   }
 }
 // #endif
@@ -559,6 +615,8 @@ async function renderNativeDrivingRoute() {
   const seq = (renderSeq += 1)
   routeReady.value = false
   routeError.value = ''
+  routeRetryable.value = true
+  routeNotice.value = ''
   nativeRoadPath.value = []
   if (points.value.length < 2) return
   try {
@@ -568,8 +626,14 @@ async function renderNativeDrivingRoute() {
         : [points.value[0], points.value[points.value.length - 1]].filter(
             (point): point is RoutePoint => Boolean(point)
           )
+    const waypoints = getDrivingWaypoints(routePoints)
+    if (waypoints.length < 2) {
+      routeNotice.value = '业务节点位于同一地点，无需规划车行路线'
+      routeReady.value = true
+      return
+    }
     const path = await withTimeout(
-      requestDrivingPathThroughNodes(routePoints),
+      requestDrivingPathThroughNodes(waypoints),
       '车行路线规划超时',
       15000
     )
@@ -577,8 +641,12 @@ async function renderNativeDrivingRoute() {
     nativeRoadPath.value = path.map(([longitude, latitude]) => ({ longitude, latitude }))
     routeReady.value = true
   } catch (error) {
+    if (seq !== renderSeq) return
     console.warn('render native driving route failed', error)
-    routeError.value = '车行路线暂时无法规划，请稍后重试'
+    routeRetryable.value = !(error instanceof RouteConfigurationError)
+    routeError.value = routeRetryable.value
+      ? '车行路线暂时无法规划，请稍后重试'
+      : '地图路线服务未配置，请联系管理员'
   }
 }
 // #endif
@@ -592,6 +660,15 @@ function updateMapSize() {
   const rect = element?.getBoundingClientRect?.()
   if (!rect?.width || !rect?.height) return
   mapSize.value = { width: rect.width, height: rect.height }
+}
+
+function retryRoute() {
+  // #ifdef H5
+  void renderDrivingRoute()
+  // #endif
+  // #ifndef H5
+  void renderNativeDrivingRoute()
+  // #endif
 }
 
 onMounted(() => {
@@ -610,6 +687,8 @@ watch(points, () => {
   resetFallbackView()
   routeReady.value = false
   routeError.value = ''
+  routeRetryable.value = true
+  routeNotice.value = ''
   void renderDrivingRoute()
 })
 // #endif
@@ -640,7 +719,7 @@ onBeforeUnmount(() => {
       'route-map--embedded': embedded
     }"
   >
-    <button v-if="!embedded" class="route-map__back" hover-class="none" @tap="back">
+    <button v-if="!embedded" class="route-map__back" aria-label="返回" hover-class="none" @tap="back">
       <TmsIcon name="back" size="38rpx" />
     </button>
 
@@ -668,12 +747,15 @@ onBeforeUnmount(() => {
     <!-- #endif -->
 
     <view
-      v-if="points.length >= 2 && !routeReady"
+      v-if="points.length >= 2 && (!routeReady || routeNotice)"
       class="route-map__planning"
       :class="{ 'route-map__planning--error': routeError }"
       role="status"
     >
-      {{ routeError || '正在规划车行路线…' }}
+      <text class="route-map__planning-label">{{ routeNotice || routeError || '正在规划车行路线…' }}</text>
+      <button v-if="routeError && routeRetryable" class="route-map__retry" hover-class="none" @tap="retryRoute">
+        重试
+      </button>
     </view>
 
     <view v-if="points.length < 2" class="route-map__empty">
@@ -725,8 +807,11 @@ onBeforeUnmount(() => {
   border-radius: 999rpx;
   color: #667085;
   background: rgba(255, 255, 255, 0.94);
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
   box-shadow: 0 8rpx 22rpx rgba(31, 41, 55, 0.08);
 }
 
@@ -738,6 +823,34 @@ onBeforeUnmount(() => {
   white-space: normal;
 }
 
+.route-map__planning-label {
+  min-width: 0;
+}
+
+.route-map__retry {
+  flex: 0 0 auto;
+  min-width: 88rpx;
+  min-height: 88rpx;
+  margin: 0;
+  padding: 0 16rpx;
+  border: 0;
+  border-radius: 999rpx;
+  color: #4f46e5;
+  background: #fff;
+  font-size: max(22rpx, 12px);
+  font-weight: 700;
+  line-height: 88rpx;
+}
+
+.route-map__retry::after {
+  border: 0;
+}
+
+.route-map__retry:focus-visible {
+  outline: 3rpx solid #4f46e5;
+  outline-offset: 3rpx;
+}
+
 :deep(.route-map-amap-marker) {
   width: 54rpx;
   height: 54rpx;
@@ -747,8 +860,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24rpx;
-  font-weight: 900;
+  font-size: max(24rpx, 12px);
+  font-weight: 700;
   box-shadow: 0 8rpx 22rpx rgba(31, 41, 55, 0.18);
 }
 
@@ -794,8 +907,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22rpx;
-  font-weight: 800;
+  font-size: max(22rpx, 12px);
+  font-weight: 700;
   transform: translate(-50%, -50%);
   box-shadow: 0 8rpx 20rpx rgba(31, 41, 55, 0.16);
 }
@@ -817,8 +930,8 @@ onBeforeUnmount(() => {
   left: 28rpx;
   top: calc(34rpx + env(safe-area-inset-top));
   z-index: 3;
-  width: 68rpx;
-  height: 68rpx;
+  width: 88rpx;
+  height: 88rpx;
   padding: 0;
   border-radius: 50%;
   color: #344054;
@@ -831,6 +944,11 @@ onBeforeUnmount(() => {
 
 .route-map__back::after {
   border: 0;
+}
+
+.route-map__back:focus-visible {
+  outline: 3rpx solid #4f46e5;
+  outline-offset: 3rpx;
 }
 
 .route-map__empty {
@@ -864,12 +982,12 @@ onBeforeUnmount(() => {
 
 .route-map__empty-title {
   color: #344054;
-  font-size: 25rpx;
-  font-weight: 800;
+  font-size: max(25rpx, 12px);
+  font-weight: 700;
 }
 
 .route-map__empty-hint {
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   line-height: 1.45;
 }
 </style>

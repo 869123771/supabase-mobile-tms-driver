@@ -272,7 +272,7 @@ function open() {
 .route-card__section-title {
   color: #172033;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -292,7 +292,7 @@ function open() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 700;
   line-height: 1;
 }
@@ -324,13 +324,11 @@ function open() {
   align-items: center;
   gap: 14rpx;
   font-size: 31rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
-.route-card__route :deep(.tms-icon),
-.route-card__route :deep(.tms-icon__svg),
-.route-card__route :deep(.wd-icon) {
+.route-card__route :deep(.tms-icon) {
   flex: 0 0 auto;
   color: #4f46e5;
 }
@@ -348,7 +346,7 @@ function open() {
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx 22rpx;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   line-height: 1.35;
 }
 
@@ -395,14 +393,14 @@ function open() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 21rpx;
-  font-weight: 800;
+  font-size: max(21rpx, 12px);
+  font-weight: 700;
 }
 
 .route-card__dot text {
   color: #fff;
-  font-size: 20rpx;
-  font-weight: 800;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
 }
 
 .route-card__dot--start {
@@ -425,7 +423,7 @@ function open() {
 
 .route-card__address {
   color: #4b5870;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -433,7 +431,7 @@ function open() {
 
 .route-card__time {
   color: #748096;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1.3;
 }
 
@@ -458,7 +456,7 @@ function open() {
   align-items: center;
   justify-content: center;
   gap: 1rpx;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1;
 }
 
@@ -484,27 +482,21 @@ function open() {
   justify-content: center;
 }
 
-.route-card__nav-icon :deep(.uni-icons) {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .route-card__nav-label {
   color: #526174;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   font-weight: 600;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .route-card__nav-button :deep(.wd-button__text) {
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1;
   display: flex;
   flex-direction: column;
   gap: 4rpx;
+  white-space: nowrap;
 }
 
 .route-card__meta {
@@ -525,7 +517,7 @@ function open() {
   display: flex;
   align-items: center;
   gap: 6rpx;
-  font-size: 25rpx;
+  font-size: max(25rpx, 12px);
   font-weight: 600;
   line-height: 1.3;
 }
@@ -585,7 +577,7 @@ function open() {
 }
 
 .route-card__meta--compact .route-card__meta-item {
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
 }
 
 .route-card__meta--compact .route-card__meta-item:first-child {

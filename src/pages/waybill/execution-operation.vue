@@ -58,7 +58,7 @@ const title = computed(() =>
       : "确认回场",
 );
 const kicker = computed(() =>
-  isDeparture.value ? "DEPARTURE RECORD" : "RETURN & CLOSE",
+  isDeparture.value ? "出车记录" : "回场记录",
 );
 const fieldTitle = computed(() =>
   isDeparture.value ? "出车里程（公里）" : "收车里程（公里）",
@@ -268,7 +268,7 @@ function showError(error: unknown, fallback: string) {
             'execution-page__notice--warning': isRepairingReturnArchive,
           }"
         >
-          <wd-icon name="info-circle" size="32rpx" />
+          <TmsIcon name="info" size="32rpx" />
           <text>{{
             isDeparture
               ? "出车里程会和收车里程配对，自动计算本次行驶公里数。发车时间支持按实际情况补录。"
@@ -361,7 +361,7 @@ function showError(error: unknown, fallback: string) {
                   size="30rpx"
                 />
                 <view v-else class="evidence-grid__add-content">
-                  <wd-icon name="camera" size="42rpx" />
+                  <TmsIcon name="camera" size="42rpx" />
                   <text>拍照上传</text>
                 </view>
               </button>
@@ -375,7 +375,7 @@ function showError(error: unknown, fallback: string) {
             <wd-textarea
               v-model="form.remark"
               custom-class="tms-form-textarea"
-              maxlength="300"
+              :maxlength="300"
               placeholder="可填写现场说明"
             />
             <text class="field-block__count">{{ form.remark.length }}/300</text>
@@ -448,19 +448,19 @@ function showError(error: unknown, fallback: string) {
   display: block;
 }
 .execution-page__kicker {
-  font-size: 20rpx;
-  font-weight: 800;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
   letter-spacing: 2rpx;
   opacity: 0.8;
 }
 .execution-page__title {
   margin-top: 5rpx;
   font-size: 32rpx;
-  font-weight: 900;
+  font-weight: 700;
 }
 .execution-page__subtitle {
   margin-top: 7rpx;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   opacity: 0.86;
 }
 .execution-page__scroll {
@@ -478,7 +478,7 @@ function showError(error: unknown, fallback: string) {
   border-radius: 16rpx;
   display: flex;
   gap: 12rpx;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   line-height: 1.5;
 }
 .execution-page__notice--warning {
@@ -507,8 +507,8 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 23rpx;
-  font-weight: 900;
+  font-size: max(23rpx, 12px);
+  font-weight: 700;
 }
 .form-card__heading strong,
 .form-card__heading text {
@@ -516,12 +516,12 @@ function showError(error: unknown, fallback: string) {
 }
 .form-card__heading strong {
   color: var(--tms-text);
-  font-size: 27rpx;
+  font-size: max(27rpx, 12px);
 }
 .form-card__heading text {
   margin-top: 4rpx;
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 .field-block + .field-block {
   margin-top: 34rpx;
@@ -532,8 +532,8 @@ function showError(error: unknown, fallback: string) {
 .field-block__label {
   display: block;
   color: var(--tms-text);
-  font-size: 27rpx;
-  font-weight: 800;
+  font-size: max(27rpx, 14px);
+  font-weight: 700;
 }
 .field-block__label .required-mark {
   color: #ef4d57;
@@ -542,13 +542,13 @@ function showError(error: unknown, fallback: string) {
   display: block;
   margin-top: 8rpx;
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
 }
 .field-block__quota {
   display: block;
   margin-top: 10rpx;
   color: #8b95a8;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   text-align: right;
 }
 .mileage-input {
@@ -567,12 +567,12 @@ function showError(error: unknown, fallback: string) {
   width: 100%;
 }
 .mileage-input :deep(.wd-input__inner) {
-  font-size: 28rpx;
+  font-size: max(28rpx, 12px);
   font-weight: 700;
 }
 .mileage-input text {
   color: var(--tms-muted);
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 .evidence-grid {
   margin-top: 18rpx;
@@ -603,7 +603,7 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1;
 }
 .evidence-grid__add::after {
@@ -617,10 +617,6 @@ function showError(error: unknown, fallback: string) {
   gap: 8rpx;
   line-height: 1;
 }
-.evidence-grid__add-content :deep(.wd-icon) {
-  display: flex;
-  line-height: 1;
-}
 .evidence-grid__add-content text {
   display: block;
   line-height: 1.2;
@@ -630,7 +626,7 @@ function showError(error: unknown, fallback: string) {
   right: 16rpx;
   bottom: 14rpx;
   color: #9aa2b1;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 .execution-footer {
   flex: 0 0 auto;
@@ -649,12 +645,12 @@ function showError(error: unknown, fallback: string) {
 }
 .execution-footer text {
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
 }
 .execution-footer strong {
   margin-top: 4rpx;
   color: var(--tms-text);
-  font-size: 27rpx;
+  font-size: max(27rpx, 12px);
 }
 .execution-footer :deep(.wd-button) {
   flex: 0 0 330rpx;

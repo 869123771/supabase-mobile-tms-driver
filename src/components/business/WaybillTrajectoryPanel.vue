@@ -130,7 +130,7 @@ const traceDescription = computed(() => {
   <view class="trajectory-panel card">
     <view class="trajectory-panel__head">
       <view>
-        <text class="trajectory-panel__eyebrow">TRACE & LOCATION</text>
+        <text class="trajectory-panel__eyebrow">轨迹信息</text>
         <text class="trajectory-panel__title">节点轨迹与定位</text>
       </view>
       <view class="trajectory-panel__count">{{ traceNodes.length }} 个节点</view>
@@ -159,8 +159,14 @@ const traceDescription = computed(() => {
         embedded
       />
       <view class="trajectory-panel__legend">
-        <text><i class="is-route" />车行路线</text>
-        <text><i class="is-node" />业务节点</text>
+        <view class="trajectory-panel__legend-item">
+          <view class="trajectory-panel__legend-icon is-route" aria-hidden="true" />
+          <text>车行路线</text>
+        </view>
+        <view class="trajectory-panel__legend-item">
+          <view class="trajectory-panel__legend-icon is-node" aria-hidden="true" />
+          <text>业务节点</text>
+        </view>
       </view>
     </view>
 
@@ -226,8 +232,8 @@ const traceDescription = computed(() => {
 
 .trajectory-panel__eyebrow {
   color: #5b55f5;
-  font-size: 19rpx;
-  font-weight: 800;
+  font-size: max(19rpx, 12px);
+  font-weight: 700;
   letter-spacing: 2rpx;
 }
 
@@ -235,7 +241,7 @@ const traceDescription = computed(() => {
   margin-top: 7rpx;
   color: #172033;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .trajectory-panel__count {
@@ -244,7 +250,7 @@ const traceDescription = computed(() => {
   color: #4f46e5;
   background: #eef2ff;
   border-radius: 999rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 700;
 }
 
@@ -270,14 +276,14 @@ const traceDescription = computed(() => {
 
 .trajectory-panel__summary strong {
   color: #172033;
-  font-size: 28rpx;
-  font-weight: 800;
+  font-size: max(28rpx, 12px);
+  font-weight: 700;
 }
 
 .trajectory-panel__summary text {
   margin-top: 4rpx;
   color: #748096;
-  font-size: 19rpx;
+  font-size: max(19rpx, 12px);
 }
 
 .trajectory-panel__map {
@@ -300,21 +306,23 @@ const traceDescription = computed(() => {
   color: #5f6b80;
   background: rgba(255, 255, 255, 0.94);
   border-radius: 999rpx;
-  font-size: 18rpx;
+  font-size: max(22rpx, 12px);
   box-shadow: 0 6rpx 18rpx rgba(31, 41, 55, 0.1);
 }
 
-.trajectory-panel__legend text {
+.trajectory-panel__legend-item {
   display: flex;
   align-items: center;
   gap: 6rpx;
+  white-space: nowrap;
 }
 
-.trajectory-panel__legend i {
+.trajectory-panel__legend-icon {
   box-sizing: border-box;
   flex: 0 0 auto;
-  width: 12rpx;
-  height: 12rpx;
+  display: block;
+  width: 16rpx;
+  height: 16rpx;
 }
 
 .trajectory-panel__legend .is-route {
@@ -339,7 +347,7 @@ const traceDescription = computed(() => {
   background: #f3f6ff;
   border-left: 5rpx solid #5b55f5;
   border-radius: 13rpx;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1.55;
 }
 
@@ -378,8 +386,8 @@ const traceDescription = computed(() => {
   border-radius: 50%;
   color: #fff;
   background: #5b55f5;
-  font-size: 18rpx;
-  font-weight: 800;
+  font-size: max(18rpx, 12px);
+  font-weight: 700;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -400,14 +408,14 @@ const traceDescription = computed(() => {
 .trace-list__title-row strong {
   min-width: 0;
   color: #1c2738;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   overflow-wrap: anywhere;
 }
 
 .trace-list__title-row text {
   flex: 0 0 auto;
   color: #66738a;
-  font-size: 19rpx;
+  font-size: max(19rpx, 12px);
 }
 
 .trace-list__time,
@@ -416,7 +424,7 @@ const traceDescription = computed(() => {
   display: block;
   margin-top: 6rpx;
   color: #6f7c91;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -424,7 +432,7 @@ const traceDescription = computed(() => {
 .trace-list__coordinate {
   color: #929bad;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 18rpx;
+  font-size: max(18rpx, 12px);
 }
 
 .trajectory-panel__empty {
@@ -439,10 +447,10 @@ const traceDescription = computed(() => {
 
 .trajectory-panel__empty strong {
   color: #435067;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .trajectory-panel__empty text {
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
 }
 </style>

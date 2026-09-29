@@ -113,7 +113,7 @@ function formatLocationAddress(address: unknown) {
 }
 
 async function reverseGeocodeAmap(longitude: number, latitude: number) {
-  const key = import.meta.env.VITE_AMAP_KEY
+  const key = import.meta.env.VITE_AMAP_WEB_SERVICE_KEY
   if (!key) return undefined
   try {
     const params = new URLSearchParams({

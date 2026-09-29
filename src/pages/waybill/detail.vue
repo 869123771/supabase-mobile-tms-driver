@@ -422,18 +422,18 @@ function viewReceipt(current?: string) {
         >
           <view v-if="!isPending" class="detail-actions">
             <view v-if="isAccepted" class="detail-actions__helper">
-              <wd-icon name="info-circle" size="28rpx" />
+              <TmsIcon name="info" size="28rpx" />
               <text>到达装货地后先定位打卡，再补齐重量、现场照片和磅单</text>
             </view>
             <view
               v-else-if="isLoading"
               class="detail-actions__helper detail-actions__helper--success"
             >
-              <wd-icon name="check-circle" size="28rpx" />
+              <TmsIcon name="success" size="28rpx" />
               <text>提货凭证已保存，请确认车辆已发车</text>
             </view>
             <view v-else-if="isUnloading" class="detail-actions__helper">
-              <wd-icon name="info-circle" size="28rpx" />
+              <TmsIcon name="info" size="28rpx" />
               <text>{{
                 executionContext?.unloadingStatus === "completed"
                   ? "卸货资料已完成，可以办理签收"
@@ -447,8 +447,8 @@ function viewReceipt(current?: string) {
                 'detail-actions__helper--success': isSigned && !isCompleted,
               }"
             >
-              <wd-icon
-                :name="isCompleted ? 'warning' : 'check-circle'"
+              <TmsIcon
+                :name="isCompleted ? 'warning' : 'success'"
                 size="28rpx"
               />
               <text>{{
@@ -476,7 +476,7 @@ function viewReceipt(current?: string) {
                     color="#dc2626"
                     size="28rpx"
                   />
-                  <wd-icon v-else name="close" size="28rpx" />
+                  <TmsIcon v-else name="close" size="28rpx" />
                   <text>{{
                     activeAction === "cancel" ? "正在取消" : "取消运单"
                   }}</text>
@@ -492,7 +492,7 @@ function viewReceipt(current?: string) {
                 @click="openCargoOperation('loading')"
               >
                 <view class="detail-actions__button-content">
-                  <wd-icon name="location" size="30rpx" />
+                  <TmsIcon name="location" size="30rpx" />
                   <text>装货打卡</text>
                 </view>
               </wd-button>
@@ -520,7 +520,7 @@ function viewReceipt(current?: string) {
                 @click="openCargoOperation('unloading', 'arrival')"
               >
                 <view class="detail-actions__button-content">
-                  <wd-icon name="location" size="30rpx" />
+                  <TmsIcon name="location" size="30rpx" />
                   <text>到达打卡</text>
                 </view>
               </wd-button>
@@ -538,11 +538,11 @@ function viewReceipt(current?: string) {
                 "
               >
                 <view class="detail-actions__button-content">
-                  <wd-icon
+                  <TmsIcon
                     :name="
                       executionContext?.unloadingStatus === 'completed'
-                        ? 'check-circle'
-                        : 'upload'
+                        ? 'success'
+                        : 'box'
                     "
                     size="30rpx"
                   />
@@ -563,7 +563,7 @@ function viewReceipt(current?: string) {
                 @click="openExecutionOperation('completion')"
               >
                 <view class="detail-actions__button-content">
-                  <wd-icon name="check" size="30rpx" />
+                  <TmsIcon name="check" size="30rpx" />
                   <text>{{
                     isCompleted ? "补录收车信息" : "录入收车信息"
                   }}</text>
@@ -579,7 +579,7 @@ function viewReceipt(current?: string) {
                 @click="viewReceipt()"
               >
                 <view class="detail-actions__button-content">
-                  <wd-icon name="eye" size="30rpx" />
+                  <TmsIcon name="eye" size="30rpx" />
                   <text>查看运输单据</text>
                 </view>
               </wd-button>
@@ -594,7 +594,7 @@ function viewReceipt(current?: string) {
               @click="openExpense"
             >
               <view class="detail-actions__button-content">
-                <wd-icon name="plus-circle" size="30rpx" />
+                <TmsIcon name="expense" size="30rpx" />
                 <text>费用上报</text>
               </view>
             </wd-button>
@@ -606,11 +606,19 @@ function viewReceipt(current?: string) {
           :options="detailTabOptions"
           theme="outline"
           custom-class="detail-tabs card"
+          role="tablist"
           aria-label="运单详情视图"
           @change="setDetailTab"
         >
           <template #label="{ option }">
-            <view class="detail-tabs__item" role="tab" :aria-selected="activeDetailTab === option.value">
+            <view
+              class="detail-tabs__item"
+              role="tab"
+              :aria-selected="activeDetailTab === option.value"
+              tabindex="0"
+              @keydown.enter="setDetailTab(option)"
+              @keydown.space.prevent="setDetailTab(option)"
+            >
               <TmsIcon :name="option.value === 'tracking' ? 'document' : 'location'" size="28rpx" />
               <text>{{ option.payload.label }}</text>
               <i v-if="option.value === 'tracking' && waybill.events.length" class="detail-tabs__count">
@@ -686,7 +694,7 @@ function viewReceipt(current?: string) {
                 custom-style="width: 88rpx; min-width: 44px; height: 88rpx; min-height: 44px; padding: 0; border-radius: 50%; background: #25bf75; color: #fff;"
                 @click="callPhone(row.phone)"
               >
-                <wd-icon name="phone" size="38rpx" />
+                <TmsIcon name="phone" size="38rpx" />
               </wd-button>
             </view>
           </view>
@@ -760,7 +768,7 @@ function viewReceipt(current?: string) {
             color="#ffffff"
             size="30rpx"
           />
-          <wd-icon v-else name="check-circle" size="32rpx" />
+          <TmsIcon v-else name="success" size="32rpx" />
           <text>{{
             activeAction === "accept" ? "正在接受任务" : "确认接受任务"
           }}</text>
@@ -816,14 +824,14 @@ function viewReceipt(current?: string) {
 .detail-page__status-title {
   display: block;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 .detail-page__hint {
   display: block;
   margin-top: 12rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 600;
   opacity: 0.72;
 }
@@ -867,7 +875,7 @@ function viewReceipt(current?: string) {
   color: #657188;
   background: transparent;
   border-radius: 16rpx;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   font-weight: 700;
   line-height: 1;
   touch-action: manipulation;
@@ -878,6 +886,14 @@ function viewReceipt(current?: string) {
   align-items: center;
   justify-content: center;
   gap: 9rpx;
+  width: 100%;
+  min-height: var(--tms-control-height);
+}
+
+.detail-tabs__item:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -4px;
+  border-radius: 16rpx;
 }
 
 .detail-tabs__item > :deep(.tms-icon) {
@@ -917,7 +933,7 @@ function viewReceipt(current?: string) {
   color: #fff;
   background: #ef5350;
   border-radius: 999rpx;
-  font-size: 18rpx;
+  font-size: max(18rpx, 12px);
   font-style: normal;
   line-height: 34rpx;
   text-align: center;
@@ -928,7 +944,7 @@ function viewReceipt(current?: string) {
   margin-top: 7rpx;
   color: #172033;
   font-size: 32rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .detail-actions {
@@ -949,7 +965,7 @@ function viewReceipt(current?: string) {
   display: flex;
   align-items: center;
   gap: 10rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 600;
   line-height: 1.4;
 }
@@ -982,7 +998,7 @@ function viewReceipt(current?: string) {
   max-width: 260rpx;
   overflow: hidden;
   color: #748096;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1051,7 +1067,7 @@ function viewReceipt(current?: string) {
   align-items: center;
   justify-content: space-between;
   gap: 28rpx;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
 }
 
 .info-list__row text:last-child {
@@ -1088,7 +1104,7 @@ function viewReceipt(current?: string) {
 
 .station-list__label {
   color: #748096;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
   line-height: 1.2;
 }
 
@@ -1098,7 +1114,7 @@ function viewReceipt(current?: string) {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
   font-weight: 700;
 }
 
@@ -1121,13 +1137,13 @@ function viewReceipt(current?: string) {
 
 .station-list__phone {
   color: #172033;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 .station-list__address {
   color: #748096;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   font-weight: 600;
   line-height: 1.4;
   white-space: normal;
@@ -1201,13 +1217,13 @@ function viewReceipt(current?: string) {
 .detail-page__state-title {
   color: #172033;
   font-size: 29rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .detail-page__state-hint {
   max-width: 470rpx;
   color: #748096;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   line-height: 1.55;
 }
 
@@ -1228,13 +1244,13 @@ function viewReceipt(current?: string) {
 
 .pending-footer__label {
   color: #172033;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
 }
 
 .pending-footer__money {
   color: #4f46e5;
   font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .pending-footer__button {

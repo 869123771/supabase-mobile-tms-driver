@@ -66,6 +66,8 @@
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "TMS司机端",
     "navigationBarBackgroundColor": "#ffffff",
-    "backgroundColor": "#f4f6fb"
+    "backgroundColor": "#f4f6fb",
+    "rpxCalcMaxDeviceWidth": 430,
+    "rpxCalcBaseDeviceWidth": 375
   }
 }

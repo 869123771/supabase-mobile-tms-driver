@@ -6,10 +6,10 @@ import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
 import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
 import TmsTopBar from '@/components/business/TmsTopBar.vue'
+import TmsVehicleVisual from '@/components/business/TmsVehicleVisual.vue'
 import { getUserFacingErrorMessage } from '@/api/supabase'
 import { useDictionaryStore } from '@/stores/dictionary'
 import { useProfileStore } from '@/stores/profile'
-import { FALLBACK_TRUCK_IMAGE } from '@/utils/assets'
 import { formatMeters, normalizeVehicleLoadTon } from '@/utils/format'
 
 const profile = useProfileStore()
@@ -93,11 +93,9 @@ function preview(url?: string) {
           <text>档案同步</text>
         </view>
         <view class="vehicle-card__body">
-          <image
+          <TmsVehicleVisual
             class="vehicle-card__image"
-            :src="vehicle?.vehiclePhotoUrl || FALLBACK_TRUCK_IMAGE"
-            mode="aspectFill"
-            aria-label="当前绑定车辆照片"
+            :photo-url="vehicle?.vehiclePhotoUrl"
           />
           <view class="vehicle-card__info">
             <view class="vehicle-card__plate-row">
@@ -154,7 +152,7 @@ function preview(url?: string) {
               <text class="doc-card__name">行驶证</text>
               <text class="doc-card__status">{{ vehicle?.drivingLicenseFrontUrl ? '已上传' : '待上传' }}</text>
             </view>
-            <wd-icon name="right" size="28rpx" />
+            <TmsIcon name="arrow-right" size="28rpx" />
           </button>
           <button
             class="doc-card__item"
@@ -162,12 +160,12 @@ function preview(url?: string) {
             hover-class="doc-card__item--pressed"
             @tap="preview(vehicle?.operationLicenseUrl)"
           >
-            <view class="doc-card__icon"><TmsIcon name="vehicle" size="48rpx" /></view>
+            <view class="doc-card__icon"><TmsIcon name="receipt" size="46rpx" /></view>
             <view>
               <text class="doc-card__name">运输证</text>
               <text class="doc-card__status">{{ vehicle?.operationLicenseUrl ? '已上传' : '待上传' }}</text>
             </view>
-            <wd-icon name="right" size="28rpx" />
+            <TmsIcon name="arrow-right" size="28rpx" />
           </button>
         </view>
       </view>
@@ -212,7 +210,7 @@ function preview(url?: string) {
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1.4;
 }
 
@@ -229,8 +227,8 @@ function preview(url?: string) {
   border: 0;
   color: var(--tms-primary);
   background: transparent;
-  font-size: 23rpx;
-  font-weight: 800;
+  font-size: max(23rpx, 12px);
+  font-weight: 700;
   line-height: 88rpx;
 }
 
@@ -254,7 +252,7 @@ function preview(url?: string) {
   align-items: center;
   justify-content: space-between;
   gap: 20rpx;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   font-weight: 700;
 }
 
@@ -274,7 +272,6 @@ function preview(url?: string) {
   width: 116rpx;
   height: 94rpx;
   border-radius: 18rpx;
-  background: #f7f9fc url('/static/truck.svg') center / cover no-repeat;
   box-shadow: 0 10rpx 24rpx rgba(40, 52, 80, 0.1);
 }
 
@@ -300,14 +297,14 @@ function preview(url?: string) {
   white-space: nowrap;
   color: #172033;
   font-size: 32rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .vehicle-card__model {
   display: -webkit-box;
   overflow: hidden;
   color: #9aa5b7;
-  font-size: 25rpx;
+  font-size: max(25rpx, 12px);
   line-height: 1.4;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -322,7 +319,7 @@ function preview(url?: string) {
   display: flex;
   align-items: center;
   gap: 9rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 700;
 }
 
@@ -338,7 +335,7 @@ function preview(url?: string) {
   margin-top: 7rpx;
   color: #172033;
   font-size: 32rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .section-head {
@@ -351,7 +348,7 @@ function preview(url?: string) {
 .section-head__hint {
   padding-bottom: 2rpx;
   color: #748096;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .status-card__row {
@@ -361,7 +358,7 @@ function preview(url?: string) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 28rpx;
+  font-size: max(28rpx, 12px);
 }
 
 .status-card__row:first-of-type {
@@ -397,7 +394,7 @@ function preview(url?: string) {
   flex-direction: row;
   align-items: center;
   gap: 18rpx;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
   line-height: 1.2;
   text-align: left;
 }
@@ -437,14 +434,14 @@ function preview(url?: string) {
 
 .doc-card__name {
   color: #172033;
-  font-size: 26rpx;
-  font-weight: 800;
+  font-size: max(26rpx, 12px);
+  font-weight: 700;
 }
 
 .doc-card__status {
   margin-top: 8rpx;
   color: #748096;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 600;
 }
 </style>

@@ -109,7 +109,7 @@ function back() {
 
 .top-bar__eyebrow {
   margin-bottom: 4rpx;
-  font-size: 20rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 600;
   opacity: 0.76;
 }
@@ -121,7 +121,7 @@ function back() {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 34rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -131,7 +131,7 @@ function back() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 20rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 600;
   opacity: 0.7;
 }

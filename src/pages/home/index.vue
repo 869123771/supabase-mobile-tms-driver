@@ -6,10 +6,10 @@ import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
 import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
 import TmsRouteCard from '@/components/business/TmsRouteCard.vue'
+import TmsVehicleVisual from '@/components/business/TmsVehicleVisual.vue'
 import { useProfileStore } from '@/stores/profile'
 import { useWaybillStore } from '@/stores/waybill'
 import { useDictionaryStore } from '@/stores/dictionary'
-import { FALLBACK_TRUCK_IMAGE } from '@/utils/assets'
 import { getRouteDistanceKm } from '@/utils/route'
 import { openWaybillNavigation } from '@/utils/navigation'
 import { formatVehicleLoad } from '@/utils/format'
@@ -75,12 +75,12 @@ const taskButtonText = computed(() => {
 })
 const taskButtonIcon = computed(() => {
   const status = task.value?.status
-  if (status === 'accepted') return 'upload'
-  if (status === 'loading') return 'check-circle'
-  if (status === 'unloading') return 'upload'
+  if (status === 'accepted' || status === 'transporting') return 'location'
+  if (status === 'loading') return 'vehicle'
+  if (status === 'unloading') return 'box'
   if (status === 'signed') return 'check'
-  if (status === 'pending' || status === 'transporting') return 'check-circle'
-  return 'right'
+  if (status === 'pending') return 'success'
+  return 'arrow-right'
 })
 const taskButtonLabel = computed(() => {
   if (!waybill.actionLoading) return taskButtonText.value
@@ -221,7 +221,7 @@ function handleTaskAction() {
               >
                 <view class="task-card__button-content">
                   <wd-loading v-if="waybill.actionLoading" type="circular" color="#ffffff" size="30rpx" />
-                  <wd-icon v-else :name="taskButtonIcon" size="32rpx" />
+                  <TmsIcon v-else :name="taskButtonIcon" size="32rpx" />
                   <text>{{ taskButtonLabel }}</text>
                 </view>
               </wd-button>
@@ -248,7 +248,7 @@ function handleTaskAction() {
             </view>
             <wd-button class="todo-card__all" variant="text" @click="openWaybillList">
               <text>全部</text>
-              <wd-icon name="right" size="26rpx" />
+              <TmsIcon name="arrow-right" size="26rpx" />
             </wd-button>
           </view>
           <view class="todo-card__stack">
@@ -278,11 +278,9 @@ function handleTaskAction() {
             </view>
           </view>
           <view class="vehicle-card__body">
-            <image
+            <TmsVehicleVisual
               class="vehicle-card__image"
-              :src="vehicle?.vehiclePhotoUrl || FALLBACK_TRUCK_IMAGE"
-              mode="aspectFill"
-              aria-label="当前绑定车辆照片"
+              :photo-url="vehicle?.vehiclePhotoUrl"
             />
             <view class="vehicle-card__info">
               <text class="vehicle-card__plate">{{ vehicle?.plateNo || '暂无车辆' }}</text>
@@ -380,7 +378,7 @@ function handleTaskAction() {
   display: flex;
   align-items: center;
   gap: 10rpx;
-  font-size: 18rpx;
+  font-size: max(18rpx, 12px);
   font-weight: 700;
   opacity: 0.78;
 }
@@ -401,14 +399,14 @@ function handleTaskAction() {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 38rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
 }
 
 .home-page__summary {
   display: block;
   margin-top: 12rpx;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   font-weight: 600;
   line-height: 1.5;
   opacity: 0.72;
@@ -431,14 +429,14 @@ function handleTaskAction() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 700;
   opacity: 0.78;
 }
 
 .home-page__network {
   flex: 0 0 auto;
-  font-size: 19rpx;
+  font-size: max(19rpx, 12px);
   letter-spacing: 0;
   opacity: 0.82;
 }
@@ -507,7 +505,7 @@ function handleTaskAction() {
 .section-title {
   color: #172033;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -522,7 +520,7 @@ function handleTaskAction() {
   border-radius: 999rpx;
   color: #059669;
   background: #ecfdf5;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 700;
 }
 
@@ -540,8 +538,8 @@ function handleTaskAction() {
   display: inline-flex;
   align-items: center;
   gap: 8rpx;
-  font-size: 23rpx;
-  font-weight: 800;
+  font-size: max(23rpx, 12px);
+  font-weight: 700;
 }
 
 .vehicle-card__body {
@@ -556,7 +554,6 @@ function handleTaskAction() {
   width: 112rpx;
   height: 90rpx;
   border-radius: 16rpx;
-  background: #f7f9fc url('/static/truck.svg') center / cover no-repeat;
   box-shadow: 0 10rpx 24rpx rgba(40, 52, 80, 0.1);
 }
 
@@ -570,14 +567,14 @@ function handleTaskAction() {
 .vehicle-card__plate {
   color: #172033;
   font-size: 32rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .vehicle-card__model {
   display: -webkit-box;
   overflow: hidden;
   color: #9aa5b7;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   line-height: 1.4;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -629,7 +626,7 @@ function handleTaskAction() {
   display: block;
   margin-top: 8rpx;
   color: #748096;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   line-height: 1.5;
 }
 
@@ -640,7 +637,7 @@ function handleTaskAction() {
   margin-top: -8rpx;
   padding: 0;
   color: #4f46e5;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   font-weight: 700;
 }
 
@@ -673,7 +670,7 @@ function handleTaskAction() {
   min-width: 0;
   padding: 0;
   background: transparent;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .todo-card__all :deep(.wd-button__content) {
@@ -692,16 +689,6 @@ function handleTaskAction() {
 }
 
 @media screen and (max-width: 350px) {
-  .home-page__hero {
-    padding-left: 26rpx;
-    padding-right: 26rpx;
-  }
-
-  .home-page__content {
-    padding-left: 20rpx;
-    padding-right: 20rpx;
-  }
-
   .empty-card {
     grid-template-columns: 64rpx minmax(0, 1fr);
   }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import TmsIcon from './TmsIcon.vue'
 
 const props = defineProps<{
   modelValue: number
@@ -68,7 +69,7 @@ function confirm() {
           aria-label="关闭时间选择"
           @click="popupVisible = false"
         >
-          <wd-icon name="close" size="32rpx" />
+          <TmsIcon name="close" size="32rpx" />
         </wd-button>
       </view>
       <view class="datetime-sheet__body">
@@ -125,7 +126,7 @@ function confirm() {
 .datetime-sheet__title {
   color: var(--tms-text);
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 .datetime-sheet__header :deep(.datetime-sheet__close) {
   width: 64rpx;
@@ -141,7 +142,7 @@ function confirm() {
 .datetime-sheet__label {
   display: block;
   color: var(--tms-text);
-  font-size: 25rpx;
+  font-size: max(25rpx, 12px);
   font-weight: 700;
 }
 .datetime-sheet__body :deep(.datetime-sheet__date) {
@@ -176,19 +177,19 @@ function confirm() {
 }
 .datetime-sheet__time-field :deep(.wd-input__inner) {
   height: 100%;
-  font-size: 27rpx;
+  font-size: max(27rpx, 12px);
   font-weight: 700;
   text-align: center;
 }
 .datetime-sheet__time-field text {
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   white-space: nowrap;
 }
 .datetime-sheet__colon {
   color: var(--tms-text);
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 .datetime-sheet__footer {
   padding: 20rpx 30rpx calc(20rpx + env(safe-area-inset-bottom));
@@ -201,6 +202,6 @@ function confirm() {
   height: var(--tms-control-height);
   border-radius: var(--tms-control-radius);
   font-size: var(--tms-control-font-size);
-  font-weight: 800;
+  font-weight: 700;
 }
 </style>

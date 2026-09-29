@@ -1,7 +1,22 @@
 @use '@wot-ui/ui/styles/theme/index.scss' as *;
 
+@font-face {
+  font-family: 'TMS Icons';
+  src: url('~@/static/icons/tms-icons.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
 :root,
-page {
+page,
+.wd-root-portal {
+  --tms-font-family: 'HarmonyOS Sans SC', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --wot-typography-title-font-family: var(--tms-font-family);
+  --wot-typography-body-font-family: var(--tms-font-family);
+  --wot-typography-label-font-family: var(--tms-font-family);
+  --wot-font-weight-medium: 500;
+  --wot-font-weight-semibold: 600;
   --wot-primary-5: #675ff1;
   --wot-primary-6: #4f46e5;
   --wot-primary-7: #4338ca;
@@ -25,9 +40,10 @@ page {
   --tms-radius-md: 18rpx;
   --tms-radius-lg: 26rpx;
   --tms-radius-xl: 32rpx;
-  --tms-control-height: 88rpx;
+  --tms-control-height: max(88rpx, 44px);
   --tms-control-radius: 18rpx;
-  --tms-control-font-size: 28rpx;
+  --tms-control-font-size: max(28rpx, 12px);
+  --tms-tabbar-space: calc(160rpx + env(safe-area-inset-bottom));
   --tms-shadow-sm: 0 10rpx 30rpx rgba(28, 39, 65, 0.065);
   --tms-shadow-md: 0 20rpx 54rpx rgba(31, 40, 74, 0.12);
   --tms-shadow-primary: 0 14rpx 28rpx rgba(79, 70, 229, 0.23);
@@ -57,7 +73,7 @@ page {
 .section-title {
   color: var(--tms-text);
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
   letter-spacing: -0.3rpx;
 }
@@ -65,22 +81,9 @@ page {
 .section-eyebrow {
   display: block;
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 700;
   line-height: 1.2;
-}
-
-.primary-button {
-  height: var(--tms-control-height);
-  border-radius: var(--tms-control-radius);
-  color: #fff;
-  background: var(--tms-primary-gradient);
-  box-shadow: var(--tms-shadow-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30rpx;
-  font-weight: 800;
 }
 
 /* 业务操作按钮。custom-class 会直接落到 wd-button 的真实 button 节点。 */
@@ -92,7 +95,7 @@ page {
   padding: 0 32rpx !important;
   border-radius: var(--tms-control-radius) !important;
   font-size: var(--tms-control-font-size) !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   line-height: 1 !important;
 }
 
@@ -150,7 +153,7 @@ page {
 .required-mark {
   margin-left: 6rpx;
   color: #ef4d57 !important;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .wd-cell.tms-date-trigger {
@@ -206,7 +209,7 @@ page {
 
 .wd-cell.tms-select-trigger .wd-cell__value {
   color: var(--tms-text);
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
   font-weight: 700;
   text-align: left;
   overflow: hidden;
@@ -222,12 +225,12 @@ page {
 }
 
 .wd-cell.tms-select-trigger--small .wd-cell__value {
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .wd-cell.tms-date-trigger .wd-cell__value {
   color: var(--tms-text);
-  font-size: 27rpx;
+  font-size: max(27rpx, 12px);
   font-weight: 600;
   text-align: left;
 }
@@ -245,7 +248,7 @@ page {
 .wd-textarea.tms-form-textarea .wd-textarea__inner {
   min-height: 82rpx;
   color: var(--tms-text);
-  font-size: 25rpx;
+  font-size: max(25rpx, 12px);
 }
 
 .wd-input.tms-form-input {
@@ -263,7 +266,7 @@ page {
 
 .wd-input.tms-form-input .wd-input__inner {
   color: var(--tms-text);
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
 }
 
 .wd-input.tms-form-input--small {
@@ -278,66 +281,14 @@ page {
 }
 
 .wd-input.tms-form-input--small .wd-input__inner {
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
-.pressable {
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    opacity 160ms ease;
-}
-
-.pressable:active {
-  opacity: 0.88;
-  transform: scale(0.985);
-}
-
-.outline-button {
-  height: var(--tms-control-height);
-  border: 2rpx solid rgba(79, 70, 229, 0.28);
-  border-radius: var(--tms-control-radius);
-  color: #4f46e5;
-  background: #f6f7ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28rpx;
-  font-weight: 700;
-}
-
-.tms-loading-sheen {
-  position: relative;
-  overflow: hidden;
-}
-
-.tms-loading-sheen::after {
-  position: absolute;
-  inset: 0;
-  content: '';
-  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.62) 48%, transparent 76%);
-  transform: translateX(-100%);
-  animation: tms-sheen 1.35s ease-in-out infinite;
-}
-
-@keyframes tms-sheen {
-  to {
-    transform: translateX(100%);
-  }
-}
-
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 520px) {
   .page {
     max-width: 520px;
     margin: 0 auto;
     box-shadow: 0 0 80rpx rgba(34, 45, 74, 0.1);
-  }
-
-  .page .bottom-nav {
-    left: 50%;
-    right: auto;
-    width: min(calc(100vw - 36rpx), 484px);
-    transform: translateX(-50%);
   }
 }
 

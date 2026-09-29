@@ -104,11 +104,6 @@ export function maskIdCard(value?: string) {
   return value.replace(/^(.{6}).+(.{2})$/, '$1******$2')
 }
 
-export function shortName(value?: string) {
-  if (!value) return '司机'
-  return value.length > 3 ? value.slice(-3) : value
-}
-
 export function todayLabel() {
   const date = new Date()
   return `${date.getMonth() + 1}/${date.getDate()}`

@@ -17,6 +17,7 @@ import type {
   DriverExpenseWaybill,
 } from "@/api/types";
 import TmsRecordTimeNotice from "@/components/business/TmsRecordTimeNotice.vue";
+import TmsIcon from '@/components/business/TmsIcon.vue'
 import { useAuthStore } from "@/stores/auth";
 import { useDictionaryStore } from "@/stores/dictionary";
 import { chooseImages } from "@/utils/file";
@@ -538,7 +539,7 @@ function showError(error: unknown, fallback: string) {
     <view class="expense-sheet">
       <view class="expense-sheet__header">
         <view>
-          <text class="expense-sheet__kicker">WAYBILL EXPENSE</text>
+          <text class="expense-sheet__kicker">费用申报</text>
           <text class="expense-sheet__title">{{
             isEditing ? "修改费用上报" : "新增费用上报"
           }}</text>
@@ -553,13 +554,13 @@ function showError(error: unknown, fallback: string) {
           :disabled="busy"
           @click="close"
         >
-          <wd-icon name="close" size="28rpx" />
+          <TmsIcon name="close" size="28rpx" />
         </button>
       </view>
 
       <scroll-view scroll-y class="expense-sheet__body">
         <view v-if="record?.reviewRemark" class="expense-sheet__reject-note">
-          <wd-icon name="exclamation-circle" size="32rpx" />
+          <TmsIcon name="warning" size="32rpx" />
           <view>
             <strong>审批驳回说明</strong>
             <text>{{ record.reviewRemark }}</text>
@@ -567,7 +568,7 @@ function showError(error: unknown, fallback: string) {
         </view>
 
         <view class="expense-sheet__notice">
-          <wd-icon name="info-circle" size="32rpx" />
+          <TmsIcon name="info" size="32rpx" />
           <text>请按实际发生金额填写，并上传清晰、完整的票据或付款凭证。</text>
         </view>
         <TmsRecordTimeNotice class="expense-sheet__time-notice" subject="费用发生日期" />
@@ -652,7 +653,7 @@ function showError(error: unknown, fallback: string) {
             <view class="expense-ocr__head">
               <view class="expense-ocr__identity">
                 <view class="expense-ocr__icon">
-                  <wd-icon name="camera" size="30rpx" />
+                  <TmsIcon name="camera" size="30rpx" />
                 </view>
                 <view>
                   <strong>AI 智能识别票据</strong>
@@ -683,7 +684,7 @@ function showError(error: unknown, fallback: string) {
                   color="#4f46e5"
                   size="24rpx"
                 />
-                <wd-icon v-else name="camera" size="24rpx" />
+                <TmsIcon v-else name="camera" size="24rpx" />
                 <text>{{ ocrActionLabel }}</text>
               </button>
             </view>
@@ -727,7 +728,7 @@ function showError(error: unknown, fallback: string) {
                 :disabled="busy"
                 @click="removeAttachment(index)"
               >
-                <wd-icon name="close" size="24rpx" />
+                <TmsIcon name="close" size="24rpx" />
               </button>
             </view>
             <button
@@ -744,7 +745,7 @@ function showError(error: unknown, fallback: string) {
                 size="30rpx"
               />
               <view v-else>
-                <wd-icon name="camera" size="42rpx" />
+                <TmsIcon name="camera" size="42rpx" />
                 <text>拍照上传</text>
               </view>
             </button>
@@ -815,7 +816,7 @@ function showError(error: unknown, fallback: string) {
                 color="#4f46e5"
                 size="24rpx"
               />
-              <wd-icon v-else name="location" size="26rpx" />
+              <TmsIcon v-else name="location" size="26rpx" />
               <text>{{ state.locating ? "定位中" : "当前位置" }}</text>
             </button>
           </view>
@@ -892,8 +893,8 @@ function showError(error: unknown, fallback: string) {
 
 .expense-sheet__kicker {
   color: var(--tms-primary);
-  font-size: 20rpx;
-  font-weight: 800;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
   letter-spacing: 2rpx;
 }
 
@@ -901,13 +902,13 @@ function showError(error: unknown, fallback: string) {
   margin-top: 5rpx;
   color: var(--tms-text);
   font-size: 36rpx;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .expense-sheet__subtitle {
   margin-top: 7rpx;
   color: var(--tms-muted);
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
 }
 
 .expense-sheet__close {
@@ -969,7 +970,7 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: flex-start;
   gap: 12rpx;
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   line-height: 1.55;
 }
 
@@ -1021,22 +1022,22 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20rpx;
-  font-weight: 900;
+  font-size: max(20rpx, 12px);
+  font-weight: 700;
 }
 
 .expense-field__label {
   display: block;
   color: var(--tms-text);
-  font-size: 27rpx;
-  font-weight: 800;
+  font-size: max(27rpx, 14px);
+  font-weight: 700;
 }
 
 .expense-field__help {
   display: block;
   margin-top: 8rpx;
   color: var(--tms-muted);
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
 }
 
 .expense-ocr {
@@ -1089,15 +1090,15 @@ function showError(error: unknown, fallback: string) {
 
 .expense-ocr__identity strong {
   color: #28375f;
-  font-size: 23rpx;
-  font-weight: 800;
+  font-size: max(23rpx, 12px);
+  font-weight: 700;
 }
 
 .expense-ocr__identity text,
 .expense-ocr__empty {
   margin-top: 3rpx;
   color: #6f7b92;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1.45;
 }
 
@@ -1121,7 +1122,7 @@ function showError(error: unknown, fallback: string) {
   border: 0;
   color: var(--tms-primary);
   background: #fff;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   touch-action: manipulation;
 }
@@ -1136,7 +1137,7 @@ function showError(error: unknown, fallback: string) {
   align-items: center;
   justify-content: center;
   gap: 7rpx;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
 }
 
 .expense-ocr__analyze[disabled],
@@ -1155,8 +1156,8 @@ function showError(error: unknown, fallback: string) {
 
 .expense-ocr__result-head {
   color: #354577;
-  font-size: 21rpx;
-  font-weight: 800;
+  font-size: max(21rpx, 12px);
+  font-weight: 700;
 }
 
 .expense-ocr__applied {
@@ -1164,13 +1165,13 @@ function showError(error: unknown, fallback: string) {
   border-radius: 999rpx;
   color: #087c5a;
   background: #dcf8ed;
-  font-size: 18rpx;
+  font-size: max(18rpx, 12px);
 }
 
 .expense-ocr__summary,
 .expense-ocr__warning {
   color: #5e6a82;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   line-height: 1.5;
 }
 
@@ -1184,7 +1185,7 @@ function showError(error: unknown, fallback: string) {
   margin-top: 4rpx;
   border: 1rpx solid #cbd7ff;
   border-radius: 14rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .expense-ocr__empty {
@@ -1212,7 +1213,7 @@ function showError(error: unknown, fallback: string) {
   justify-content: space-between;
   gap: 20rpx;
   color: var(--tms-text);
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
   font-weight: 700;
 }
 
@@ -1240,8 +1241,8 @@ function showError(error: unknown, fallback: string) {
   display: block;
   min-height: 42rpx;
   color: var(--tms-text);
-  font-size: 27rpx;
-  font-weight: 800;
+  font-size: max(27rpx, 12px);
+  font-weight: 700;
   line-height: 42rpx;
 }
 
@@ -1260,8 +1261,8 @@ function showError(error: unknown, fallback: string) {
 
 .expense-field__money > text {
   color: var(--tms-primary);
-  font-size: 28rpx;
-  font-weight: 900;
+  font-size: max(28rpx, 12px);
+  font-weight: 700;
 }
 
 .expense-field__money :deep(.wd-input) {
@@ -1271,8 +1272,8 @@ function showError(error: unknown, fallback: string) {
 }
 
 .expense-field__money :deep(.wd-input__inner) {
-  font-size: 28rpx;
-  font-weight: 800;
+  font-size: max(28rpx, 12px);
+  font-weight: 700;
 }
 
 .expense-field--split :deep(.tms-date-trigger) {
@@ -1312,7 +1313,7 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
 }
 
 .expense-evidence__add > view {
@@ -1326,7 +1327,7 @@ function showError(error: unknown, fallback: string) {
   display: block;
   margin-top: 10rpx;
   color: #8b95a8;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   text-align: right;
 }
 
@@ -1345,7 +1346,7 @@ function showError(error: unknown, fallback: string) {
   display: block;
   margin-bottom: 8rpx;
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 600;
 }
 
@@ -1358,7 +1359,7 @@ function showError(error: unknown, fallback: string) {
   justify-content: space-between;
   gap: 10rpx;
   color: var(--tms-text);
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   font-weight: 700;
 }
 
@@ -1388,7 +1389,7 @@ function showError(error: unknown, fallback: string) {
   width: 100%;
 }
 .expense-field__location-row :deep(.wd-input__inner) {
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .expense-field__location-row button {
@@ -1402,7 +1403,7 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   gap: 6rpx;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   font-weight: 700;
   line-height: 1;
 }
@@ -1412,7 +1413,7 @@ function showError(error: unknown, fallback: string) {
   height: 150rpx;
   margin-top: 16rpx;
   padding: 18rpx 18rpx 46rpx;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
 }
 
 .expense-field__count {
@@ -1420,7 +1421,7 @@ function showError(error: unknown, fallback: string) {
   right: 42rpx;
   bottom: 38rpx;
   color: #9aa5b7;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
 }
 
 .expense-sheet__body-space {
@@ -1440,7 +1441,7 @@ function showError(error: unknown, fallback: string) {
 .expense-sheet__completion {
   grid-column: 1 / -1;
   color: var(--tms-muted);
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
   text-align: center;
 }
 

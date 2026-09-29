@@ -2,13 +2,14 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import TmsBottomNav from '@/components/business/TmsBottomNav.vue'
+import TmsIcon from '@/components/business/TmsIcon.vue'
 import TmsMetricGrid from '@/components/business/TmsMetricGrid.vue'
 import TmsPageSkeleton from '@/components/business/TmsPageSkeleton.vue'
 import { getUserFacingErrorMessage } from '@/api/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { useWaybillStore } from '@/stores/waybill'
-import { maskIdCard, maskPhone, shortName } from '@/utils/format'
+import { maskIdCard, maskPhone } from '@/utils/format'
 
 const auth = useAuthStore()
 const profile = useProfileStore()
@@ -24,7 +25,7 @@ const openingExpense = ref(false)
 const helpVisible = ref(false)
 const contactNoticeVisible = ref(false)
 const logoutConfirmVisible = ref(false)
-const serviceButtonStyle = 'width: 100%; height: 132rpx; min-height: 132rpx; padding: 0; font-size: 26rpx; line-height: 1.3; background: transparent; border: 0;'
+const serviceButtonStyle = 'width: 100%; height: 132rpx; min-height: 132rpx; padding: 0; font-size: max(26rpx, 12px); line-height: 1.3; background: transparent; border: 0;'
 const showSkeleton = computed(() => !profile.summary && (initialLoading.value || Boolean(loadError.value)))
 
 const metrics = computed(() => [
@@ -36,6 +37,7 @@ const metrics = computed(() => [
 const displayName = computed(
   () => driver.value?.driverName || user.value?.nickName || user.value?.userName || '司机师傅'
 )
+const avatarInitial = computed(() => Array.from(displayName.value.trim())[0] || '司')
 
 onShow(() => {
   void load()
@@ -123,23 +125,23 @@ async function confirmLogout() {
           :aria-label="`${displayName}的头像`"
         />
         <view v-else class="mine-page__avatar mine-page__avatar--text">
-          {{ shortName(displayName) }}
+          {{ avatarInitial }}
         </view>
         <view class="mine-page__profile">
           <text class="mine-page__name">{{ displayName }}</text>
           <text class="mine-page__company">
             {{ carrier?.companyName || '暂未绑定承运商' }}
           </text>
-          <view class="mine-page__verified"><wd-icon name="check-circle" size="24rpx" /> 司机档案已同步</view>
+          <view class="mine-page__verified"><TmsIcon name="success" size="24rpx" /> 司机档案已同步</view>
         </view>
         <wd-button
           class="mine-page__setting"
           aria-label="刷新司机档案"
-          custom-style="width: 88rpx; min-width: 44px; height: 88rpx; min-height: 44px; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); color: #fff;"
+          custom-style="width: 88rpx; min-width: 44px; height: 88rpx; min-height: 44px; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); border: 2rpx solid rgba(255,255,255,0.22); color: #fff;"
           :disabled="syncing"
           @click="refreshProfile"
         >
-          <wd-icon name="refresh" size="36rpx" />
+          <TmsIcon name="refresh" size="36rpx" />
         </wd-button>
       </view>
     </view>
@@ -195,19 +197,19 @@ async function confirmLogout() {
         </view>
         <view class="feature-grid">
           <wd-button variant="text" custom-class="feature-grid__item" :custom-style="serviceButtonStyle" :disabled="openingExpense" @click="openExpense">
-            <view class="feature-grid__icon"><wd-icon name="file" size="46rpx" /></view>
+            <view class="feature-grid__icon"><TmsIcon name="expense" size="46rpx" /></view>
             <text>费用记录</text>
           </wd-button>
           <wd-button variant="text" custom-class="feature-grid__item" :custom-style="serviceButtonStyle" @click="openCompletedWaybills">
-            <view class="feature-grid__icon"><wd-icon name="list" size="46rpx" /></view>
+            <view class="feature-grid__icon"><TmsIcon name="receipt" size="46rpx" /></view>
             <text>电子回单</text>
           </wd-button>
           <wd-button variant="text" custom-class="feature-grid__item" :custom-style="serviceButtonStyle" @click="contactCarrier">
-            <view class="feature-grid__icon"><wd-icon name="headset" size="46rpx" /></view>
+            <view class="feature-grid__icon"><TmsIcon name="support" size="46rpx" /></view>
             <text>联系车队</text>
           </wd-button>
           <wd-button variant="text" custom-class="feature-grid__item" :custom-style="serviceButtonStyle" @click="helpVisible = true">
-            <view class="feature-grid__icon"><wd-icon name="question-circle" size="46rpx" /></view>
+            <view class="feature-grid__icon"><TmsIcon name="help" size="46rpx" /></view>
             <text>使用说明</text>
           </wd-button>
         </view>
@@ -225,7 +227,9 @@ async function confirmLogout() {
             <text class="section-eyebrow">运输流程</text>
             <text class="section-title">使用说明</text>
           </view>
-          <wd-button variant="text" icon="close" custom-class="mine-help__close" aria-label="关闭使用说明" @click="helpVisible = false" />
+          <wd-button variant="text" custom-class="mine-help__close" aria-label="关闭使用说明" @click="helpVisible = false">
+            <TmsIcon name="close" size="28rpx" />
+          </wd-button>
         </view>
         <view class="mine-help__steps">
           <view><text>01</text><text>在运单列表核对站点与货物信息，接受任务。</text></view>
@@ -280,12 +284,29 @@ async function confirmLogout() {
   overflow: hidden;
   color: #fff;
   background: var(--tms-hero-gradient);
+  border-bottom-left-radius: 46rpx;
+  border-bottom-right-radius: 46rpx;
+}
+
+.mine-page__hero::after {
+  position: absolute;
+  top: -240rpx;
+  right: -180rpx;
+  width: 520rpx;
+  height: 520rpx;
+  content: '';
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 70rpx rgba(255, 255, 255, 0.035),
+    0 0 0 140rpx rgba(255, 255, 255, 0.02);
+  pointer-events: none;
 }
 
 .mine-page__mesh {
   position: absolute;
   inset: 0;
-  opacity: 0.12;
+  opacity: 0.055;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx),
     linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1rpx, transparent 1rpx);
@@ -310,8 +331,8 @@ async function confirmLogout() {
   display: flex;
   align-items: center;
   gap: 10rpx;
-  font-size: 18rpx;
-  font-weight: 800;
+  font-size: max(18rpx, 12px);
+  font-weight: 700;
   opacity: 0.78;
 }
 
@@ -328,7 +349,7 @@ async function confirmLogout() {
   z-index: 1;
   display: block;
   margin-top: 54rpx;
-  font-size: 28rpx;
+  font-size: max(28rpx, 12px);
   font-weight: 700;
   line-height: 1.4;
   opacity: 0.9;
@@ -338,7 +359,7 @@ async function confirmLogout() {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 94rpx minmax(0, 1fr) 64rpx;
+  grid-template-columns: 94rpx minmax(0, 1fr) var(--tms-control-height);
   align-items: center;
   gap: 22rpx;
 }
@@ -356,8 +377,8 @@ async function confirmLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28rpx;
-  font-weight: 800;
+  font-size: max(28rpx, 12px);
+  font-weight: 700;
 }
 
 .mine-page__profile {
@@ -368,8 +389,12 @@ async function confirmLogout() {
 }
 
 .mine-page__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 34rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -377,7 +402,7 @@ async function confirmLogout() {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 600;
   opacity: 0.72;
 }
@@ -387,15 +412,13 @@ async function confirmLogout() {
   display: flex;
   align-items: center;
   gap: 6rpx;
-  font-size: 20rpx;
+  font-size: max(20rpx, 12px);
   font-weight: 700;
 }
 
 .mine-page__setting {
-  width: 64rpx;
-  height: 64rpx;
-  min-width: 44px;
-  min-height: 44px;
+  width: var(--tms-control-height);
+  height: var(--tms-control-height);
   margin: 0;
   padding: 0;
   border-radius: 50%;
@@ -443,7 +466,7 @@ async function confirmLogout() {
   margin-top: 7rpx;
   color: #172033;
   font-size: 31rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .section-head {
@@ -455,7 +478,7 @@ async function confirmLogout() {
 
 .section-head__hint {
   color: #748096;
-  font-size: 21rpx;
+  font-size: max(21rpx, 12px);
 }
 
 .account-list {
@@ -470,7 +493,7 @@ async function confirmLogout() {
   align-items: center;
   justify-content: space-between;
   gap: 28rpx;
-  font-size: 26rpx;
+  font-size: max(26rpx, 12px);
 }
 
 .account-list__row:last-child {
@@ -509,7 +532,7 @@ async function confirmLogout() {
   flex-direction: column;
   align-items: center;
   gap: 14rpx;
-  font-size: 22rpx;
+  font-size: max(22rpx, 12px);
   font-weight: 600;
   transition: transform 160ms ease;
 }
@@ -570,7 +593,7 @@ async function confirmLogout() {
   align-items: center;
   justify-content: center;
   font-size: var(--tms-control-font-size);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .mine-page__logout:active {
@@ -626,13 +649,13 @@ async function confirmLogout() {
   border-radius: 18rpx;
   background: #f6f8fc;
   color: #475569;
-  font-size: 24rpx;
+  font-size: max(24rpx, 12px);
   line-height: 1.5;
 }
 
 .mine-help__steps view text:first-child {
   color: #4f46e5;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .mine-help__done {
@@ -642,8 +665,8 @@ async function confirmLogout() {
   border-radius: 18rpx;
   color: #fff;
   background: var(--tms-hero-gradient);
-  font-size: 27rpx;
-  font-weight: 800;
+  font-size: max(27rpx, 12px);
+  font-weight: 700;
   line-height: 88rpx;
 }
 
@@ -664,13 +687,13 @@ async function confirmLogout() {
 .mine-dialog__title {
   color: var(--tms-text);
   font-size: 32rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.3;
 }
 
 .mine-dialog__message {
   color: var(--tms-muted);
-  font-size: 25rpx;
+  font-size: max(25rpx, 12px);
   line-height: 1.5;
 }
 

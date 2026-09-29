@@ -80,7 +80,7 @@ defineEmits<{
   align-items: center;
   justify-content: center;
   font-size: 38rpx;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .page-skeleton__error-title,
@@ -92,14 +92,14 @@ defineEmits<{
   margin-top: 24rpx;
   color: var(--tms-text);
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .page-skeleton__error-message {
   max-width: 520rpx;
   margin-top: 12rpx;
   color: var(--tms-muted);
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
   line-height: 1.65;
 }
 
@@ -113,7 +113,7 @@ defineEmits<{
   background: linear-gradient(135deg, #4f46e5, #2563eb);
   box-shadow: 0 12rpx 24rpx rgba(79, 70, 229, 0.22);
   font-size: var(--tms-control-font-size);
-  font-weight: 800;
+  font-weight: 700;
   line-height: var(--tms-control-height);
 }
 
@@ -123,7 +123,7 @@ defineEmits<{
   gap: 14rpx;
   margin: 4rpx 4rpx 22rpx;
   color: var(--tms-muted);
-  font-size: 23rpx;
+  font-size: max(23rpx, 12px);
 }
 
 .page-skeleton__spinner {
