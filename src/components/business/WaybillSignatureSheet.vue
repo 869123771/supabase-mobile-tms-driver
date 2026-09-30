@@ -181,7 +181,7 @@ function showError(error: unknown, fallback: string) {
       <scroll-view scroll-y class="signature-sheet__body">
         <view v-if="state.loading" class="signature-sheet__loading">
           <view class="signature-sheet__loading-head">
-            <wd-loading type="circular" color="#4f46e5" size="36rpx" />
+            <wd-loading type="circular" color="var(--tms-primary)" size="36rpx" />
             <text>正在同步签收信息…</text>
           </view>
           <view class="signature-sheet__loading-card"><view /><view /><view /></view>
@@ -268,7 +268,7 @@ function showError(error: unknown, fallback: string) {
                 <wd-loading
                   v-if="state.uploading === kind"
                   type="circular"
-                  color="#3763f4"
+                  color="var(--tms-primary)"
                   size="28rpx"
                 />
                 <view v-else class="sheet-evidence__add-content">
@@ -391,12 +391,12 @@ function showError(error: unknown, fallback: string) {
 }
 .signature-sheet__close--pressed,
 .signature-sheet__close:active {
-  color: #4f46e5;
+  color: var(--tms-primary);
   background: #e8ebf3;
   transform: scale(0.94);
 }
 .signature-sheet__close:focus-visible {
-  outline: 4rpx solid rgba(79, 70, 229, 0.24);
+  outline: 4rpx solid rgba(var(--tms-primary-rgb), 0.24);
   outline-offset: 3rpx;
 }
 .signature-sheet__close[disabled] {
@@ -451,8 +451,8 @@ function showError(error: unknown, fallback: string) {
   width: 70rpx;
   height: 70rpx;
   border-radius: 22rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   font-size: 34rpx;
   font-weight: 700;
   line-height: 70rpx;
@@ -474,7 +474,7 @@ function showError(error: unknown, fallback: string) {
   padding: 0 36rpx;
   border-radius: 999rpx;
   color: #fff;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  background: linear-gradient(135deg, var(--tms-primary), var(--tms-primary-bright));
   font-size: max(24rpx, 12px);
   line-height: var(--tms-control-height);
 }
@@ -508,8 +508,8 @@ function showError(error: unknown, fallback: string) {
   width: 42rpx;
   height: 42rpx;
   border-radius: 14rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -569,8 +569,8 @@ function showError(error: unknown, fallback: string) {
 }
 .sheet-evidence__add {
   color: var(--tms-primary);
-  background: #f4f7ff;
-  border: 2rpx dashed #b8c7f5;
+  background: var(--tms-primary-soft);
+  border: 2rpx dashed var(--tms-primary-soft-strong);
   display: flex;
   align-items: center;
   justify-content: center;

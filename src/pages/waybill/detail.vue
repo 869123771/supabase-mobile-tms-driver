@@ -19,6 +19,7 @@ import TmsTopBar from "@/components/business/TmsTopBar.vue";
 import WaybillTrackingTimeline from "@/components/business/WaybillTrackingTimeline.vue";
 import WaybillTrajectoryPanel from "@/components/business/WaybillTrajectoryPanel.vue";
 import WaybillSignatureSheet from "@/components/business/WaybillSignatureSheet.vue";
+import { usePageTheme } from "@/composables/usePageTheme";
 import { useDictionaryStore } from "@/stores/dictionary";
 import { useAuthStore } from "@/stores/auth";
 import { useWaybillStore } from "@/stores/waybill";
@@ -34,6 +35,7 @@ import {
   getCurrentGcj02Location,
 } from "@/utils/location";
 
+const { themeName } = usePageTheme();
 const waybill = useWaybillStore();
 const auth = useAuthStore();
 const dictionary = useDictionaryStore();
@@ -384,11 +386,10 @@ function viewReceipt(current?: string) {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view
     class="detail-page page"
-    :class="{
-      'detail-page--pending': isPending,
-    }"
+    :class="{ 'detail-page--pending': isPending }"
   >
     <view class="detail-page__blue">
       <TmsTopBar
@@ -728,7 +729,7 @@ function viewReceipt(current?: string) {
           <wd-loading
             v-if="waybill.loading"
             type="circular"
-            color="#4f46e5"
+            color="var(--tms-primary)"
             size="58rpx"
           />
           <TmsIcon v-else name="document" size="62rpx" />
@@ -782,6 +783,7 @@ function viewReceipt(current?: string) {
       @success="handleSignatureSuccess"
     />
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -797,7 +799,7 @@ function viewReceipt(current?: string) {
 .detail-page__blue {
   flex: 0 0 auto;
   color: #fff;
-  background: linear-gradient(135deg, #292266 0%, #4f46e5 56%, #2563eb 118%);
+  background: linear-gradient(135deg, var(--tms-primary-deep) 0%, var(--tms-primary) 56%, var(--tms-primary-bright) 118%);
 }
 
 .detail-page__status {
@@ -909,9 +911,9 @@ function viewReceipt(current?: string) {
 }
 
 :deep(.detail-tabs .wd-segmented__item.is-active) {
-  color: #4338ca;
-  background: linear-gradient(135deg, #f0efff, #edf3ff);
-  box-shadow: inset 0 0 0 1rpx rgba(79, 70, 229, 0.12);
+  color: var(--tms-primary-strong);
+  background: linear-gradient(135deg, var(--tms-primary-soft), var(--tms-primary-soft-strong));
+  box-shadow: inset 0 0 0 1rpx rgba(var(--tms-primary-rgb), 0.12);
 }
 
 :deep(.detail-tabs .wd-segmented__item.is-active)::before {
@@ -921,7 +923,7 @@ function viewReceipt(current?: string) {
   left: 26rpx;
   height: 5rpx;
   content: "";
-  background: linear-gradient(90deg, #5b55f5, #2563eb);
+  background: linear-gradient(90deg, var(--tms-primary), var(--tms-primary-bright));
   border-radius: 999rpx;
 }
 
@@ -960,8 +962,8 @@ function viewReceipt(current?: string) {
   min-height: 58rpx;
   padding: 12rpx 16rpx;
   border-radius: 14rpx;
-  color: #4f46e5;
-  background: #f3f4ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   gap: 10rpx;
@@ -1207,8 +1209,8 @@ function viewReceipt(current?: string) {
   height: 112rpx;
   margin-bottom: 8rpx;
   border-radius: 34rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1248,7 +1250,7 @@ function viewReceipt(current?: string) {
 }
 
 .pending-footer__money {
-  color: #4f46e5;
+  color: var(--tms-primary);
   font-size: 34rpx;
   font-weight: 700;
 }

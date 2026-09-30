@@ -74,8 +74,8 @@ defineEmits<{
   width: 76rpx;
   height: 76rpx;
   border-radius: 24rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,8 +110,8 @@ defineEmits<{
   border: 0;
   border-radius: var(--tms-control-radius);
   color: #fff;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
-  box-shadow: 0 12rpx 24rpx rgba(79, 70, 229, 0.22);
+  background: linear-gradient(135deg, var(--tms-primary), var(--tms-primary-bright));
+  box-shadow: 0 12rpx 24rpx rgba(var(--tms-primary-rgb), 0.22);
   font-size: var(--tms-control-font-size);
   font-weight: 700;
   line-height: var(--tms-control-height);
@@ -129,7 +129,7 @@ defineEmits<{
 .page-skeleton__spinner {
   width: 25rpx;
   height: 25rpx;
-  border: 4rpx solid #dbe4ff;
+  border: 4rpx solid var(--tms-primary-soft-strong);
   border-top-color: var(--tms-primary);
   border-radius: 50%;
   animation: skeleton-spin 0.8s linear infinite;

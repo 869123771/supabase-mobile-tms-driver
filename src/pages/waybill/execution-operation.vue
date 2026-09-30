@@ -14,12 +14,14 @@ import TmsPageSkeleton from "@/components/business/TmsPageSkeleton.vue";
 import TmsRecordTimeNotice from "@/components/business/TmsRecordTimeNotice.vue";
 import TmsDateTimePicker from "@/components/business/TmsDateTimePicker.vue";
 import TmsTopBar from "@/components/business/TmsTopBar.vue";
+import { usePageTheme } from "@/composables/usePageTheme";
 import { useAuthStore } from "@/stores/auth";
 import { useProfileStore } from "@/stores/profile";
 import { useWaybillStore } from "@/stores/waybill";
 import { chooseImages } from "@/utils/file";
 import { formatDateTime } from "@/utils/format";
 
+const { themeName } = usePageTheme();
 const auth = useAuthStore();
 const profile = useProfileStore();
 const waybill = useWaybillStore();
@@ -229,6 +231,7 @@ function showError(error: unknown, fallback: string) {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view class="execution-page page">
     <view class="execution-page__hero">
       <TmsTopBar :title="title" show-back />
@@ -357,7 +360,7 @@ function showError(error: unknown, fallback: string) {
                 <wd-loading
                   v-if="state.uploading"
                   type="circular"
-                  color="#3763f4"
+                  color="var(--tms-primary)"
                   size="30rpx"
                 />
                 <view v-else class="evidence-grid__add-content">
@@ -410,6 +413,7 @@ function showError(error: unknown, fallback: string) {
       >
     </view>
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -503,7 +507,7 @@ function showError(error: unknown, fallback: string) {
   height: 50rpx;
   border-radius: 16rpx;
   color: #fff;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  background: linear-gradient(135deg, var(--tms-primary), var(--tms-primary-bright));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -598,8 +602,8 @@ function showError(error: unknown, fallback: string) {
 }
 .evidence-grid__add {
   color: var(--tms-primary);
-  background: #f4f7ff;
-  border: 2rpx dashed #b8c7f5;
+  background: var(--tms-primary-soft);
+  border: 2rpx dashed var(--tms-primary-soft-strong);
   display: flex;
   align-items: center;
   justify-content: center;

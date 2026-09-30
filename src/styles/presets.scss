@@ -1,0 +1,62 @@
+@use 'sass:map';
+@use 'sass:list';
+@use '@wot-ui/ui/styles/theme/light.scss' as wot-light;
+
+// Add a palette here and its label in stores/theme.ts to expose another preset.
+$palettes: (
+  'indigo': (
+    shades: (#f5f5ff, #eef2ff, #c7d2fe, #a5b4fc, #675ff1, #4f46e5, #4338ca, #3730a3, #312e81, #211d59),
+    bright: #2563eb,
+    rgb: '79, 70, 229'
+  ),
+  'ocean': (
+    shades: (#f3f8ff, #eaf2ff, #bfd7ff, #8db9ff, #478cf5, #155eef, #174eb5, #123f93, #102f70, #0b2353),
+    bright: #3b82f6,
+    rgb: '21, 94, 239'
+  ),
+  'forest': (
+    shades: (#f0fdfa, #e6f7f3, #bcece0, #86d5c3, #26a68f, #0f766e, #0c625d, #0a514d, #07433f, #052f2c),
+    bright: #139e84,
+    rgb: '15, 118, 110'
+  )
+);
+
+@mixin palette($preset) {
+  $shades: map.get($preset, shades);
+  $bright: map.get($preset, bright);
+
+  @for $i from 1 through 10 {
+    --wot-primary-#{$i}: #{list.nth($shades, $i)};
+  }
+
+  --tms-primary: #{list.nth($shades, 6)};
+  --tms-primary-rgb: #{map.get($preset, rgb)};
+  --tms-primary-strong: #{list.nth($shades, 7)};
+  --tms-primary-deep: #{list.nth($shades, 9)};
+  --tms-primary-bright: #{$bright};
+  --tms-primary-soft: #{list.nth($shades, 2)};
+  --tms-primary-soft-strong: #{list.nth($shades, 3)};
+  --tms-primary-gradient: linear-gradient(135deg, #{list.nth($shades, 7)} 0%, #{list.nth($shades, 6)} 48%, #{$bright} 100%);
+  --tms-hero-gradient: linear-gradient(142deg, #{list.nth($shades, 10)} 0%, #{list.nth($shades, 7)} 48%, #{$bright} 112%);
+  --tms-shadow-primary: 0 14rpx 28rpx rgba(var(--tms-primary-rgb), 0.23);
+  --wot-feedback-accent: rgba(var(--tms-primary-rgb), 0.08);
+}
+
+:root,
+page,
+.wd-root-portal {
+  @include palette(map.get($palettes, 'indigo'));
+}
+
+@each $name, $preset in $palettes {
+  .tms-theme-#{$name},
+  .wot-theme-tms-#{$name} {
+    @include palette($preset);
+  }
+
+  // Wot UI portals leave the page tree, so give each one its light base too.
+  .wot-theme-tms-#{$name} {
+    @include wot-light.light-theme-vars();
+    @include palette($preset);
+  }
+}

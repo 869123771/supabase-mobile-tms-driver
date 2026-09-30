@@ -15,7 +15,9 @@ import { openWaybillNavigation } from '@/utils/navigation'
 import { formatVehicleLoad } from '@/utils/format'
 import type { Waybill } from '@/api/types'
 import { getUserFacingErrorMessage } from '@/api/supabase'
+import { usePageTheme } from '@/composables/usePageTheme'
 
+const { themeName } = usePageTheme()
 const profile = useProfileStore()
 const waybill = useWaybillStore()
 const dictionary = useDictionaryStore()
@@ -134,8 +136,8 @@ function openWaybillList() {
   uni.reLaunch({ url: '/pages/waybill/index' })
 }
 
-function openMine() {
-  uni.reLaunch({ url: '/pages/mine/index' })
+function openSettings() {
+  uni.navigateTo({ url: '/pages/settings/index' })
 }
 
 function navigate(item?: Waybill) {
@@ -160,6 +162,7 @@ function handleTaskAction() {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view class="home-page page">
     <view class="home-page__hero">
       <view class="home-page__mesh" />
@@ -175,10 +178,9 @@ function handleTaskAction() {
         </view>
         <wd-button
           class="home-page__settings"
-          aria-label="打开我的页面"
+          aria-label="打开设置"
           custom-style="width: 88rpx; min-width: 44px; height: 88rpx; min-height: 44px; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.14); border: 2rpx solid rgba(255,255,255,0.22); color: #fff;"
-          :disabled="refreshing"
-          @click="openMine"
+          @click="openSettings"
         >
           <TmsIcon name="settings" size="36rpx" />
         </wd-button>
@@ -271,7 +273,7 @@ function handleTaskAction() {
             </view>
             <view class="vehicle-card__status-group">
               <view v-if="refreshing" class="vehicle-card__refreshing">
-                <wd-loading type="circular" color="#3763f4" size="28rpx" />
+                <wd-loading type="circular" color="var(--tms-primary)" size="28rpx" />
                 <text>刷新中</text>
               </view>
               <text class="vehicle-card__normal" :class="{ 'vehicle-card__normal--muted': vehicle?.operationStatus !== 'operating' }">{{ vehicleStatusLabel }}</text>
@@ -296,6 +298,7 @@ function handleTaskAction() {
 
     <TmsBottomNav active="home" />
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -354,7 +357,7 @@ function handleTaskAction() {
   width: 520rpx;
   height: 300rpx;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.22);
+  background: rgba(var(--tms-primary-rgb), 0.24);
   filter: blur(82rpx);
   pointer-events: none;
 }
@@ -533,8 +536,8 @@ function handleTaskAction() {
   height: 48rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   display: inline-flex;
   align-items: center;
   gap: 8rpx;
@@ -611,8 +614,8 @@ function handleTaskAction() {
   width: 74rpx;
   height: 74rpx;
   border-radius: 22rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -636,7 +639,7 @@ function handleTaskAction() {
   justify-self: start;
   margin-top: -8rpx;
   padding: 0;
-  color: #4f46e5;
+  color: var(--tms-primary);
   font-size: max(23rpx, 12px);
   font-weight: 700;
 }
@@ -655,7 +658,7 @@ function handleTaskAction() {
   height: 4rpx;
   content: '';
   border-radius: 0 0 999rpx 999rpx;
-  background: linear-gradient(90deg, #4f46e5, #3b82f6);
+  background: linear-gradient(90deg, var(--tms-primary), var(--tms-primary-bright));
 }
 
 .todo-card__title-row {

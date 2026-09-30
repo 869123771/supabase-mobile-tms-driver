@@ -37,7 +37,7 @@ defineProps<{
   overflow: hidden;
   border: 1rpx solid #e5eaf2;
   border-radius: 20rpx;
-  background: linear-gradient(150deg, #ffffff 0%, #f6f8ff 100%);
+  background: linear-gradient(150deg, #ffffff 0%, var(--tms-primary-soft) 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -53,7 +53,7 @@ defineProps<{
   height: 5rpx;
   content: '';
   border-radius: 0 0 999rpx 999rpx;
-  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  background: linear-gradient(90deg, var(--tms-primary), var(--tms-primary-bright));
   opacity: 0.72;
 }
 

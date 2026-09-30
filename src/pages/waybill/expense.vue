@@ -12,9 +12,11 @@ import TmsIcon from "@/components/business/TmsIcon.vue";
 import TmsPageSkeleton from "@/components/business/TmsPageSkeleton.vue";
 import TmsTopBar from "@/components/business/TmsTopBar.vue";
 import WaybillExpenseSheet from "@/components/business/WaybillExpenseSheet.vue";
+import { usePageTheme } from "@/composables/usePageTheme";
 import { useAuthStore } from "@/stores/auth";
 import { formatDateTime, formatMoney } from "@/utils/format";
 
+const { themeName } = usePageTheme();
 const auth = useAuthStore();
 const id = ref("");
 const context = ref<DriverExpenseContext>();
@@ -112,6 +114,7 @@ async function handleSuccess() {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view class="expense-page page">
     <TmsTopBar
       title="费用上报"
@@ -305,6 +308,7 @@ async function handleSuccess() {
       @success="handleSuccess"
     />
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -349,7 +353,7 @@ async function handleSuccess() {
   aspect-ratio: 1;
   border-radius: 18rpx;
   color: var(--tms-primary);
-  background: #eef2ff;
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -498,7 +502,7 @@ async function handleSuccess() {
   top: 50%;
   height: 2rpx;
   content: "";
-  background: linear-gradient(90deg, #d8dfed, #9fb4f8, #d8dfed);
+  background: linear-gradient(90deg, #d8dfed, var(--tms-primary-soft-strong), #d8dfed);
   transform: translateY(-50%);
 }
 
@@ -507,7 +511,7 @@ async function handleSuccess() {
   z-index: 1;
   box-sizing: content-box;
   padding: 5rpx;
-  border: 1rpx solid #dbe3ff;
+  border: 1rpx solid var(--tms-primary-soft-strong);
   border-radius: 50%;
   background: #fff;
 }
@@ -521,9 +525,9 @@ async function handleSuccess() {
 .expense-stats__item {
   min-width: 0;
   padding: 17rpx 18rpx;
-  border: 1rpx solid #e0e7ff;
+  border: 1rpx solid var(--tms-primary-soft-strong);
   border-radius: 18rpx;
-  background: #f4f6ff;
+  background: var(--tms-primary-soft);
 }
 
 .expense-stats__item:first-child {
@@ -532,7 +536,7 @@ async function handleSuccess() {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  background: linear-gradient(145deg, #f4f4ff 0%, #eef4ff 100%);
+  background: linear-gradient(145deg, #fff 0%, var(--tms-primary-soft) 100%);
 }
 
 .expense-stats__item:first-child strong {
@@ -649,7 +653,7 @@ async function handleSuccess() {
 }
 
 .expense-record--blue {
-  border-left-color: #4f46e5;
+  border-left-color: var(--tms-primary);
 }
 
 .expense-record--green {
@@ -704,8 +708,8 @@ async function handleSuccess() {
 }
 
 .expense-record__tag--blue {
-  color: #4338ca;
-  background: #eef2ff;
+  color: var(--tms-primary-strong);
+  background: var(--tms-primary-soft);
 }
 
 .expense-record__tag--green {
@@ -810,10 +814,10 @@ async function handleSuccess() {
   min-height: 58rpx;
   margin: 0;
   padding: 0 18rpx;
-  border: 1rpx solid rgba(79, 70, 229, 0.24);
+  border: 1rpx solid rgba(var(--tms-primary-rgb), 0.24);
   border-radius: 999rpx;
   color: var(--tms-primary);
-  background: #f7f8ff;
+  background: var(--tms-primary-soft);
   font-size: max(21rpx, 12px);
   font-weight: 700;
   line-height: 58rpx;
@@ -834,7 +838,7 @@ async function handleSuccess() {
   height: 104rpx;
   border-radius: 32rpx;
   color: var(--tms-primary);
-  background: #eef2ff;
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -935,7 +939,7 @@ async function handleSuccess() {
     right: auto;
     width: 2rpx;
     height: auto;
-    background: linear-gradient(#d8dfed, #9fb4f8, #d8dfed);
+    background: linear-gradient(#d8dfed, var(--tms-primary-soft-strong), #d8dfed);
     transform: none;
   }
 

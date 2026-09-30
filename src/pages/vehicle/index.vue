@@ -11,7 +11,9 @@ import { getUserFacingErrorMessage } from '@/api/supabase'
 import { useDictionaryStore } from '@/stores/dictionary'
 import { useProfileStore } from '@/stores/profile'
 import { formatMeters, normalizeVehicleLoadTon } from '@/utils/format'
+import { usePageTheme } from '@/composables/usePageTheme'
 
+const { themeName } = usePageTheme()
 const profile = useProfileStore()
 const dictionary = useDictionaryStore()
 
@@ -72,6 +74,7 @@ function preview(url?: string) {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view class="vehicle-page page safe-bottom">
     <TmsTopBar title="车辆中心" eyebrow="车辆档案" subtitle="查看绑定车辆与证件状态" />
 
@@ -174,6 +177,7 @@ function preview(url?: string) {
 
     <TmsBottomNav active="vehicle" />
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -240,7 +244,7 @@ function preview(url?: string) {
 
 .vehicle-card {
   background:
-    radial-gradient(circle at 92% 0, rgba(79, 70, 229, 0.1), transparent 220rpx),
+    radial-gradient(circle at 92% 0, rgba(var(--tms-primary-rgb), 0.1), transparent 220rpx),
     #fff;
   box-shadow: var(--tms-shadow-md);
 }
@@ -257,7 +261,7 @@ function preview(url?: string) {
 }
 
 .vehicle-card__eyebrow text:last-child {
-  color: #4f46e5;
+  color: var(--tms-primary);
 }
 
 .vehicle-card__body {
@@ -405,8 +409,8 @@ function preview(url?: string) {
 
 .doc-card__item--pressed,
 .doc-card__item:active {
-  border-color: rgba(79, 70, 229, 0.28);
-  background: #f2f4ff;
+  border-color: rgba(var(--tms-primary-rgb), 0.28);
+  background: var(--tms-primary-soft);
 }
 
 .doc-card__icon {
@@ -414,8 +418,8 @@ function preview(url?: string) {
   width: 76rpx;
   height: 76rpx;
   border-radius: 22rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;

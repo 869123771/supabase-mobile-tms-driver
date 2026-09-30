@@ -681,7 +681,7 @@ function showError(error: unknown, fallback: string) {
                     state.loadingAiConfig || state.analyzing || state.uploading
                   "
                   type="circular"
-                  color="#4f46e5"
+                  color="var(--tms-primary)"
                   size="24rpx"
                 />
                 <TmsIcon v-else name="camera" size="24rpx" />
@@ -741,7 +741,7 @@ function showError(error: unknown, fallback: string) {
               <wd-loading
                 v-if="state.choosing"
                 type="circular"
-                color="#4f46e5"
+                color="var(--tms-primary)"
                 size="30rpx"
               />
               <view v-else>
@@ -813,7 +813,7 @@ function showError(error: unknown, fallback: string) {
               <wd-loading
                 v-if="state.locating"
                 type="circular"
-                color="#4f46e5"
+                color="var(--tms-primary)"
                 size="24rpx"
               />
               <TmsIcon v-else name="location" size="26rpx" />
@@ -953,7 +953,7 @@ function showError(error: unknown, fallback: string) {
 .expense-evidence button:focus-visible,
 .expense-ocr button:focus-visible,
 .expense-field__location-row button:focus-visible {
-  outline: 4rpx solid rgba(79, 70, 229, 0.24);
+  outline: 4rpx solid rgba(var(--tms-primary-rgb), 0.24);
   outline-offset: 3rpx;
 }
 
@@ -1018,7 +1018,7 @@ function showError(error: unknown, fallback: string) {
   height: 42rpx;
   border-radius: 14rpx;
   color: var(--tms-primary);
-  background: #eef2ff;
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1043,9 +1043,9 @@ function showError(error: unknown, fallback: string) {
 .expense-ocr {
   margin-top: 18rpx;
   padding: 18rpx;
-  border: 1rpx solid #d9e2ff;
+  border: 1rpx solid var(--tms-primary-soft-strong);
   border-radius: 18rpx;
-  background: linear-gradient(135deg, #f6f8ff 0%, #eef2ff 100%);
+  background: linear-gradient(135deg, #fff 0%, var(--tms-primary-soft) 100%);
 }
 
 .expense-ocr--disabled {
@@ -1112,7 +1112,7 @@ function showError(error: unknown, fallback: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.1);
+  box-shadow: 0 4rpx 12rpx rgba(var(--tms-primary-rgb), 0.1);
 }
 
 .expense-ocr__analyze,
@@ -1150,7 +1150,7 @@ function showError(error: unknown, fallback: string) {
 .expense-ocr__result {
   margin-top: 16rpx;
   padding-top: 14rpx;
-  border-top: 1rpx solid rgba(79, 70, 229, 0.14);
+  border-top: 1rpx solid rgba(var(--tms-primary-rgb), 0.14);
   gap: 8rpx;
 }
 
@@ -1183,7 +1183,7 @@ function showError(error: unknown, fallback: string) {
   width: 100%;
   height: 88rpx;
   margin-top: 4rpx;
-  border: 1rpx solid #cbd7ff;
+  border: 1rpx solid var(--tms-primary-soft-strong);
   border-radius: 14rpx;
   font-size: max(21rpx, 12px);
 }
@@ -1308,8 +1308,8 @@ function showError(error: unknown, fallback: string) {
 
 .expense-evidence__add {
   color: var(--tms-primary);
-  border: 2rpx dashed #b8c7f5;
-  background: #f4f7ff;
+  border: 2rpx dashed var(--tms-primary-soft-strong);
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1399,7 +1399,7 @@ function showError(error: unknown, fallback: string) {
   border: 0;
   border-radius: 13rpx;
   color: var(--tms-primary);
-  background: #e9edff;
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   gap: 6rpx;

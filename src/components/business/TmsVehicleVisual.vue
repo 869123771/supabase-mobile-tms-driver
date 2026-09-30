@@ -32,7 +32,7 @@ function handlePhotoError() {
   flex: 0 0 auto;
   overflow: hidden;
   color: var(--tms-primary);
-  background: linear-gradient(145deg, #f1f4ff, #eaf0ff);
+  background: linear-gradient(145deg, #fff, var(--tms-primary-soft));
   display: flex;
   align-items: center;
   justify-content: center;

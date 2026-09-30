@@ -142,7 +142,7 @@ const currentStep = computed(() => getStatusStep(props.status))
   height: 22rpx;
   border: 0;
   background: var(--tms-primary);
-  box-shadow: 0 0 0 3rpx #dce7ff;
+  box-shadow: 0 0 0 3rpx var(--tms-primary-soft-strong);
 }
 
 .progress__dot--current {

@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Waybill } from '@/api/types'
 import { calculateDistanceMeters } from '@/utils/location'
 import { getWaybillRoutePoints } from '@/utils/route'
+import { useThemeStore } from '@/stores/theme'
 import TmsIcon from './TmsIcon.vue'
 
 interface RoutePoint {
@@ -27,6 +28,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   back: []
 }>()
+const theme = useThemeStore()
 
 interface MapTile {
   id: string
@@ -83,7 +85,7 @@ const markers = computed(() => {
             ? '#24bf78'
             : index === source.length - 1
               ? '#ff944d'
-              : '#5b55f5',
+              : theme.mapColor,
         padding: 6,
         display: 'ALWAYS'
       }
@@ -95,7 +97,7 @@ const polyline = computed(() => {
   return [
     {
       points: nativeRoadPath.value,
-      color: props.routeMode === 'nodes' ? '#5b55f5' : '#20c7a7',
+      color: props.routeMode === 'nodes' ? theme.mapColor : '#20c7a7',
       width: 8,
       dottedLine: false,
       arrowLine: true,
@@ -410,7 +412,7 @@ function createRouteMarker(
   label: string,
   type: 'start' | 'node' | 'end'
 ) {
-  const color = type === 'start' ? '#20c7a7' : type === 'end' ? '#ff944d' : '#5b55f5'
+  const color = type === 'start' ? '#20c7a7' : type === 'end' ? '#ff944d' : theme.mapColor
   return new AMap.Marker({
     position: [point.longitude, point.latitude],
     offset: new AMap.Pixel(-15, -15),
@@ -450,7 +452,7 @@ function drawDrivingPath(
   })
   const routeLine = new AMap.Polyline({
     path,
-    strokeColor: numberedNodes ? '#5b55f5' : '#18c7a8',
+    strokeColor: numberedNodes ? theme.mapColor : '#18c7a8',
     strokeWeight: 9,
     strokeOpacity: 0.95,
     lineJoin: 'round',
@@ -779,7 +781,7 @@ onBeforeUnmount(() => {
 .route-map--empty {
   height: 360rpx;
   background:
-    radial-gradient(circle at 78% 20%, rgba(79, 70, 229, 0.12), transparent 42%),
+    radial-gradient(circle at 78% 20%, rgba(var(--tms-primary-rgb), 0.12), transparent 42%),
     linear-gradient(145deg, #edf2fa 0%, #e4ebf5 100%);
 }
 
@@ -835,7 +837,7 @@ onBeforeUnmount(() => {
   padding: 0 16rpx;
   border: 0;
   border-radius: 999rpx;
-  color: #4f46e5;
+  color: var(--tms-primary);
   background: #fff;
   font-size: max(22rpx, 12px);
   font-weight: 700;
@@ -847,7 +849,7 @@ onBeforeUnmount(() => {
 }
 
 .route-map__retry:focus-visible {
-  outline: 3rpx solid #4f46e5;
+  outline: 3rpx solid var(--tms-primary);
   outline-offset: 3rpx;
 }
 
@@ -922,7 +924,7 @@ onBeforeUnmount(() => {
 }
 
 .route-map__marker--node {
-  background: #5b55f5;
+  background: var(--tms-primary);
 }
 
 .route-map__back {
@@ -947,7 +949,7 @@ onBeforeUnmount(() => {
 }
 
 .route-map__back:focus-visible {
-  outline: 3rpx solid #4f46e5;
+  outline: 3rpx solid var(--tms-primary);
   outline-offset: 3rpx;
 }
 
@@ -970,14 +972,14 @@ onBeforeUnmount(() => {
   width: 68rpx;
   height: 68rpx;
   margin-bottom: 4rpx;
-  border: 1rpx solid rgba(79, 70, 229, 0.14);
+  border: 1rpx solid rgba(var(--tms-primary-rgb), 0.14);
   border-radius: 22rpx;
-  color: #4f46e5;
+  color: var(--tms-primary);
   background: rgba(255, 255, 255, 0.82);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10rpx 26rpx rgba(79, 70, 229, 0.1);
+  box-shadow: 0 10rpx 26rpx rgba(var(--tms-primary-rgb), 0.1);
 }
 
 .route-map__empty-title {

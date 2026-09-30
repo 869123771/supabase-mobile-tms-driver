@@ -27,7 +27,7 @@ function go(value: string | number) {
     <wd-tabbar
       :model-value="props.active"
       custom-class="bottom-nav__bar"
-      active-color="#4f46e5"
+      active-color="var(--tms-primary)"
       inactive-color="#929daf"
       role="navigation"
       aria-label="主导航"
@@ -109,11 +109,11 @@ function go(value: string | number) {
 
 :deep(.bottom-nav__item--pressed),
 :deep(.bottom-nav__item:active) {
-  background: rgba(79, 70, 229, 0.06);
+  background: rgba(var(--tms-primary-rgb), 0.06);
 }
 
 :deep(.bottom-nav__item--active) {
-  color: #4f46e5;
+  color: var(--tms-primary);
   font-weight: 700;
 }
 
@@ -123,7 +123,7 @@ function go(value: string | number) {
   width: 74rpx;
   height: 60rpx;
   border-radius: 20rpx;
-  background: linear-gradient(180deg, #eef2ff, #e8edff);
+  background: linear-gradient(180deg, var(--tms-primary-soft), var(--tms-primary-soft-strong));
 }
 
 .bottom-nav__icon-box {
@@ -149,7 +149,7 @@ function go(value: string | number) {
 }
 
 :deep(.bottom-nav__item):focus-visible {
-  outline: 4rpx solid rgba(79, 70, 229, 0.36);
+  outline: 4rpx solid rgba(var(--tms-primary-rgb), 0.36);
   outline-offset: -4rpx;
 }
 

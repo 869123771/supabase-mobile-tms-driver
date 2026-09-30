@@ -93,7 +93,7 @@ function back() {
   width: 420rpx;
   height: 260rpx;
   border-radius: 50%;
-  background: rgba(82, 146, 255, 0.2);
+  background: rgba(var(--tms-primary-rgb), 0.2);
   filter: blur(72rpx);
   pointer-events: none;
 }

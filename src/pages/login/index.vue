@@ -5,7 +5,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { getUserFacingErrorMessage } from '@/api/supabase'
 import TmsIcon from '@/components/business/TmsIcon.vue'
+import { usePageTheme } from '@/composables/usePageTheme'
 
+const { themeName } = usePageTheme()
 const auth = useAuthStore()
 const profile = useProfileStore()
 const account = ref('')
@@ -98,6 +100,7 @@ function forgotPassword() {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view class="login-page page">
     <view class="login-page__orb login-page__orb--one" />
     <view class="login-page__orb login-page__orb--two" />
@@ -182,7 +185,7 @@ function forgotPassword() {
           v-model="remember"
           class="login-form__remember"
           type="square"
-          checked-color="#3763f4"
+          checked-color="var(--tms-primary)"
           :disabled="loading"
         >
           记住我
@@ -230,6 +233,7 @@ function forgotPassword() {
       司机账号由车队管理员开通与管理
     </view>
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -239,8 +243,8 @@ function forgotPassword() {
   padding: calc(70rpx + env(safe-area-inset-top)) 34rpx calc(32rpx + env(safe-area-inset-bottom));
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 92% 2%, rgba(79, 70, 229, 0.12), transparent 360rpx),
-    linear-gradient(180deg, #f7f8ff 0%, #ffffff 54%, #f8fafc 100%);
+    radial-gradient(circle at 92% 2%, rgba(var(--tms-primary-rgb), 0.12), transparent 360rpx),
+    linear-gradient(180deg, var(--tms-primary-soft) 0%, #ffffff 54%, #f8fafc 100%);
   display: flex;
   flex-direction: column;
 }
@@ -257,10 +261,10 @@ function forgotPassword() {
   right: -220rpx;
   width: 540rpx;
   height: 540rpx;
-  border: 1rpx solid rgba(79, 70, 229, 0.12);
+  border: 1rpx solid rgba(var(--tms-primary-rgb), 0.12);
   box-shadow:
-    0 0 0 74rpx rgba(79, 70, 229, 0.025),
-    0 0 0 148rpx rgba(79, 70, 229, 0.018);
+    0 0 0 74rpx rgba(var(--tms-primary-rgb), 0.025),
+    0 0 0 148rpx rgba(var(--tms-primary-rgb), 0.018);
 }
 
 .login-page__orb--two {
@@ -278,8 +282,8 @@ function forgotPassword() {
   height: 620rpx;
   opacity: 0.22;
   background-image:
-    linear-gradient(rgba(79, 70, 229, 0.08) 1rpx, transparent 1rpx),
-    linear-gradient(90deg, rgba(79, 70, 229, 0.08) 1rpx, transparent 1rpx);
+    linear-gradient(rgba(var(--tms-primary-rgb), 0.08) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(var(--tms-primary-rgb), 0.08) 1rpx, transparent 1rpx);
   background-size: 82rpx 82rpx;
   mask-image: linear-gradient(to bottom, #000, transparent);
   pointer-events: none;
@@ -315,9 +319,9 @@ function forgotPassword() {
   top: 14rpx;
   width: 48rpx;
   height: 48rpx;
-  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  background: linear-gradient(135deg, var(--tms-primary), var(--tms-primary-bright));
   border-radius: 14rpx;
-  box-shadow: 0 12rpx 22rpx rgba(79, 70, 229, 0.22);
+  box-shadow: 0 12rpx 22rpx rgba(var(--tms-primary-rgb), 0.22);
   transform: rotate(45deg);
 }
 
@@ -364,7 +368,7 @@ function forgotPassword() {
   height: 42rpx;
   padding: 0 14rpx;
   border-radius: 10rpx;
-  background: #4f46e5;
+  background: var(--tms-primary);
   color: #fff;
   font-size: max(23rpx, 12px);
   font-weight: 700;
@@ -375,7 +379,7 @@ function forgotPassword() {
 .login-page__eyebrow {
   display: block;
   margin-top: 64rpx;
-  color: #4f46e5;
+  color: var(--tms-primary);
   font-size: max(19rpx, 12px);
   font-weight: 700;
 }
@@ -497,7 +501,7 @@ function forgotPassword() {
 
 .login-form__field:focus-within {
   border-color: var(--tms-primary);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.13);
+  box-shadow: 0 0 0 3px rgba(var(--tms-primary-rgb), 0.13);
 }
 
 .login-form__control--error .login-form__field:focus-within {
@@ -579,7 +583,7 @@ function forgotPassword() {
   margin: -12rpx 0;
   padding: 0 4rpx 0 18rpx;
   border: 0;
-  color: #4f46e5;
+  color: var(--tms-primary);
   background: transparent;
   display: inline-flex;
   align-items: center;
@@ -594,8 +598,8 @@ function forgotPassword() {
 }
 
 .login-form__link--pressed {
-  color: #3730a3;
-  background: rgba(79, 70, 229, 0.06);
+  color: var(--tms-primary-deep);
+  background: rgba(var(--tms-primary-rgb), 0.06);
 }
 
 .login-form__button {
@@ -617,7 +621,7 @@ function forgotPassword() {
 }
 
 .login-form__button.is-disabled {
-  background: #c5cfeb;
+  background: var(--tms-primary-soft-strong);
   box-shadow: none;
 }
 
@@ -674,6 +678,6 @@ function forgotPassword() {
 }
 
 .login-page__agreement text {
-  color: #4f46e5;
+  color: var(--tms-primary);
 }
 </style>

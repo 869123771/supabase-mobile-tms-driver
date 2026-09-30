@@ -48,8 +48,8 @@ const label = computed(
 }
 
 .status-tag--blue {
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
 }
 
 .status-tag--green {

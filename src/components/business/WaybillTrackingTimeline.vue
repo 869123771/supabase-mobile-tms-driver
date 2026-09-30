@@ -500,7 +500,7 @@ function preview(item: TimelineItem, index: number) {
   height: 40rpx;
   min-height: 40rpx;
   aspect-ratio: 1;
-  border: 4rpx solid #eef2ff;
+  border: 4rpx solid var(--tms-primary-soft);
   border-radius: 50%;
   color: #fff;
   background: var(--tms-primary);
@@ -567,7 +567,7 @@ function preview(item: TimelineItem, index: number) {
   padding: 5rpx 12rpx;
   border-radius: 999rpx;
   color: var(--tms-primary);
-  background: #eef2ff;
+  background: var(--tms-primary-soft);
   font-size: max(19rpx, 12px);
   font-weight: 700;
 }

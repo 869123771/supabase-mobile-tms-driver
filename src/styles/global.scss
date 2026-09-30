@@ -1,4 +1,5 @@
 @use '@wot-ui/ui/styles/theme/index.scss' as *;
+@use './presets.scss';
 
 @font-face {
   font-family: 'TMS Icons';
@@ -17,14 +18,6 @@ page,
   --wot-typography-label-font-family: var(--tms-font-family);
   --wot-font-weight-medium: 500;
   --wot-font-weight-semibold: 600;
-  --wot-primary-5: #675ff1;
-  --wot-primary-6: #4f46e5;
-  --wot-primary-7: #4338ca;
-  --tms-primary: #4f46e5;
-  --tms-primary-deep: #312e81;
-  --tms-primary-bright: #2563eb;
-  --tms-primary-gradient: linear-gradient(135deg, #4338ca 0%, #4f46e5 48%, #2563eb 100%);
-  --tms-hero-gradient: linear-gradient(142deg, #211d59 0%, #4338ca 48%, #2563eb 112%);
   --tms-bg: #f2f5fa;
   --tms-panel: #f7f9fc;
   --tms-surface: #ffffff;
@@ -35,7 +28,6 @@ page,
   --tms-green: #0f9f6e;
   --tms-orange: #ea8a14;
   --tms-red: #e5484d;
-  --tms-blue-soft: #eef2ff;
   --tms-radius-sm: 14rpx;
   --tms-radius-md: 18rpx;
   --tms-radius-lg: 26rpx;
@@ -46,7 +38,6 @@ page,
   --tms-tabbar-space: calc(160rpx + env(safe-area-inset-bottom));
   --tms-shadow-sm: 0 10rpx 30rpx rgba(28, 39, 65, 0.065);
   --tms-shadow-md: 0 20rpx 54rpx rgba(31, 40, 74, 0.12);
-  --tms-shadow-primary: 0 14rpx 28rpx rgba(79, 70, 229, 0.23);
 }
 
 .page {
@@ -113,8 +104,8 @@ page,
 
 .tms-secondary-action {
   color: var(--tms-primary) !important;
-  border: 2rpx solid rgba(79, 70, 229, 0.28) !important;
-  background: #f7f8ff !important;
+  border: 2rpx solid rgba(var(--tms-primary-rgb), 0.28) !important;
+  background: var(--tms-primary-soft) !important;
   box-shadow: none !important;
 }
 

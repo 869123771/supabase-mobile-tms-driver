@@ -239,7 +239,7 @@ function open() {
 }
 
 .route-card:focus-visible {
-  outline: 4rpx solid rgba(79, 70, 229, 0.24);
+  outline: 4rpx solid rgba(var(--tms-primary-rgb), 0.24);
   outline-offset: 4rpx;
 }
 
@@ -298,8 +298,8 @@ function open() {
 }
 
 .route-card__group-status--blue {
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
 }
 
 .route-card__group-status--green {
@@ -330,7 +330,7 @@ function open() {
 
 .route-card__route :deep(.tms-icon) {
   flex: 0 0 auto;
-  color: #4f46e5;
+  color: var(--tms-primary);
 }
 
 .route-card__route text {
@@ -357,7 +357,7 @@ function open() {
   border: 1rpx solid #e8ecf3;
   border-radius: 18rpx;
   background:
-    radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.04), transparent 180rpx),
+    radial-gradient(circle at 0 0, rgba(var(--tms-primary-rgb), 0.04), transparent 180rpx),
     linear-gradient(145deg, #fbfcff, #f5f7fb);
   display: flex;
   flex-direction: column;
@@ -476,7 +476,7 @@ function open() {
   border-radius: 50%;
   color: #fff;
   background: var(--tms-primary-gradient);
-  box-shadow: 0 8rpx 16rpx rgba(79, 70, 229, 0.22);
+  box-shadow: 0 8rpx 16rpx rgba(var(--tms-primary-rgb), 0.22);
   display: flex;
   align-items: center;
   justify-content: center;

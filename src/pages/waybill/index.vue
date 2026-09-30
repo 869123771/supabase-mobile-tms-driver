@@ -10,7 +10,9 @@ import type { Waybill } from '@/api/types'
 import { getUserFacingErrorMessage } from '@/api/supabase'
 import { useWaybillStore } from '@/stores/waybill'
 import { openWaybillNavigation } from '@/utils/navigation'
+import { usePageTheme } from '@/composables/usePageTheme'
 
+const { themeName } = usePageTheme()
 const waybill = useWaybillStore()
 const active = ref<WaybillStatusGroup>('all')
 const refreshing = ref(false)
@@ -104,6 +106,7 @@ function navigate(item: Waybill) {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view class="waybill-page page safe-bottom">
     <view class="waybill-page__header">
       <view class="waybill-page__title-row">
@@ -157,7 +160,7 @@ function navigate(item: Waybill) {
         <button @tap="refreshList">重试</button>
       </view>
       <view v-if="showListLoading" class="waybill-page__list-loading" role="status">
-        <wd-loading type="circular" color="#3763f4" size="32rpx" />
+        <wd-loading type="circular" color="var(--tms-primary)" size="32rpx" />
         <text>正在更新任务…</text>
       </view>
       <TmsPageSkeleton
@@ -205,7 +208,7 @@ function navigate(item: Waybill) {
       </view>
       <view v-else class="waybill-page__empty card">
         <view class="waybill-page__empty-icon">
-          <wd-loading v-if="waybill.loading" type="circular" color="#4f46e5" size="54rpx" />
+          <wd-loading v-if="waybill.loading" type="circular" color="var(--tms-primary)" size="54rpx" />
           <TmsIcon v-else name="waybill" size="62rpx" />
         </view>
         <text class="waybill-page__empty-title">
@@ -222,6 +225,7 @@ function navigate(item: Waybill) {
 
     <TmsBottomNav active="waybill" />
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -275,7 +279,7 @@ function navigate(item: Waybill) {
   width: 440rpx;
   height: 260rpx;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(var(--tms-primary-rgb), 0.24);
   filter: blur(72rpx);
 }
 
@@ -389,8 +393,8 @@ function navigate(item: Waybill) {
 :deep(.waybill-page__tabs .wd-segmented__item.is-active) {
   color: #fff;
   border-color: transparent;
-  background: linear-gradient(135deg, #4f46e5, #3b67df);
-  box-shadow: 0 10rpx 22rpx rgba(79, 70, 229, 0.2);
+  background: linear-gradient(135deg, var(--tms-primary), var(--tms-primary-bright));
+  box-shadow: 0 10rpx 22rpx rgba(var(--tms-primary-rgb), 0.2);
 }
 
 :deep(.waybill-page__tabs .wd-segmented__item.is-disabled) {
@@ -422,7 +426,7 @@ function navigate(item: Waybill) {
   min-height: 68rpx;
   margin: 18rpx 28rpx 0;
   border-radius: 16rpx;
-  color: #4f46e5;
+  color: var(--tms-primary);
   background: #fff;
   display: flex;
   align-items: center;
@@ -552,10 +556,10 @@ function navigate(item: Waybill) {
   min-height: var(--tms-control-height);
   margin: 0;
   padding: 0 20rpx;
-  border: 1rpx solid rgba(79, 70, 229, 0.25);
+  border: 1rpx solid rgba(var(--tms-primary-rgb), 0.25);
   border-radius: 999rpx;
   color: var(--tms-primary);
-  background: #f6f7ff;
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -576,13 +580,13 @@ function navigate(item: Waybill) {
 
 .waybill-expense-action__button--pressed,
 .waybill-expense-action button:active {
-  color: #3730a3;
-  background: #eceeff;
+  color: var(--tms-primary-deep);
+  background: var(--tms-primary-soft-strong);
   transform: scale(0.97);
 }
 
 .waybill-expense-action button:focus-visible {
-  outline: 4rpx solid rgba(79, 70, 229, 0.22);
+  outline: 4rpx solid rgba(var(--tms-primary-rgb), 0.22);
   outline-offset: 3rpx;
 }
 
@@ -604,8 +608,8 @@ function navigate(item: Waybill) {
   height: 112rpx;
   margin-bottom: 8rpx;
   border-radius: 34rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -628,7 +632,7 @@ function navigate(item: Waybill) {
   min-width: 0;
   margin-top: 8rpx;
   padding: 0 20rpx;
-  color: #4f46e5;
+  color: var(--tms-primary);
   font-size: max(24rpx, 12px);
   font-weight: 700;
 }

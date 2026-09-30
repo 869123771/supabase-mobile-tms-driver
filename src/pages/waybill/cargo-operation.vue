@@ -5,6 +5,7 @@ import { getUserFacingErrorMessage } from "@/api/supabase";
 import TmsTopBar from "@/components/business/TmsTopBar.vue";
 import TmsIcon from "@/components/business/TmsIcon.vue";
 import TmsPageSkeleton from "@/components/business/TmsPageSkeleton.vue";
+import { usePageTheme } from "@/composables/usePageTheme";
 import {
   analyzeCargoWeighbridgeTicket,
   checkInCargoOperation,
@@ -40,6 +41,7 @@ interface OperationForm {
   remark: string;
 }
 
+const { themeName } = usePageTheme();
 const waybillStore = useWaybillStore();
 const auth = useAuthStore();
 const profile = useProfileStore();
@@ -435,11 +437,11 @@ function showError(error: unknown, fallback: string) {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view
     class="operation-page page"
     :class="{
-      'operation-page--with-footer':
-        context?.operation && !isCompleted && !checkinOnly,
+      'operation-page--with-footer': context?.operation && !isCompleted && !checkinOnly,
     }"
   >
     <view class="operation-page__hero">
@@ -675,7 +677,7 @@ function showError(error: unknown, fallback: string) {
                 <wd-loading
                   v-if="state.uploading === 'photo'"
                   type="circular"
-                  color="#3763f4"
+                  color="var(--tms-primary)"
                   size="30rpx"
                 />
                 <view v-else class="evidence-grid__add-content">
@@ -728,7 +730,7 @@ function showError(error: unknown, fallback: string) {
                 <wd-loading
                   v-if="state.uploading === 'ticket'"
                   type="circular"
-                  color="#3763f4"
+                  color="var(--tms-primary)"
                   size="30rpx"
                 />
                 <view v-else class="evidence-grid__add-content">
@@ -767,7 +769,7 @@ function showError(error: unknown, fallback: string) {
                 <wd-loading
                   v-if="state.analyzing"
                   type="circular"
-                  color="#4f46e5"
+                  color="var(--tms-primary)"
                   size="24rpx"
                 />
                 <TmsIcon v-else name="camera" size="24rpx" />
@@ -844,6 +846,7 @@ function showError(error: unknown, fallback: string) {
       </wd-button>
     </view>
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -963,7 +966,7 @@ function showError(error: unknown, fallback: string) {
 .form-card__completed {
   padding: 9rpx 18rpx;
   color: var(--tms-primary);
-  background: var(--tms-blue-soft);
+  background: var(--tms-primary-soft);
   border-radius: 999rpx;
   font-size: max(22rpx, 12px);
   font-weight: 700;
@@ -1036,7 +1039,7 @@ function showError(error: unknown, fallback: string) {
   width: 66rpx;
   height: 66rpx;
   color: var(--tms-primary);
-  background: var(--tms-blue-soft);
+  background: var(--tms-primary-soft);
   border-radius: 50%;
 }
 
@@ -1064,10 +1067,10 @@ function showError(error: unknown, fallback: string) {
 .form-card__locked {
   margin-top: 24rpx;
   padding: 20rpx;
-  border: 1rpx solid #dbe4ff;
+  border: 1rpx solid var(--tms-primary-soft-strong);
   border-radius: 18rpx;
-  color: #3449a4;
-  background: linear-gradient(135deg, #f3f6ff, #eef3ff);
+  color: var(--tms-primary-strong);
+  background: linear-gradient(135deg, #fff, var(--tms-primary-soft));
   display: flex;
   gap: 16rpx;
   align-items: center;
@@ -1078,7 +1081,7 @@ function showError(error: unknown, fallback: string) {
   width: 54rpx;
   height: 54rpx;
   border-radius: 16rpx;
-  color: #4f46e5;
+  color: var(--tms-primary);
   background: #fff;
   display: flex;
   align-items: center;
@@ -1207,8 +1210,8 @@ function showError(error: unknown, fallback: string) {
 .recognition-card {
   margin-top: 30rpx;
   padding: 22rpx;
-  background: linear-gradient(145deg, #f4f7ff, #eef3ff);
-  border: 1rpx solid #d9e2ff;
+  background: linear-gradient(145deg, #fff, var(--tms-primary-soft));
+  border: 1rpx solid var(--tms-primary-soft-strong);
   border-radius: 18rpx;
 }
 
@@ -1279,7 +1282,7 @@ function showError(error: unknown, fallback: string) {
   padding: 0 16rpx;
   color: var(--tms-primary);
   background: #fff;
-  border: 1rpx solid #cfd9ff;
+  border: 1rpx solid var(--tms-primary-soft-strong);
   border-radius: 14rpx;
   font-size: max(21rpx, 12px);
 }

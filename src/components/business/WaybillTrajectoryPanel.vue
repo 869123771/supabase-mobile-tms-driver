@@ -231,7 +231,7 @@ const traceDescription = computed(() => {
 }
 
 .trajectory-panel__eyebrow {
-  color: #5b55f5;
+  color: var(--tms-primary);
   font-size: max(19rpx, 12px);
   font-weight: 700;
   letter-spacing: 2rpx;
@@ -247,8 +247,8 @@ const traceDescription = computed(() => {
 .trajectory-panel__count {
   flex: 0 0 auto;
   padding: 9rpx 16rpx;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
   border-radius: 999rpx;
   font-size: max(21rpx, 12px);
   font-weight: 700;
@@ -329,11 +329,11 @@ const traceDescription = computed(() => {
   width: 22rpx;
   height: 6rpx;
   border-radius: 999rpx;
-  background: #4f46e5;
+  background: var(--tms-primary);
 }
 
 .trajectory-panel__legend .is-node {
-  border: 3rpx solid #5b55f5;
+  border: 3rpx solid var(--tms-primary);
   border-radius: 50%;
   background: #fff;
 }
@@ -344,8 +344,8 @@ const traceDescription = computed(() => {
   margin-top: 18rpx;
   padding: 16rpx 18rpx;
   color: #52627a;
-  background: #f3f6ff;
-  border-left: 5rpx solid #5b55f5;
+  background: var(--tms-primary-soft);
+  border-left: 5rpx solid var(--tms-primary);
   border-radius: 13rpx;
   font-size: max(20rpx, 12px);
   line-height: 1.55;
@@ -385,14 +385,14 @@ const traceDescription = computed(() => {
   border: 4rpx solid #fff;
   border-radius: 50%;
   color: #fff;
-  background: #5b55f5;
+  background: var(--tms-primary);
   font-size: max(18rpx, 12px);
   font-weight: 700;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 5rpx 14rpx rgba(79, 70, 229, 0.2);
+  box-shadow: 0 5rpx 14rpx rgba(var(--tms-primary-rgb), 0.2);
 }
 
 .trace-list__index.is-inferred {

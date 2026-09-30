@@ -10,7 +10,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { useWaybillStore } from '@/stores/waybill'
 import { maskIdCard, maskPhone } from '@/utils/format'
+import { usePageTheme } from '@/composables/usePageTheme'
 
+const { themeName } = usePageTheme()
 const auth = useAuthStore()
 const profile = useProfileStore()
 const waybill = useWaybillStore()
@@ -97,6 +99,10 @@ function contactCarrier() {
   }
 }
 
+function openSettings() {
+  uni.navigateTo({ url: '/pages/settings/index' })
+}
+
 async function confirmLogout() {
   logoutConfirmVisible.value = false
   try {
@@ -109,6 +115,7 @@ async function confirmLogout() {
 </script>
 
 <template>
+<wd-config-provider :theme="themeName">
   <view class="mine-page page safe-bottom">
     <scroll-view scroll-y class="mine-page__scroll">
     <view class="mine-page__hero">
@@ -191,6 +198,24 @@ async function confirmLogout() {
       <view class="mine-card card">
         <view class="section-head">
           <view>
+            <text class="section-eyebrow">偏好设置</text>
+            <text class="section-title">设置</text>
+          </view>
+          <text class="section-head__hint">按习惯调整</text>
+        </view>
+        <button class="mine-settings-link" aria-label="打开设置，管理主题配色" @tap="openSettings">
+          <view class="mine-settings-link__icon" aria-hidden="true"><TmsIcon name="settings" size="34rpx" /></view>
+          <view class="mine-settings-link__copy">
+            <text class="mine-settings-link__title">主题配色</text>
+            <text class="mine-settings-link__description">管理全局外观</text>
+          </view>
+          <TmsIcon name="arrow-right" size="28rpx" />
+        </button>
+      </view>
+
+      <view class="mine-card card">
+        <view class="section-head">
+          <view>
             <text class="section-eyebrow">快捷入口</text>
             <text class="section-title">常用服务</text>
           </view>
@@ -258,6 +283,7 @@ async function confirmLogout() {
       </view>
     </wd-popup>
   </view>
+</wd-config-provider>
 </template>
 
 <style scoped lang="scss">
@@ -320,7 +346,7 @@ async function confirmLogout() {
   width: 480rpx;
   height: 300rpx;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.2);
+  background: rgba(var(--tms-primary-rgb), 0.24);
   filter: blur(78rpx);
 }
 
@@ -373,7 +399,7 @@ async function confirmLogout() {
 }
 
 .mine-page__avatar--text {
-  color: #4f46e5;
+  color: var(--tms-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -511,6 +537,68 @@ async function confirmLogout() {
   text-overflow: ellipsis;
 }
 
+.mine-settings-link {
+  margin-top: 24rpx;
+  width: 100%;
+  min-height: var(--tms-control-height);
+  padding: 18rpx 20rpx;
+  border: 1rpx solid var(--tms-line);
+  border-radius: var(--tms-control-radius);
+  color: var(--tms-text);
+  background: var(--tms-panel);
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  text-align: left;
+}
+
+.mine-settings-link::after {
+  border: 0;
+}
+
+.mine-settings-link:active {
+  border-color: var(--tms-primary);
+}
+
+.mine-settings-link:focus-visible {
+  outline: 4rpx solid rgba(var(--tms-primary-rgb), 0.35);
+  outline-offset: 3rpx;
+}
+
+.mine-settings-link__icon {
+  flex: none;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 18rpx;
+  color: var(--tms-primary);
+  background: var(--tms-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mine-settings-link__copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.mine-settings-link__title {
+  font-size: max(26rpx, 12px);
+  font-weight: 700;
+}
+
+.mine-settings-link__description {
+  color: var(--tms-muted);
+  font-size: max(22rpx, 12px);
+}
+
+.mine-settings-link > :last-child {
+  color: var(--tms-muted);
+}
+
 .feature-grid {
   margin-top: 28rpx;
   display: grid;
@@ -558,7 +646,7 @@ async function confirmLogout() {
   width: 86rpx;
   height: 86rpx;
   border-radius: 24rpx;
-  color: #4f46e5;
+  color: var(--tms-primary);
   background: #f7f9fc;
   display: flex;
   align-items: center;
@@ -576,8 +664,8 @@ async function confirmLogout() {
 }
 
 .feature-grid__item:nth-child(4) .feature-grid__icon {
-  color: #2563eb;
-  background: #eff6ff;
+  color: var(--tms-primary-bright);
+  background: var(--tms-primary-soft);
 }
 
 .mine-page__logout {
@@ -654,7 +742,7 @@ async function confirmLogout() {
 }
 
 .mine-help__steps view text:first-child {
-  color: #4f46e5;
+  color: var(--tms-primary);
   font-weight: 700;
 }
 

@@ -47,17 +47,6 @@ page {
   text-rendering: optimizeLegibility;
 }
 
-page::before {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  content: '';
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 6% 0, rgba(79, 70, 229, 0.055), transparent 440rpx),
-    radial-gradient(circle at 96% 36%, rgba(37, 99, 235, 0.035), transparent 420rpx);
-}
-
 view,
 text,
 button,
@@ -84,7 +73,7 @@ textarea {
 
 button:focus-visible,
 [role='button']:focus-visible {
-  outline: 4rpx solid rgba(79, 70, 229, 0.32);
+  outline: 4rpx solid rgba(var(--tms-primary-rgb), 0.32);
   outline-offset: 4rpx;
 }
 
